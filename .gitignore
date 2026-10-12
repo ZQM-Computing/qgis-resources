@@ -1,0 +1,21 @@
+# QGIS project backups and sidecar files
+*.qgs~
+*.qgz~
+*.gpkg-journal
+*.gpkg-wal
+*.gpkg-shm
+*.aux.xml
+*_attachments/
+
+# Python
+__pycache__/
+*.pyc
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local environment
+.env
