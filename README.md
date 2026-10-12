@@ -55,6 +55,11 @@ Issues and pull requests are welcome — especially resources you have used in p
 
 Maintained by [ZQM Computing](https://github.com/ZQM-Computing). Resources distilled from production GIS analysis, environmental permitting, and climate-resilience work — and from running QGIS/QField as the open-source side of a working geospatial practice — by Alex Zelenski, GISP.
 
+## More from this series
+
+- [postgis-patterns](https://github.com/ZQM-Computing/postgis-patterns) — Production PostGIS patterns: spatial indexing, joins & KNN, SRID management, vector tiles, data quality, partitioning
+- [geospatial-api-reference](https://github.com/ZQM-Computing/geospatial-api-reference) — OGC API – Features reference implementation with FastAPI and PostGIS backends
+
 ## License
 
 MIT — see [`LICENSE`](LICENSE).
