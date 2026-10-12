@@ -1,5 +1,7 @@
 # qgis-resources — QGIS & PyQGIS Resources for GIS Analysts and Geospatial Developers
 
+[![Validate resources](https://github.com/ZQM-Computing/qgis-resources/actions/workflows/validate.yml/badge.svg)](https://github.com/ZQM-Computing/qgis-resources/actions)
+
 Free, ready-to-use **QGIS resources**: documented **expression functions**, **PyQGIS code snippets**, **Processing workflow scripts**, **layer styles (.qml)**, and **QField field-data-collection templates** — the reusable pieces that speed up everyday desktop GIS work.
 
 Everything here is meant to be dropped into a real project and adapted. Each resource states what it does, which QGIS version it needs, and the assumptions it makes about your layers and fields.
