@@ -1,0 +1,36 @@
+name: Validate resources
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Syntax-check Python snippets
+        run: python -m py_compile pyqgis/*.py processing/*.py
+
+      - name: Check QML styles are well-formed XML
+        run: |
+          python - <<'PY'
+          import glob
+          import xml.etree.ElementTree as ET
+
+          files = glob.glob("styles/*.qml")
+          assert files, "no .qml files found"
+          for f in files:
+              ET.parse(f)
+              print(f"OK {f}")
+          PY
