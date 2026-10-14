@@ -11,7 +11,6 @@ Reprojecting first means the clip runs in the analysis CRS, so any
 downstream area/distance math is consistent.
 """
 
-import processing
 from qgis.core import (
     QgsCoordinateReferenceSystem,
     QgsProcessing,
@@ -22,6 +21,8 @@ from qgis.core import (
     QgsProcessingParameterFeatureSource,
 )
 from qgis.PyQt.QtCore import QCoreApplication
+
+import processing
 
 
 class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
