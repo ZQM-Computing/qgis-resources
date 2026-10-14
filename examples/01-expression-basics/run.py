@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Example 01: QGIS expression basics."""
 # These expressions can be used in QGIS Field Calculator or Filter
 

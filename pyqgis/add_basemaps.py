@@ -22,8 +22,7 @@ BASEMAPS = {
         "World_Imagery/MapServer/tile/{z}/{y}/{x}&zmax=18"
     ),
     "CartoDB Positron": (
-        "type=xyz&url=https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
-        "&zmax=20"
+        "type=xyz&url=https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png&zmax=20"
     ),
 }
 

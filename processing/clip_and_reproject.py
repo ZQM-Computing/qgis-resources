@@ -11,7 +11,7 @@ Reprojecting first means the clip runs in the analysis CRS, so any
 downstream area/distance math is consistent.
 """
 
-from qgis.PyQt.QtCore import QCoreApplication
+import processing
 from qgis.core import (
     QgsCoordinateReferenceSystem,
     QgsProcessing,
@@ -21,8 +21,7 @@ from qgis.core import (
     QgsProcessingParameterFeatureSink,
     QgsProcessingParameterFeatureSource,
 )
-
-import processing
+from qgis.PyQt.QtCore import QCoreApplication
 
 
 class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
@@ -86,7 +85,9 @@ class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
     def processAlgorithm(self, parameters, context, feedback):
         source = self.parameterAsSource(parameters, self.INPUT, context)
         if source is None:
-            raise QgsProcessingException(self.invalidSourceError(parameters, self.INPUT))
+            raise QgsProcessingException(
+                self.invalidSourceError(parameters, self.INPUT)
+            )
         boundary = self.parameterAsSource(parameters, self.BOUNDARY, context)
         if boundary is None:
             raise QgsProcessingException(
@@ -98,7 +99,11 @@ class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo("Reprojecting input layer...")
         reprojected_input = processing.run(
             "native:reprojectlayer",
-            {"INPUT": parameters[self.INPUT], "TARGET_CRS": target_crs, "OUTPUT": "TEMPORARY_OUTPUT"},
+            {
+                "INPUT": parameters[self.INPUT],
+                "TARGET_CRS": target_crs,
+                "OUTPUT": "TEMPORARY_OUTPUT",
+            },
             context=context,
             feedback=feedback,
             is_child_algorithm=True,
@@ -106,7 +111,11 @@ class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
 
         reprojected_boundary = processing.run(
             "native:reprojectlayer",
-            {"INPUT": parameters[self.BOUNDARY], "TARGET_CRS": target_crs, "OUTPUT": "TEMPORARY_OUTPUT"},
+            {
+                "INPUT": parameters[self.BOUNDARY],
+                "TARGET_CRS": target_crs,
+                "OUTPUT": "TEMPORARY_OUTPUT",
+            },
             context=context,
             feedback=feedback,
             is_child_algorithm=True,
