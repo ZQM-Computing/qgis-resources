@@ -1,5 +1,15 @@
 # qgis-resources — QGIS & PyQGIS Resources for GIS Analysts and Geospatial Developers
 
+<!-- ZQM-START -->
+<p align="center">
+  <strong>ZQM Labs — Z's Quests & Mischief</strong><br>
+  <a href="https://zqmlabs.com">zqmlabs.com</a> •
+  <a href="https://github.com/ZQM-Labs">GitHub</a>
+</p>
+<!-- ZQM-END -->
+
+
+
 [![Validate resources](https://github.com/ZQM-Computing/qgis-resources/actions/workflows/validate.yml/badge.svg)](https://github.com/ZQM-Computing/qgis-resources/actions)
 
 Free, ready-to-use **QGIS resources**: documented **expression functions**, **PyQGIS code snippets**, **Processing workflow scripts**, **layer styles (.qml)**, and **QField field-data-collection templates** — the reusable pieces that speed up everyday desktop GIS work.
@@ -89,3 +99,15 @@ MIT — see [`LICENSE`](LICENSE).
 - [h3-patterns](https://github.com/ZQM-Computing/h3-patterns) — H3 hexagonal grid patterns
 
 *Part of [ZQM Labs](https://github.com/ZQM-Labs) — games, gear & a little mischief.*
+
+
+<!-- ZQM-FOOTER-START -->
+---
+
+<p align="center">
+  <em>Play more. Plan less.</em><br>
+  <a href="https://zqmlabs.com">zqmlabs.com</a> •
+  <a href="https://github.com/ZQM-Labs">ZQM Labs</a> •
+  <a href="https://github.com/ZQM-Computing">ZQM Computing</a>
+</p>
+<!-- ZQM-FOOTER-END -->
