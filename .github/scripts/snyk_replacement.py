@@ -1,4 +1,4 @@
-# Vendored from private ZQM-Labs/zqm-supply-chain at source commit 072965c6d7b13cc209867225bbfd85ec83ab6285.
+# Vendored from private ZQM-Labs/zqm-supply-chain at source commit f2ae7c03fd0e123a9b2b0af3ab8e773ae684db01.
 # Licensed under the MIT License; retain .github/scripts/SUPPLY_CHAIN_SCANNER_LICENSE.txt with this file.
 #!/usr/bin/env python3
 """
@@ -28,7 +28,7 @@ ECOSYSTEMS = {
     "javascript": ["package.json", "package-lock.json", "yarn.lock"],
     "go": ["go.mod", "go.sum"],
 }
-ALLOWED_LICENSES = {"MIT", "Apache-2.0", "BSD-3-Clause", "BSD-2-Clause", "ISC", "Python-2.0", "Apache Software License", "0BSD"}
+ALLOWED_LICENSES = {"MIT", "Apache-2.0", "BSD-3-Clause", "BSD-2-Clause", "ISC", "Python-2.0", "Apache Software License", "0BSD", "MIT License"}
 OSV_API = "https://api.osv.dev/v1/query"
 GITHUB_API = "https://api.github.com"
 MAX_RETRIES = 3
@@ -91,19 +91,22 @@ def read_file(path: str) -> str | None:
 
 
 def parse_python_requirements(content: str) -> list[dict]:
+    """Parse requirement lines without treating a version range as an installed version."""
     deps = []
     for line in content.splitlines():
         line = line.strip()
         if not line or line.startswith("#") or line.startswith("-"):
             continue
-        m = re.match(r"^([A-Za-z0-9_.-]+)(?:\[[^\]]+\])?(?:\s*[=<>!~\s]+\s*([^\s;]+))?", line)
-        if m:
-            deps.append({"name": m.group(1), "version": m.group(2) or "unknown", "ecosystem": "PyPI"})
+        m = re.match(r"^([A-Za-z0-9_.-]+)(?:\[[^\]]+\])?\s*(.*)$", line)
+        if not m:
+            continue
+        name, spec = m.group(1), m.group(2).split(";", 1)[0].strip()
+        exact = re.fullmatch(r"(?:===|==)\s*[vV]?([0-9][A-Za-z0-9.+!-]*)", spec)
+        deps.append({"name": name, "version": exact.group(1) if exact else "unknown", "ecosystem": "PyPI"})
     return deps
 
-
 def parse_pyproject_toml(content: str) -> list[dict]:
-    # Minimal TOML parser: project.dependencies
+    """Best-effort parser for simple dependency tables; ranges are not installed versions."""
     deps = []
     in_deps = False
     for line in content.splitlines():
@@ -112,25 +115,62 @@ def parse_pyproject_toml(content: str) -> list[dict]:
             in_deps = "dependencies" in stripped or "project.dependencies" in stripped
             continue
         if in_deps and "=" in stripped and not stripped.startswith("#"):
-            # name = ">=version" or name = "version"
-            m = re.match(r'^([A-Za-z0-9_.-]+)\s*=\s*"([^"]+)"', stripped)
+            m = re.match(r'^["\']?([A-Za-z0-9_.-]+)["\']?\s*=\s*["\']([^"\']+)["\']', stripped)
             if m:
-                deps.append({"name": m.group(1), "version": m.group(2).strip(">=<^~!"), "ecosystem": "PyPI"})
+                name, spec = m.group(1), m.group(2).strip()
+                exact = re.fullmatch(r"(?:===|==)\s*[vV]?([0-9][A-Za-z0-9.+!-]*)", spec)
+                deps.append({"name": name, "version": exact.group(1) if exact else "unknown", "ecosystem": "PyPI"})
     return deps
 
-
 def parse_package_json(content: str) -> list[dict]:
+    """Parse direct npm dependencies; semver ranges are not treated as installed versions."""
     try:
         data = json.loads(content)
     except json.JSONDecodeError:
         return []
     deps = []
-    for section in ["dependencies", "devDependencies", "peerDependencies"]:
-        for name, version in data.get(section, {}).items():
-            ver = version.lstrip("^~>=<").strip()
-            deps.append({"name": name, "version": ver or "unknown", "ecosystem": "npm"})
+    for section in ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"]:
+        for name, spec in data.get(section, {}).items():
+            spec = str(spec).strip()
+            exact = re.fullmatch(r"[vV]?(\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?)", spec)
+            deps.append({"name": name, "version": exact.group(1) if exact else "unknown", "ecosystem": "npm"})
     return deps
 
+
+def parse_package_lock(content: str) -> list[dict]:
+    """Read resolved versions from npm lockfiles (v2/v3 and legacy v1)."""
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError:
+        return []
+    deps = []
+    packages = data.get("packages")
+    if isinstance(packages, dict):
+        for path, meta in packages.items():
+            if not path or "node_modules/" not in path or not isinstance(meta, dict):
+                continue
+            version = meta.get("version")
+            if not version:
+                continue
+            name = meta.get("name") or path.rsplit("node_modules/", 1)[-1]
+            deps.append({"name": name, "version": str(version).lstrip("v"), "ecosystem": "npm"})
+        return deps
+
+    def walk(entries):
+        for name, meta in entries.items():
+            if not isinstance(meta, dict):
+                continue
+            version = meta.get("version")
+            if version:
+                deps.append({"name": name, "version": str(version).lstrip("v"), "ecosystem": "npm"})
+            nested = meta.get("dependencies")
+            if isinstance(nested, dict):
+                walk(nested)
+
+    legacy = data.get("dependencies")
+    if isinstance(legacy, dict):
+        walk(legacy)
+    return deps
 
 def parse_go_mod(content: str) -> list[dict]:
     deps = []
@@ -168,7 +208,10 @@ def discover_deps(repo_root: str) -> list[dict]:
             elif eco == "python" and fname == "pyproject.toml":
                 deps.extend(parse_pyproject_toml(content))
             elif eco == "javascript" and fname == "package.json":
-                deps.extend(parse_package_json(content))
+                if not os.path.isfile(os.path.join(repo_root, "package-lock.json")):
+                    deps.extend(parse_package_json(content))
+            elif eco == "javascript" and fname == "package-lock.json":
+                deps.extend(parse_package_lock(content))
             elif eco == "go" and fname == "go.mod":
                 deps.extend(parse_go_mod(content))
     return deps
@@ -345,7 +388,8 @@ def scan_repo(repo_root: str, repo_full: str) -> tuple[list[dict], dict]:
         ecosystem = dep["ecosystem"]
 
         # 1. Vulnerabilities
-        vulns = query_osv(name, version, ecosystem)
+        # A manifest range is not an installed version; use resolved lockfile pins where available.
+        vulns = query_osv(name, version, ecosystem) if version != "unknown" else []
         for vuln in vulns:
             vuln_id = vuln.get("id", "UNKNOWN")
             severity = "high"
@@ -397,12 +441,13 @@ def scan_repo(repo_root: str, repo_full: str) -> tuple[list[dict], dict]:
 
         # 3. Outdated dependencies
         latest = None
-        if ecosystem == "PyPI":
-            latest = check_outdated_pypi(name, version)
-        elif ecosystem == "npm":
-            latest = check_outdated_npm(name, version)
-        elif ecosystem == "Go":
-            latest = check_outdated_go(name, version)
+        if version != "unknown":
+            if ecosystem == "PyPI":
+                latest = check_outdated_pypi(name, version)
+            elif ecosystem == "npm":
+                latest = check_outdated_npm(name, version)
+            elif ecosystem == "Go":
+                latest = check_outdated_go(name, version)
 
         if latest:
             findings.append({
