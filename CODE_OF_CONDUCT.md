@@ -1,22 +1,21 @@
 # Code of Conduct
 
-This project follows the ZQM house standards, adapted for a public open-source repository.
-
 ## Our standards
 
-- No harassment, discrimination, or hostile behavior — in issues, pull requests, or any project space.
-- No disclosure of other people's private information, credentials, or keys.
-- No falsifying examples, data, benchmarks, or results.
-- Critique the work, not the person. Disagreements about approach are welcome; personal attacks are not.
-
-## Scope
-
-These standards apply to all project spaces and to anyone representing the project in public.
+- No harassment, discrimination, or hostile behavior
+- No disclosure of private buyer data or keys
+- No adversarial changes to evidence or provenance artifacts
+- Be respectful in all interactions
+- Focus on constructive feedback
 
 ## Reporting
 
-Report violations to **zqmcomputing@gmail.com** with the subject `CODE-OF-CONDUCT` and the repository name. Reports are handled confidentially. The maintainer may remove content, close participation, or ban accounts that violate these standards.
+Report violations to zqmcomputing@gmail.com with subject `ZQM-ATTEST-COC`.
 
 ## Attribution
 
-Contributions to this repository are made under its MIT license (see `LICENSE`).
+Commercial contributors retain copyright; commercial rights remain with ZQM.
+
+---
+
+*Part of the [ZQM Computing](https://github.com/ZQM-Computing) ecosystem.*
