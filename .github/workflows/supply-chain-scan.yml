@@ -1,43 +1,41 @@
 name: Supply Chain Security Scan
+
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
   schedule:
-    - cron: '0 0 * * 1'
+    - cron: "0 0 * * 1"
 
 permissions:
   contents: read
-  security-events: write
-  issues: write
 
 jobs:
-  scan:
+  dependency-audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v7
+
+      - name: Set up Python
+        if: hashFiles('requirements.txt') != '' || hashFiles('pyproject.toml') != ''
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      - name: Run supply chain scan (vendored stdlib script)
-        run: |
-          python .github/scripts/snyk_replacement.py \
-            --repo ${{ github.repository }} \
-            --output both \
-            --pr ${{ github.event.pull_request.number || 0 }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload SARIF (best-effort; needs GHAS on private repos)
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        continue-on-error: true
-        with:
-          sarif_file: .zqm-security-reports/
-      - name: Upload findings artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: supply-chain-scan-${{ github.run_id }}
-          path: .zqm-security-reports/
-          retention-days: 30
-        if: always()
+          python-version: "3.12"
+
+      - name: Install pip-audit
+        if: hashFiles('requirements.txt') != '' || hashFiles('pyproject.toml') != ''
+        run: python -m pip install --upgrade pip pip-audit
+
+      - name: Audit requirements.txt dependencies
+        if: hashFiles('requirements.txt') != ''
+        run: pip-audit -r requirements.txt
+
+      - name: Audit pyproject dependencies when no requirements file exists
+        if: hashFiles('requirements.txt') == '' && hashFiles('pyproject.toml') != ''
+        run: pip-audit .
+
+      - name: Report that no Python dependency manifest exists
+        if: hashFiles('requirements.txt') == '' && hashFiles('pyproject.toml') == ''
+        run: echo "::notice::No supported Python dependency manifest was found. This run does not claim to audit runtime dependencies; GitHub Actions dependencies are handled by Dependabot."
