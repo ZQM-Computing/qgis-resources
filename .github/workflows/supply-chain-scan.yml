@@ -1,11 +1,11 @@
 name: Supply Chain Security Scan
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
   schedule:
-    - cron: '0 0 * * 1'
+    - cron: "0 0 * * 1"
 
 permissions:
   contents: read
@@ -19,25 +19,28 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v7
         with:
-          python-version: '3.11'
-      - name: Run supply chain scan (vendored stdlib script)
-        run: |
-          python .github/scripts/snyk_replacement.py \
-            --repo ${{ github.repository }} \
-            --output both \
-            --pr ${{ github.event.pull_request.number || 0 }}
+          python-version: "3.11"
+      - name: Run vendored MIT-licensed supply-chain scanner
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload SARIF (best-effort; needs GHAS on private repos)
-        uses: github/codeql-action/upload-sarif@v4
+        run: |
+          python .github/scripts/snyk_replacement.py \
+            --repo "${{ github.repository }}" \
+            --root "." \
+            --output both \
+            --pr "${{ github.event.pull_request.number || 0 }}"
+      - name: Upload SARIF (best-effort when code scanning is unavailable)
         if: always()
         continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: .zqm-security-reports/
-      - name: Upload findings artifact
+          sarif_file: .zqm-security-reports/${{ github.repository_owner }}_${{ github.event.repository.name }}/*-results.sarif
+      - name: Upload scan reports
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: supply-chain-scan-${{ github.run_id }}
           path: .zqm-security-reports/
+          if-no-files-found: warn
+          include-hidden-files: true
           retention-days: 30
-        if: always()
