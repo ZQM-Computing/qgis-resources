@@ -20,16 +20,11 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
-      - name: Download pinned ZQM supply-chain scanner
-        run: |
-          curl --fail --location --silent --show-error \
-            "https://raw.githubusercontent.com/ZQM-Labs/zqm-supply-chain/072965c6d7b13cc209867225bbfd85ec83ab6285/snyk_replacement.py" \
-            --output "$RUNNER_TEMP/snyk_replacement.py"
-      - name: Run supply-chain scan
+      - name: Run vendored MIT-licensed supply-chain scanner
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python "$RUNNER_TEMP/snyk_replacement.py" \
+          python .github/scripts/snyk_replacement.py \
             --repo "${{ github.repository }}" \
             --root "." \
             --output both \
