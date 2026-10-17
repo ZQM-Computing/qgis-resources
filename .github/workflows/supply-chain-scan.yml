@@ -29,12 +29,23 @@ jobs:
             --root "." \
             --output both \
             --pr "${{ github.event.pull_request.number || 0 }}"
-      - name: Upload SARIF (best-effort when code scanning is unavailable)
+      - name: Locate SARIF report
+        id: sarif
         if: always()
+        shell: bash
+        run: |
+          if [ -d .zqm-security-reports ]; then
+            report="$(find .zqm-security-reports -type f -name '*-results.sarif' -print -quit)"
+          else
+            report=""
+          fi
+          echo "path=$report" >> "$GITHUB_OUTPUT"
+      - name: Upload SARIF (best-effort when code scanning is unavailable)
+        if: always() && steps.sarif.outputs.path != ''
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: .zqm-security-reports/${{ github.repository_owner }}_${{ github.event.repository.name }}/*-results.sarif
+          sarif_file: ${{ steps.sarif.outputs.path }}
       - name: Upload scan reports
         if: always()
         uses: actions/upload-artifact@v7
