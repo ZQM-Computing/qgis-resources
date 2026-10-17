@@ -1,15 +1,24 @@
-name: Validate resources
+name: Validate QGIS resources
 
 on:
   push:
+    branches: [main, master]
   pull_request:
+    branches: [main, master]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: qgis-resource-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
+    name: Validate Python snippets and QGIS styles
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -19,18 +28,31 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Syntax-check Python snippets
-        run: python -m py_compile pyqgis/*.py processing/*.py
+      - name: Syntax-check Python resources without writing bytecode
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          roots = (Path("pyqgis"), Path("processing"))
+          files = sorted(path for root in roots for path in root.rglob("*.py"))
+          if not files:
+              raise SystemExit("No Python resources found to validate.")
+          for path in files:
+              ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+              print(f"OK {path}")
+          PY
 
       - name: Check QML styles are well-formed XML
         run: |
           python - <<'PY'
-          import glob
           import xml.etree.ElementTree as ET
+          from pathlib import Path
 
-          files = glob.glob("styles/*.qml")
-          assert files, "no .qml files found"
-          for f in files:
-              ET.parse(f)
-              print(f"OK {f}")
+          files = sorted(Path("styles").glob("*.qml"))
+          if not files:
+              raise SystemExit("No QML styles found to validate.")
+          for path in files:
+              ET.parse(path)
+              print(f"OK {path}")
           PY
