@@ -86,6 +86,14 @@ For setup instructions, reproducible examples, data provenance, CRS/SRID assumpt
 
 The configured CI workflow is the source of truth for automated checks. A passing workflow establishes only that its checks passed for that commit; it does not certify production deployment or prove that every dependency and operating environment was covered.
 
+## Installation
+
+```bash
+pip install -e .
+```
+
+Requires Python 3.11+.
+
 ## License
 
 MIT — see [`LICENSE`](LICENSE).
