@@ -1,16 +1,33 @@
-name: gitleaks
+name: Gitleaks Secret Scan
+
 on:
   push:
-    branches: ["main", "master"]
+    branches: [main, master]
   pull_request:
+    branches: [main, master]
+  schedule:
+    - cron: "0 4 * * 1"
+
+permissions:
+  contents: read
+
 jobs:
-  scan:
+  gitleaks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_CONFIG: .gitleaks.toml
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: Install Gitleaks
+        run: go install github.com/zricethezav/gitleaks/v8@v8.25.0
+      - name: Scan full repository history
+        shell: bash
+        run: |
+          if [ -f .gitleaks.toml ]; then
+            gitleaks git --config .gitleaks.toml --redact .
+          else
+            gitleaks git --redact .
+          fi
