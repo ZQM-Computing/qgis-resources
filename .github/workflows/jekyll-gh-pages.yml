@@ -14,14 +14,14 @@ jobs:
   build:
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.11'
       - run: pip install mkdocs-material || true
       - run: mkdocs build 2>/dev/null || true
       - run: mkdir -p site && cp -R docs/* site/ 2>/dev/null || true
-      - uses: actions/upload-pages-artifact@v5
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
           path: site
   deploy:
@@ -29,4 +29,4 @@ jobs:
     runs-on: self-hosted
     needs: build
     steps:
-      - uses: actions/deploy-pages@v5
+      - uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5
