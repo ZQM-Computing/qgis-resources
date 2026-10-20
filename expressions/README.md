@@ -8,7 +8,7 @@ Copy-pasteable expressions for the Field Calculator, label settings, and rule-ba
 
 **Problem:** `$area` depends on the project's ellipsoid settings, and measuring a longitude/latitude layer directly gives meaningless numbers. For Florida work, calculate in Florida State Plane East (EPSG:2236, US survey feet; 1 acre = 43,560 ft²). Swap EPSG:2236 for your own State Plane / UTM zone elsewhere.
 
-```
+```text
 area(
   transform(
     $geometry,
@@ -26,7 +26,7 @@ area(
 
 **Problem:** A parcel can overlap several flood zones. You want the list of zone values without building a permanent spatial join. Run this on the *parcels* layer; `flood_zones` is the other layer, `zone` is its field.
 
-```
+```text
 aggregate(
   layer := 'flood_zones',
   aggregate := 'array_agg',
@@ -43,7 +43,7 @@ aggregate(
 
 **Problem:** For each site, find the ID of the closest parcel (or pump station, or sample point). Run on the *sites* layer; `parcels` is the target layer, `parcel_id` its field.
 
-```
+```text
 array_first(
   aggregate(
     layer := 'parcels',
@@ -62,7 +62,7 @@ array_first(
 
 **Problem:** Raw attribute values (`JOHN SMITH`, `2024-03-05 00:00:00`) make ugly map labels.
 
-```
+```text
 concat(
   title("owner_name"),
   ' — surveyed ',
@@ -79,7 +79,7 @@ Produces labels like `John Smith — surveyed Mar 5, 2024`.
 
 **Problem:** You need X/Y fields in State Plane feet for a CAD or survey handoff, not degrees.
 
-```
+```text
 -- X field
 x(
   transform(
