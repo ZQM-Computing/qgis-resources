@@ -84,6 +84,11 @@ for source in markdown_files:
             continue
         else:
             target_path = (source.parent / target).resolve()
+            # If not found relative to source dir, also check repo root
+            if not target_path.exists() and source.parent != ROOT:
+                root_fallback = (ROOT / target).resolve()
+                if root_fallback.exists():
+                    continue
         if not target_path.exists():
             line_no = source_text.count("\n", 0, match.start()) + 1
             errors.append(f"{source.relative_to(ROOT)}:{line_no}: broken relative link: {raw}")
