@@ -79,6 +79,9 @@ for source in markdown_files:
         target = unquote(parsed.path)
         if not target:
             target_path = source
+        elif target.startswith("/"):
+            # Absolute path (e.g., Hugo web path like /games/...) — skip
+            continue
         else:
             target_path = (source.parent / target).resolve()
         if not target_path.exists():
