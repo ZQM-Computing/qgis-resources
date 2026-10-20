@@ -10,7 +10,7 @@
 
 ## Reporting
 
-Report violations to zqmcomputing@gmail.com with subject `ZQM-ATTEST-COC`.
+Report violations to <zqmcomputing@gmail.com> with subject `ZQM-ATTEST-COC`.
 
 ## Attribution
 

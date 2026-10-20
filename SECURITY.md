@@ -1,6 +1,6 @@
 # Security Policy
 
-Report vulnerabilities to zqmcomputing@gmail.com.
+Report vulnerabilities to <zqmcomputing@gmail.com>.
 
 ## Scope
 
@@ -9,7 +9,7 @@ Report vulnerabilities to zqmcomputing@gmail.com.
 
 ## Reporting
 
-- **Email**: zqmcomputing@gmail.com
+- **Email**: <zqmcomputing@gmail.com>
 - **GitHub Security Advisory**: Use the "Security" tab on GitHub
 - Please do NOT open public issues for security vulnerabilities
 
