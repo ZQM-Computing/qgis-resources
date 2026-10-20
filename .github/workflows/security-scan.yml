@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   detect:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       languages: ${{ steps.detect.outputs.languages }}
       has_code: ${{ steps.detect.outputs.has_code }}
@@ -44,7 +44,7 @@ jobs:
   analyze:
     needs: detect
     if: needs.detect.outputs.has_code == 'true'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: github/codeql-action/init@v4
