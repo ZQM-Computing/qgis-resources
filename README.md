@@ -25,6 +25,9 @@ Everything here is meant to be dropped into a real project and adapted. Each res
 | Processing workflows | A clip-and-reproject Processing script for analysis prep, plus a step-by-step Graphical Modeler recipe for zonal summaries | [`processing/`](processing/) |
 | Layer styles | Parcel-boundary and flood-zone `.qml` styles, plus documented color palettes for land use and flood risk cartography | [`styles/`](styles/) |
 | QField templates | A field-data-collection setup guide: offline GeoPackage packaging, value maps, constraints, photo attachments, and a pre-flight checklist | [`qfield/`](qfield/) |
+| Walkthrough examples | Numbered worked examples — expression basics and a Processing script run — pairing the resources above with sample workflows | [`examples/`](examples/) |
+| Validation scripts | Documentation and link checks (`check_docs.py`) run by CI | [`scripts/`](scripts/) |
+| Tests | Validation tests for the expression resources (`test_expressions.py`) | [`tests/`](tests/) |
 
 ## Who this is for
 
@@ -37,6 +40,7 @@ GIS analysts and geospatial developers who work in QGIS daily and keep re-solvin
 - **Processing script:** in the Processing Toolbox, choose Scripts → Add Script from File and select [`processing/clip_and_reproject.py`](processing/clip_and_reproject.py).
 - **Styles:** Layer Properties → Symbology → Style (bottom-left menu) → Load Style, then pick a file from [`styles/`](styles/).
 - **QField:** follow the packaging checklist in [`qfield/`](qfield/) before your next field day.
+- **Examples:** work through the numbered walkthroughs in [`examples/`](examples/) — `01-expression-basics` and `02-processing-script`.
 
 ## Design principles
 
@@ -54,6 +58,9 @@ GIS analysts and geospatial developers who work in QGIS daily and keep re-solvin
 ├── processing/  # Processing toolbox scripts + modeler recipes
 ├── styles/        # .qml layer styles + cartographic palettes
 ├── qfield/        # QField offline field-collection guidance
+├── examples/      # numbered worked examples (expression basics, Processing script)
+├── scripts/       # documentation/link checks (check_docs.py)
+├── tests/         # validation tests for expressions (test_expressions.py)
 └── .github/       # CI that syntax-checks the Python and XML
 ```
 
