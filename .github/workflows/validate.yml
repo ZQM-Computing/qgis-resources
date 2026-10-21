@@ -17,7 +17,7 @@ concurrency:
 jobs:
   validate:
     name: Validate Python snippets and QGIS styles
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
