@@ -2,7 +2,8 @@
 """Check repository documentation completeness.
 
 Validates that:
-1. README.md exists with required sections (Title, Description, Installation, Usage, License)
+1. README.md exists with an H1 title and the required sections
+   (installation/quickstart, usage/examples, license), matched by heading
 2. All relative links in markdown files resolve to existing files
 3. All referenced files (LICENSE, CONTRIBUTING.md, CODE_OF_CONDUCT.md) exist
 4. Hugo-style absolute paths (e.g. /games/...) are web URLs, not file links
@@ -13,11 +14,16 @@ import re
 import sys
 from pathlib import Path
 
-REQUIRED_README_SECTIONS = [
-    "installation",
-    "usage",
-    "license",
-]
+# Each entry maps a required README concept to the heading synonyms that
+# satisfy it. Synonyms follow docs/repository-documentation-standard.md, which
+# names the install/run section "Quickstart" and the walkthrough "Examples".
+REQUIRED_README_SECTIONS = {
+    "installation": r"(install|quick\s*start|getting started|setup|prerequisite)",
+    "usage": r"(usage|example|quick\s*start|pattern|how to use|what's inside)",
+    "license": r"licen[cs]e",
+}
+
+HEADING_PATTERN = re.compile(r"^#{1,3}\s+(.+)$", re.MULTILINE)
 
 LINK_PATTERN = re.compile(r'\[([^\]]+)\]\(([^)]+)\)')
 BADGE_PATTERN = re.compile(r'!\[([^\]]*)\]\(([^)]+)\)')
@@ -34,10 +40,13 @@ def check_readme(repo_path):
     
     content = readme_path.read_text(encoding="utf-8")
     
-    # Check for required sections
-    content_lower = content.lower()
-    for section in REQUIRED_README_SECTIONS:
-        if section not in content_lower:
+    # Check for required sections. Matching is anchored to markdown headings so
+    # that an incidental mention in prose or a URL cannot satisfy the check;
+    # the license concept may also be asserted in prose.
+    headings = "\n".join(HEADING_PATTERN.findall(content))
+    for section, pattern in REQUIRED_README_SECTIONS.items():
+        haystack = content if section == "license" else headings
+        if not re.search(pattern, haystack, re.IGNORECASE):
             issues.append(f"README.md missing section: {section}")
     
     # Check for title
