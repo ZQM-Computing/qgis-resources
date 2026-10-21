@@ -22,7 +22,17 @@ jobs:
         with:
           go-version: stable
       - name: Install Gitleaks
-        run: go install github.com/zricethezav/gitleaks/v8@v8.25.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Build into a per-job directory: every self-hosted runner on this host
+          # shares one $GOPATH/bin, so a shared install races with concurrent jobs
+          # and fails with "Device or resource busy" (exit 126).
+          GOBIN="$RUNNER_TEMP/gitleaks-bin"
+          export GOBIN
+          mkdir -p "$GOBIN"
+          go install github.com/zricethezav/gitleaks/v8@v8.25.0
+          echo "$GOBIN" >> "$GITHUB_PATH"
       - name: Scan full repository history
         shell: bash
         run: |
