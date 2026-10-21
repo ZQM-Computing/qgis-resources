@@ -18,6 +18,9 @@ jobs:
   validate:
     name: Validate Python snippets and QGIS styles
     runs-on: self-hosted
+    defaults:
+      run:
+        shell: bash
     timeout-minutes: 10
     steps:
       - name: Check out repository
