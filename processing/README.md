@@ -26,4 +26,4 @@ Build this chain in Processing → Graphical Modeler:
 - Count what you expect on one known zone by hand before running the whole layer.
 - If `Data` and `Zones` have different CRSs, QGIS will warn — stop and reproject (the script above does this) rather than letting the modeler run mixed.
 
-This is the same pattern as the PostGIS spatial-join examples in the companion repo, [postgis-patterns](https://github.com/ZQM-Computing/postgis-patterns) — desktop for exploration and one-offs, database for repeatability at scale.
+This is the same pattern as the PostGIS spatial-join examples in the companion repo, [postgis-cookbook](https://github.com/ZQM-Computing/postgis-cookbook) — desktop for exploration and one-offs, database for repeatability at scale.
