@@ -493,6 +493,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--skip-geometry-validity", action="store_true", help="Skip potentially expensive per-feature geometry validity checks")
     parser.add_argument("--fail-on-warning", action="store_true", help="Return nonzero if any warning is reported")
     args = parser.parse_args(argv)
+    missing_inputs = [path for path in args.paths if not path.exists()]
+    if missing_inputs:
+        parser.error("Input path(s) do not exist: " + ", ".join(str(path) for path in missing_inputs))
     try:
         _validate_report_destinations(args.paths, args.json_path, args.markdown)
         report = audit_paths(args.paths, root=args.root, required_fields=args.required_field,
