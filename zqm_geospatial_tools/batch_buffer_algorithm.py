@@ -20,6 +20,7 @@ from qgis.core import (
     QgsProcessingParameterMultipleLayers,
     QgsProcessingParameterNumber,
     QgsProcessingOutputNumber,
+    QgsProcessingUtils,
     QgsVectorLayer,
     QgsVectorFileWriter,
     QgsWkbTypes,
@@ -203,7 +204,7 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
             temporary_path = output_dir / f".{candidate}_{uuid.uuid4().hex}.tmp.gpkg"
             try:
                 feedback.pushInfo(f"Buffering {label} ({index + 1}/{len(layers)})...")
-                buffered = processing.run(
+                buffered_result = processing.run(
                     "native:buffer",
                     {
                         "INPUT": layer,
@@ -213,17 +214,31 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
                         "JOIN_STYLE": 0,
                         "MITER_LIMIT": 2.0,
                         "DISSOLVE": False,
-                        "OUTPUT": "memory:",
+                        # A disk-backed temporary output is more portable than the
+                        # "memory:" URI when running as a child with an explicit
+                        # Processing context.
+                        "OUTPUT": QgsProcessing.TEMPORARY_OUTPUT,
                     },
                     context=context,
                     feedback=feedback,
                     is_child_algorithm=True,
                 )["OUTPUT"]
 
-                if not isinstance(buffered, QgsVectorLayer):
-                    buffered = QgsVectorLayer(str(buffered), f"{label}_buffer", "ogr")
-                if not buffered.isValid():
-                    raise RuntimeError("buffer algorithm returned an invalid layer")
+                if isinstance(buffered_result, QgsVectorLayer):
+                    buffered = buffered_result
+                else:
+                    buffered = QgsProcessingUtils.mapLayerFromString(
+                        str(buffered_result), context
+                    )
+                    if buffered is None:
+                        buffered = QgsVectorLayer(
+                            str(buffered_result), f"{label}_buffer", "ogr"
+                        )
+                if buffered is None or not buffered.isValid():
+                    raise RuntimeError(
+                        f"buffer algorithm returned an invalid layer "
+                        f"(result={buffered_result!r})"
+                    )
                 if buffered.featureCount() != layer.featureCount():
                     raise RuntimeError(
                         f"feature-count mismatch: input={layer.featureCount()}, "
