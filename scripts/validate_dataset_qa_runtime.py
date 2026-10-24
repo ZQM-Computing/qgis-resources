@@ -110,6 +110,18 @@ def main() -> None:
         qa_module = __import__("dataset_qa")
         encoded = json.dumps(qa_module.json_safe(report), sort_keys=True, allow_nan=False)
         assert json.loads(encoded)["summary"]["error"] >= 1
+        # Reports commonly live under the scanned root. Existing JSON reports
+        # must be excluded or a rerun would incorrectly ingest the report itself.
+        prior_report = root / "dataset-report.json"
+        prior_report.write_text('{"previous": true}', encoding="utf-8")
+        directory_report = audit_paths(
+            [root],
+            root=root,
+            exclude_paths=[prior_report],
+        )
+        assert directory_report["dataset_count"] == 2, directory_report
+        assert "DATASET_UNREADABLE" not in {f["rule_id"] for f in directory_report["findings"]}
+
         repeat_report = audit_paths(
             [vector_path, raster_path],
             root=root,
