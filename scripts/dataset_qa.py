@@ -309,8 +309,13 @@ def _audit_raster(path: Path, display_path: str, gdal: Any,
 
 def audit_paths(paths: list[Path], *, root: Path, required_fields: list[str] | None = None,
                 id_fields: list[str] | None = None, expected_crs: str | None = None,
-                check_geometry: bool = True) -> dict[str, Any]:
-    """Inspect supported datasets read-only and return a deterministic report."""
+                check_geometry: bool = True,
+                exclude_paths: list[Path] | None = None) -> dict[str, Any]:
+    """Inspect supported datasets read-only and return a deterministic report.
+
+    Explicitly excluded paths are useful for preventing an existing report file
+    inside a scanned directory from being re-ingested as a dataset on reruns.
+    """
     try:
         from osgeo import gdal, ogr
     except ImportError as exc:
@@ -325,7 +330,12 @@ def audit_paths(paths: list[Path], *, root: Path, required_fields: list[str] | N
             candidates.extend(p for p in supplied.rglob("*") if p.is_file())
         elif supplied.is_file():
             candidates.append(supplied)
-    candidates = sorted({p.resolve() for p in candidates if p.suffix.casefold() in SUPPORTED_VECTOR | SUPPORTED_RASTER})
+    excluded = {p.resolve() for p in (exclude_paths or [])}
+    candidates = sorted({
+        p.resolve() for p in candidates
+        if p.suffix.casefold() in SUPPORTED_VECTOR | SUPPORTED_RASTER
+        and p.resolve() not in excluded
+    })
     datasets: list[dict[str, Any]] = []
     all_findings: list[dict[str, Any]] = []
     unreadable: list[str] = []
@@ -434,7 +444,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         report = audit_paths(args.paths, root=args.root, required_fields=args.required_field,
                              id_fields=args.id_field, expected_crs=args.expected_crs,
-                             check_geometry=not args.skip_geometry_validity)
+                             check_geometry=not args.skip_geometry_validity,
+                             exclude_paths=[args.json_path, *([args.markdown] if args.markdown else [])])
     except (RuntimeError, OSError, ValueError) as exc:
         parser.error(str(exc))
     _write_report(args.json_path, json.dumps(json_safe(report), indent=2, sort_keys=True, allow_nan=False) + "\n")
