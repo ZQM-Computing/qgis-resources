@@ -36,6 +36,6 @@ def add_basemap(name: str, uri: str):
     return layer
 
 
-if __name__ == "__console__":
+if __name__ in {"__main__", "__console__"}:
     for basemap_name, basemap_uri in BASEMAPS.items():
         add_basemap(basemap_name, basemap_uri)
