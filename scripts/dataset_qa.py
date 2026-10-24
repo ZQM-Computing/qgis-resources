@@ -201,20 +201,35 @@ def _audit_vector(path: Path, display_path: str, gdal: Any, ogr: Any,
                             invalid_geometries += 1
         layer_info["geometry_checks"] = {
             "enabled": check_geometry,
+            "status": "enabled" if check_geometry else "disabled_by_option",
             "checked_nonempty": checked_geometries,
             "unchecked_validity": unchecked_geometries,
             "empty": empty_geometries,
             "invalid": invalid_geometries,
         }
+        # Make identifier coverage explicit in the inventory. A missing field,
+        # a disabled check, and a clean uniqueness check are different states.
+        selected_id_name = selected_ids[0][0] if selected_ids else None
+        layer_info["identifier_check"] = {
+            "enabled": bool(id_fields) and bool(selected_ids),
+            "status": (
+                "checked" if selected_ids else
+                "field_not_found" if id_fields else "not_configured"
+            ),
+            "configured_fields": list(id_fields),
+            "selected_field": selected_id_name,
+            "null_or_blank_count": null_ids,
+            "duplicate_occurrences": duplicate_ids,
+        }
         if null_ids:
             findings.append(finding("VECTOR_ID_NULL", "warning",
                 "Configured identifier field has null or blank values.", dataset=display_path, layer=name,
-                evidence={"count": null_ids, "fields": [selected_ids[0][0]]},
+                evidence={"count": null_ids, "selected_field": selected_ids[0][0]},
                 remediation="Review identifier generation and source records."))
         if duplicate_ids:
             findings.append(finding("VECTOR_ID_DUPLICATE", "warning",
                 "Configured identifier field contains duplicate values.", dataset=display_path, layer=name,
-                evidence={"duplicate_occurrences": duplicate_ids, "fields": [selected_ids[0][0]]},
+                evidence={"duplicate_occurrences": duplicate_ids, "selected_field": selected_ids[0][0]},
                 remediation="Determine whether identifiers must be unique; do not deduplicate without a domain rule."))
         if empty_geometries:
             findings.append(finding("VECTOR_GEOMETRY_EMPTY", "warning",
