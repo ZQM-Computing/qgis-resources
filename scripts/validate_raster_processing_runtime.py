@@ -78,6 +78,17 @@ def create_boundary(path: Path) -> None:
     dataset = None
 
 
+def create_empty_boundary(path: Path) -> None:
+    driver = ogr.GetDriverByName("GPKG")
+    assert driver is not None
+    dataset = driver.CreateDataSource(str(path))
+    assert dataset is not None
+    srs = osr.SpatialReference()
+    assert srs.ImportFromEPSG(32617) == 0
+    assert dataset.CreateLayer("empty_boundary", srs, ogr.wkbPolygon) is not None
+    dataset = None
+
+
 def main() -> None:
     QgsApplication.setPrefixPath("/usr", True)
     app = QgsApplication([], False)
@@ -89,8 +100,10 @@ def main() -> None:
             root = Path(temporary)
             dem_path = root / "synthetic_dem.tif"
             boundary_path = root / "study_boundary.gpkg"
+            empty_boundary_path = root / "empty_boundary.gpkg"
             create_dem(dem_path)
             create_boundary(boundary_path)
+            create_empty_boundary(empty_boundary_path)
             dem_before = dem_path.read_bytes()
             boundary_before = boundary_path.read_bytes()
 
@@ -138,6 +151,24 @@ def main() -> None:
 
             try:
                 raster_module.raster_processing(
+                    str(dem_path), str(boundary_path), "EPSG:32618", z_factor=True
+                )
+            except ValueError as exc:
+                assert "finite, positive" in str(exc)
+            else:
+                raise AssertionError("Boolean z_factor was accepted as a numeric multiplier")
+
+            try:
+                raster_module.raster_processing(
+                    str(dem_path), str(empty_boundary_path), "EPSG:32618", z_factor=1.0
+                )
+            except ValueError as exc:
+                assert "contains no features" in str(exc)
+            else:
+                raise AssertionError("Empty boundary layer was accepted")
+
+            try:
+                raster_module.raster_processing(
                     str(dem_path), str(boundary_path), "EPSG:4326", z_factor=1.0
                 )
             except ValueError as exc:
@@ -149,7 +180,7 @@ def main() -> None:
             assert boundary_path.read_bytes() == boundary_before, "Raster workflow modified source boundary"
 
         print("PASS: synthetic DEM reprojection, mask clipping, slope values, target CRS and dimensions")
-        print("PASS: invalid z_factor and geographic target CRS rejected")
+        print("PASS: invalid z_factor, empty boundary, and geographic target CRS rejected")
         print("PASS: raster and boundary source files remain unchanged")
     finally:
         app.exitQgis()
