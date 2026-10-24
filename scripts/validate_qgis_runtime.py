@@ -119,6 +119,13 @@ try:
         spec.loader.exec_module(module)
         return module
 
+    expression_example = load_module("examples/01-expression-basics/run.py", "zqm_example_expressions")
+    expected_expressions = {
+        "buffer_distance", "nearest_feature", "area_hectares_if_area_is_m2",
+        "centroid_x", "centroid_y",
+    }
+    assert set(expression_example.expressions) == expected_expressions
+    assert "buffer(" in expression_example.expressions["buffer_distance"]
     processing_example = load_module("examples/02-processing-script/run.py", "zqm_example_processing")
     example_layer = processing_example.run_script()
     assert example_layer.isValid() and example_layer.featureCount() == 1
@@ -216,8 +223,8 @@ try:
 
     print("PASS: provider registration and algorithm discovery")
     print("PASS: existing parcels and flood-zone QML styles load in QGIS")
-    print("PASS: synthetic processing, spatial-join, CRS, buffer and plugin-contract examples")
-    print("PASS: file-backed vector analysis, spatial joins, CRS transforms and batch processing")
+    print("PASS: expression reference and synthetic processing, spatial-join, CRS, buffer and plugin-contract examples")
+    print("PASS: file-backed vector analysis, spatial joins, CRS transforms, batch processing and clip/reproject")
     print("PASS: buffer execution, GeoPackage write/reopen, feature count and CRS")
     print("PASS: existing-output preservation and explicit overwrite")
     print("PASS: mixed-CRS rejection")
