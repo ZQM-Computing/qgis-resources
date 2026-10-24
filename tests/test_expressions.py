@@ -105,6 +105,12 @@ def test_batch_buffer_processing_algorithm_declares_safety_contracts():
     assert (plugin / "plugin.py").is_file()
     assert (plugin / "provider.py").is_file()
     assert (plugin / "metadata.txt").is_file()
+    entry = (plugin / "__init__.py").read_text(encoding="utf-8")
+    provider = (plugin / "provider.py").read_text(encoding="utf-8")
+    metadata = (plugin / "metadata.txt").read_text(encoding="utf-8")
+    assert "def classFactory(iface)" in entry
+    assert "ZqmProcessingProvider" in provider and "BatchBufferAlgorithm()" in provider
+    assert "qgisMinimumVersion=3.28" in metadata
     docs = (plugin / "README.md").read_text(encoding="utf-8")
     assert "Processing provider" in docs
     assert "preserved by default" in docs
