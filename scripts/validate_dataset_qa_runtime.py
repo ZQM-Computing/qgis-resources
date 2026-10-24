@@ -169,8 +169,8 @@ def main() -> None:
             if item["rule_id"] in {"VECTOR_ID_NULL", "VECTOR_ID_DUPLICATE"}
             and item.get("layer") == "observations"
         }
-        assert id_findings["VECTOR_ID_NULL"]["evidence"]["fields"] == ["asset_id"], id_findings
-        assert id_findings["VECTOR_ID_DUPLICATE"]["evidence"]["fields"] == ["asset_id"], id_findings
+        assert id_findings["VECTOR_ID_NULL"]["evidence"]["selected_field"] == "asset_id", id_findings
+        assert id_findings["VECTOR_ID_DUPLICATE"]["evidence"]["selected_field"] == "asset_id", id_findings
         invalid_polygons = next(layer for layer in vector["layers"] if layer["name"] == "invalid_polygons")
         assert invalid_polygons["geometry_checks"]["invalid"] == 1, invalid_polygons
 
