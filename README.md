@@ -34,6 +34,7 @@ This repository is the QGIS-specific part of the ZQM Computing geospatial portfo
 | Field collection | QField offline-collection and packaging guidance | [qfield/](qfield/) |
 | Worked examples | Expression basics, Processing, spatial join, CRS transform, buffering, plugin lifecycle | [examples/](examples/) |
 | Validation | Documentation checks and automated tests | [scripts/](scripts/) and [tests/](tests/) |
+| QGIS plugin | Processing provider with batch-buffer tool | [zqm_geospatial_tools/](zqm_geospatial_tools/) |
 
 ## Quick start
 
@@ -42,6 +43,7 @@ This repository is the QGIS-specific part of the ZQM Computing geospatial portfo
 - **Processing script:** add [patterns/clip_and_reproject.py](patterns/clip_and_reproject.py) through Processing Toolbox → Scripts → Add Script from File.
 - **Styles:** load .qml files through Layer Properties → Symbology → Style → Load Style. These are starting styles, not validated thematic classification schemes.
 - **Examples:** see [examples/](examples/). QGIS-dependent examples must run in a QGIS Python environment with Processing initialized.
+- **ZQM Geospatial Tools plugin:** see [zqm_geospatial_tools/README.md](zqm_geospatial_tools/README.md) for installation. The initial Processing tool buffers selected vector layers into separate GeoPackages.
 - **Notebooks:** notebooks require a Python kernel with QGIS bindings available; they will not run in a generic Python kernel without QGIS.
 
 ## Coordinate reference system policy
