@@ -105,6 +105,7 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
     @staticmethod
     def _safe_stem(name):
         stem = re.sub(r"[^A-Za-z0-9_.-]+", "_", name).strip("._")
+        stem = stem[:80].rstrip("._")
         return stem or "layer"
 
     def processAlgorithm(self, parameters, context, feedback):
