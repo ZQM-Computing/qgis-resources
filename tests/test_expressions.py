@@ -87,6 +87,24 @@ def test_core_patterns_document_runtime_and_crs_contracts():
             assert marker in source, f"{filename} missing expected contract: {marker}"
 
 
+def test_batch_buffer_processing_algorithm_declares_safety_contracts():
+    source = (REPO_ROOT / "patterns" / "batch_buffer_algorithm.py").read_text(encoding="utf-8")
+    for marker in (
+        "class BatchBufferAlgorithm(QgsProcessingAlgorithm)",
+        "QgsProcessingParameterMultipleLayers",
+        "QgsProcessingParameterFolderDestination",
+        "QgsProcessingOutputNumber",
+        "os.replace(temporary_path, output_path)",
+        "feature-count mismatch",
+        "defaultValue=False",
+        '"SUCCEEDED"', '"SKIPPED"', '"FAILED"',
+    ):
+        assert marker in source, f"Batch buffer algorithm missing contract: {marker}"
+    docs = (REPO_ROOT / "processing" / "README.md").read_text(encoding="utf-8")
+    assert "patterns/batch_buffer_algorithm.py" in docs
+    assert "preserved by default" in docs
+
+
 def test_documented_processing_script_path_exists():
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     assert "patterns/clip_and_reproject.py" in readme
