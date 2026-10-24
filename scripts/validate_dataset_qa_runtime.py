@@ -33,6 +33,11 @@ def create_vector_fixture(path: Path) -> None:
         feature.SetGeometry(geometry)
         assert layer.CreateFeature(feature) == 0
         feature = None
+    # Missing geometry is distinct from a null identifier and should be reported.
+    empty_feature = ogr.Feature(layer.GetLayerDefn())
+    empty_feature.SetField("asset_id", "empty-geometry")
+    assert layer.CreateFeature(empty_feature) == 0
+    empty_feature = None
     unreferenced = ds.CreateLayer("unreferenced", None, ogr.wkbPoint)
     assert unreferenced is not None
     feature = ogr.Feature(unreferenced.GetLayerDefn())
@@ -90,14 +95,16 @@ def main() -> None:
         assert report["dataset_count"] == 2, report
         vector = next(item for item in report["datasets"] if item["kind"] == "vector")
         observations = next(layer for layer in vector["layers"] if layer["name"] == "observations")
-        assert observations["feature_count"] == 3, observations
+        assert observations["feature_count"] == 4, observations
         assert observations["crs"] == "EPSG:4326", observations
+        assert observations["geometry_checks"]["enabled"] is True, observations
+        assert observations["geometry_checks"]["empty"] == 1, observations
         raster = next(item for item in report["datasets"] if item["kind"] == "raster")
         assert (raster["width"], raster["height"], raster["band_count"]) == (3, 2, 1), raster
         assert raster["crs"] == "EPSG:4326", raster
         assert raster["bands"][0]["nodata"] == -9999, raster
         assert raster["extent"] == {"xmin": 100.0, "ymin": 180.0, "xmax": 130.0, "ymax": 200.0}, raster
-        encoded = json.dumps(report, sort_keys=True, allow_nan=False)
+        encoded = json.dumps(__import__("dataset_qa").json_safe(report), sort_keys=True, allow_nan=False)
         assert json.loads(encoded)["summary"]["error"] >= 1
         assert "VECTOR_ID_DUPLICATE" in markdown_report(report)
         assert before == {path.name: path.read_bytes() for path in (vector_path, raster_path)}, (
