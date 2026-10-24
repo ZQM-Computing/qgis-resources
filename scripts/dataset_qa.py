@@ -345,6 +345,31 @@ def audit_paths(paths: list[Path], *, root: Path, required_fields: list[str] | N
     datasets: list[dict[str, Any]] = []
     all_findings: list[dict[str, Any]] = []
     unreadable: list[str] = []
+
+    # Explicit file arguments are user intent: do not silently skip a file
+    # whose extension is outside the supported vector/raster inventory.
+    for supplied in paths:
+        if supplied.is_file() and supplied.suffix.casefold() not in SUPPORTED_VECTOR | SUPPORTED_RASTER:
+            try:
+                display = supplied.resolve().relative_to(root.resolve()).as_posix()
+            except ValueError:
+                display = supplied.name
+            all_findings.append(finding(
+                "INPUT_FORMAT_UNSUPPORTED", "error",
+                "Explicit input file has an unsupported dataset extension.",
+                dataset=display,
+                evidence={"extension": supplied.suffix.casefold() or "(none)"},
+                remediation="Supply a supported vector/raster dataset or a directory containing supported datasets.",
+            ))
+
+    if not candidates:
+        all_findings.append(finding(
+            "NO_SUPPORTED_DATASETS_FOUND", "error",
+            "No supported vector or raster datasets were found in the supplied inputs.",
+            dataset=".",
+            remediation="Check input paths and file formats; supported extensions are listed in the CLI documentation.",
+        ))
+
     for path in candidates:
         try:
             display = path.relative_to(root.resolve()).as_posix()
