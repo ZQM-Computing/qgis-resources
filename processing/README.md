@@ -25,14 +25,8 @@ Build this chain in Processing → Graphical Modeler:
 
 This is the desktop analogue of a spatial join and aggregation in [postgis-cookbook](https://github.com/ZQM-Computing/postgis-cookbook). Use QGIS for interactive inspection and databases for repeatable, large-scale processing.
 
-## Algorithm: batch buffer selected layers
+## Plugin: ZQM Geospatial Tools
 
-The Processing script [patterns/batch_buffer_algorithm.py](../patterns/batch_buffer_algorithm.py) adds **ZQM — Batch buffer selected layers** to the Processing Scripts provider. In QGIS, open Processing Toolbox → Scripts → Add Script from File and select the script.
+The first user-facing Processing provider is packaged as a QGIS plugin in [zqm_geospatial_tools/](../zqm_geospatial_tools/). Follow its [installation and testing instructions](../zqm_geospatial_tools/README.md). Install the complete plugin directory in the QGIS profile's Python plugins directory, enable it, then find **ZQM — Batch buffer selected layers** in Processing Toolbox.
 
-- Select one or more vector layers and choose a buffer distance, segments per quarter circle, and output folder.
-- Distance is expressed in the input layer's CRS units. Use an appropriate projected CRS if you intend the distance to represent metres; the algorithm deliberately does not silently reproject each layer.
-- Each layer is written to its own GeoPackage. Invalid inputs are reported individually.
-- Existing outputs are preserved by default. Enable replacement explicitly to replace them; the algorithm writes and validates a temporary GeoPackage before replacing an existing output.
-- The run log and numeric outputs report successful, skipped, and failed layers. Check the log before using outputs downstream.
-
-This is a first operational Processing-tool implementation, not yet a substitute for QGIS-runtime integration tests across supported QGIS versions. Test with copies or synthetic data before using it on production datasets.
+The algorithm writes one GeoPackage per selected vector layer. It preserves existing outputs by default, validates temporary outputs before replacement, and reports per-layer successes, skips, and failures. Buffer distance uses each input layer's CRS units; it does not silently reproject inputs. Runtime testing in the target QGIS version is still required before production use.
