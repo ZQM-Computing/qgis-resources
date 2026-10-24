@@ -31,7 +31,12 @@ def add_basemap(name: str, uri: str):
     project = QgsProject.instance()
     # Make repeated execution idempotent: reuse an existing named basemap.
     for existing in project.mapLayers().values():
-        if existing.name() == name and existing.isValid():
+        if (
+            existing.name() == name
+            and existing.isValid()
+            and existing.providerType() == "wms"
+            and existing.source() == uri
+        ):
             return existing
     layer = QgsRasterLayer(uri, name, "wms")
     if not layer.isValid():
