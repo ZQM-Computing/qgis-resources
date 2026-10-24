@@ -70,9 +70,19 @@ def batch_process(folder, distance=100.0, output_folder=None, overwrite=False):
                         f"expected {layer.featureCount()}, found {check.featureCount()}"
                     )
                 del check
-            results.append({"input": str(path), "ok": True, "output": result})
+                if output_path.exists() and not overwrite:
+                    raise FileExistsError(f"Output appeared during processing: {output_path}")
+                os.replace(staged_path, output_path)
+                staged_path = None
+            results.append({
+                "input": str(path), "ok": True,
+                "output": str(output_path) if output_path else result,
+            })
         except Exception as exc:
             results.append({"input": str(path), "ok": False, "error": str(exc)})
+        finally:
+            if staged_path is not None:
+                staged_path.unlink(missing_ok=True)
     return results
 
 
