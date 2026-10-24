@@ -5,14 +5,13 @@ the standard "prep this layer for analysis" move, as a Processing script.
 Install: Processing Toolbox -> Scripts -> Add Script from File, then run
 "Clip and reproject (analysis prep)" from the ZQM Examples group.
 
-Tested with QGIS 3.34. The chain is:
+Designed for the QGIS Processing framework. The chain is:
     native:reprojectlayer  ->  native:clip  ->  sink
 Reprojecting first means the clip runs in the analysis CRS, so any
 downstream area/distance math is consistent.
 """
 
 from qgis.core import (
-    QgsCoordinateReferenceSystem,
     QgsProcessing,
     QgsProcessingAlgorithm,
     QgsProcessingException,
@@ -76,7 +75,6 @@ class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterCrs(
                 self.TARGET_CRS,
                 self.tr("Target CRS"),
-                defaultValue=QgsCoordinateReferenceSystem("EPSG:3857"),
             )
         )
         self.addParameter(
@@ -95,6 +93,8 @@ class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
                 self.invalidSourceError(parameters, self.BOUNDARY)
             )
         target_crs = self.parameterAsCrs(parameters, self.TARGET_CRS, context)
+        if not target_crs.isValid():
+            raise QgsProcessingException("Choose a valid target CRS appropriate for the study area and measurements.")
 
         # Step 1: reproject both inputs into the analysis CRS.
         feedback.pushInfo("Reprojecting input layer...")
@@ -150,10 +150,11 @@ class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
 
         feature_count = 0
         for feature in clipped.getFeatures():
-            sink.addFeature(feature)
-            feature_count += 1
             if feedback.isCanceled():
-                break
+                raise QgsProcessingException("Processing was canceled; output may be incomplete.")
+            if not sink.addFeature(feature):
+                raise QgsProcessingException(f"Could not write clipped feature {feature.id()} to the output sink.")
+            feature_count += 1
 
         feedback.pushInfo(f"Wrote {feature_count} feature(s).")
         return {self.OUTPUT: dest_id}
