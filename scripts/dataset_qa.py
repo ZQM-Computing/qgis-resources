@@ -201,12 +201,12 @@ def _audit_vector(path: Path, display_path: str, gdal: Any, ogr: Any,
         if null_ids:
             findings.append(finding("VECTOR_ID_NULL", "warning",
                 "Configured identifier field has null or blank values.", dataset=display_path, layer=name,
-                evidence={"count": null_ids, "fields": [name for name, _ in selected_ids]},
+                evidence={"count": null_ids, "fields": [selected_ids[0][0]]},
                 remediation="Review identifier generation and source records."))
         if duplicate_ids:
             findings.append(finding("VECTOR_ID_DUPLICATE", "warning",
                 "Configured identifier field contains duplicate values.", dataset=display_path, layer=name,
-                evidence={"duplicate_occurrences": duplicate_ids, "fields": [name for name, _ in selected_ids]},
+                evidence={"duplicate_occurrences": duplicate_ids, "fields": [selected_ids[0][0]]},
                 remediation="Determine whether identifiers must be unique; do not deduplicate without a domain rule."))
         if empty_geometries:
             findings.append(finding("VECTOR_GEOMETRY_EMPTY", "warning",
