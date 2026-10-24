@@ -3,6 +3,7 @@
 Run with a QGIS-enabled Python interpreter, for example:
   QT_QPA_PLATFORM=offscreen /usr/bin/python3 scripts/validate_qgis_runtime.py
 """
+import importlib.util
 import os
 import sys
 import tempfile
@@ -107,6 +108,35 @@ try:
                 f"QGIS algorithm failed: {exc}\nFeedback details:\n{details}"
             ) from exc
 
+    # Execute the repository's synthetic examples inside the real QGIS runtime.
+    def load_module(relative_path, module_name):
+        module_path = PLUGIN_PARENT / relative_path
+        spec = importlib.util.spec_from_file_location(module_name, module_path)
+        if spec is None or spec.loader is None:
+            raise AssertionError(f"Could not load module {relative_path}")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    processing_example = load_module("examples/02-processing-script/run.py", "zqm_example_processing")
+    example_layer = processing_example.run_script()
+    assert example_layer.isValid() and example_layer.featureCount() == 1
+    join_example = load_module("examples/03-spatial-join/run.py", "zqm_example_join")
+    joined_example = join_example.run_example()
+    assert joined_example.isValid() and joined_example.featureCount() == 2
+    join_name_index = joined_example.fields().indexFromName("join_zone_name")
+    assert join_name_index >= 0, "Spatial join example omitted joined attributes"
+    joined_rows = list(joined_example.getFeatures())
+    assert sum(row["join_zone_name"] == "central_zone" for row in joined_rows) == 1
+    crs_example = load_module("examples/04-crs-transform/run.py", "zqm_example_crs")
+    projected_point = crs_example.run_example()
+    assert not projected_point.isEmpty()
+    buffer_example = load_module("examples/05-batch-processing/run.py", "zqm_example_buffer")
+    example_buffer = buffer_example.run_example()
+    assert example_buffer.isValid() and example_buffer.featureCount() == 1
+    plugin_contract = load_module("examples/06-plugin-dev/run.py", "zqm_example_plugin_contract")
+    plugin_contract.main()
+
     # Load existing QML resources into live QGIS layers, not only an XML parser.
     style_layer = QgsVectorLayer("Polygon?crs=EPSG:3857", "style_smoke_test", "memory")
     assert style_layer.isValid(), "Could not create polygon layer for QML test"
@@ -159,6 +189,7 @@ try:
         assert not (mixed_dir / "different_crs_buffer.gpkg").exists()
 
     print("PASS: provider registration and algorithm discovery")\n    print("PASS: existing parcels and flood-zone QML styles load in QGIS")
+    print("PASS: synthetic processing, spatial-join, CRS, buffer and plugin-contract examples")
     print("PASS: buffer execution, GeoPackage write/reopen, feature count and CRS")
     print("PASS: existing-output preservation and explicit overwrite")
     print("PASS: mixed-CRS rejection")
