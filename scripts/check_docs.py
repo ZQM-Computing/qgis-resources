@@ -95,9 +95,20 @@ def check_links(repo_path):
             # Also check repo root (for links from docs/ to root files)
             repo_root_resolved = (repo_path / relative_target).resolve()
             
-            if not resolved.exists() and not repo_root_resolved.exists():
+            root_resolved = repo_path.resolve()
+            candidates = (resolved, repo_root_resolved)
+            valid = False
+            for candidate in candidates:
+                try:
+                    candidate.relative_to(root_resolved)
+                except ValueError:
+                    continue
+                if candidate.exists():
+                    valid = True
+                    break
+            if not valid:
                 rel_path = md_file.relative_to(repo_path)
-                issues.append(f"{rel_path}: broken link [{link_text}]({link_target})")
+                issues.append(f"{rel_path}: broken or out-of-repository link [{link_text}]({link_target})")
     
     return issues
 
