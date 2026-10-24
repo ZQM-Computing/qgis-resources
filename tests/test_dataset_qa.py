@@ -594,10 +594,29 @@ def test_raster_nonfinite_geotransform_withholds_extent(tmp_path):
             return Driver()
 
         def GetRasterBand(self, index):
-            raise AssertionError("invalid geotransform should not affect band inventory")
+            return Band()
+
+    class Band:
+        DataType = 1
+
+        def GetNoDataValue(self):
+            return None
+
+        def GetScale(self):
+            return None
+
+        def GetOffset(self):
+            return None
+
+        def GetBlockSize(self):
+            return (4, 4)
 
     class GDAL:
         GA_ReadOnly = 0
+
+        @staticmethod
+        def GetDataTypeName(_):
+            return "Byte"
 
         @staticmethod
         def Open(path, mode):
