@@ -57,17 +57,16 @@ def export_project_layers(output_path: str, overwrite: bool = False) -> list:
                 layer, str(staged), transform_context, options
             )
             if result[0] != QgsVectorFileWriter.NoError:
-                raise RuntimeError(f"Export failed for {layer.name()}: {result[3]}")
+                raise RuntimeError(f"Export failed for {layer.name()}: {result[1]}")
             exported.append({"source_layer": layer.name(), "output_layer": name})
         if not staged.is_file() or staged.stat().st_size == 0:
             raise RuntimeError("Staged GeoPackage is missing or empty")
         # Verify every intended layer can be reopened before publication.
-        for item in exported:
+        for item, source in zip(exported, vector_layers):
             layer_uri = str(staged) + "|layername=" + item["output_layer"]
             check = QgsVectorLayer(layer_uri, item["output_layer"], "ogr")
             if not check.isValid():
                 raise RuntimeError("Staged layer failed to reopen: " + item["output_layer"])
-            source = next(layer for layer in vector_layers if layer.name() == item["source_layer"])
             if check.featureCount() != source.featureCount():
                 raise RuntimeError("Feature count mismatch for exported layer " + item["output_layer"])
             del check
