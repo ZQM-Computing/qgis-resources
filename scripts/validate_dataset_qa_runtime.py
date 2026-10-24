@@ -83,8 +83,8 @@ def create_raster_fixture(path: Path) -> None:
     ds = None
 
 
-def create_rotated_raster_fixture(path: Path) -> None:
-    """Create a raster whose rotation terms make axis swaps observable."""
+def create_small_rotated_raster_fixture(path: Path) -> None:
+    """Create a compact raster whose rotation terms make axis swaps observable."""
     driver = gdal.GetDriverByName("GTiff")
     assert driver is not None
     ds = driver.Create(str(path), 2, 3, 1, gdal.GDT_Byte)
@@ -217,7 +217,7 @@ def main() -> None:
             root=root,
             exclude_paths=[prior_report],
         )
-        assert directory_report["dataset_count"] == 2, directory_report
+        assert directory_report["dataset_count"] == 3, directory_report
         assert "DATASET_UNREADABLE" not in {f["rule_id"] for f in directory_report["findings"]}
 
         repeat_report = audit_paths(
@@ -237,7 +237,7 @@ def main() -> None:
         # Rotation terms affect both axes of the affine transform. This fixture
         # catches extent calculations that accidentally swap GT(2) and GT(4).
         rotated_path = root / "rotated.tif"
-        create_rotated_raster_fixture(rotated_path)
+        create_small_rotated_raster_fixture(rotated_path)
         rotated_report = audit_paths([rotated_path], root=root)
         rotated = rotated_report["datasets"][0]
         assert rotated["extent"] == {
