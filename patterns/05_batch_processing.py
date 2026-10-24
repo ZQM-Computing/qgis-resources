@@ -1,4 +1,5 @@
 """Apply native:buffer to every GeoPackage in a folder."""
+import math
 from pathlib import Path
 import processing
 from qgis.core import QgsVectorLayer
@@ -14,13 +15,20 @@ def batch_process(folder, distance=100.0, output_folder=None, overwrite=False):
     source_dir = Path(folder)
     if not source_dir.is_dir():
         raise ValueError(f"Input folder does not exist: {source_dir}")
-    if distance < 0:
-        raise ValueError("distance must be non-negative")
+    if not isinstance(distance, (int, float)) or not math.isfinite(distance) or distance < 0:
+        raise ValueError("distance must be a finite, non-negative number")
     destination = Path(output_folder) if output_folder else None
     if destination:
         destination.mkdir(parents=True, exist_ok=True)
     results = []
-    for path in sorted(source_dir.glob("*.gpkg")):
+    # Snapshot inputs before writing outputs. If source and destination are the
+    # same directory, newly created *_buffer.gpkg files must not be reprocessed.
+    input_paths = sorted(
+        path for path in source_dir.iterdir()
+        if path.is_file() and path.suffix.lower() == ".gpkg"
+        and not path.stem.lower().endswith("_buffer")
+    )
+    for path in input_paths:
         layer = QgsVectorLayer(str(path), path.stem, "ogr")
         if not layer.isValid():
             results.append({"input": str(path), "ok": False, "error": "invalid vector layer"})
