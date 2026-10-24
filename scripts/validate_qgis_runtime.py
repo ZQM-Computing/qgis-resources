@@ -25,6 +25,7 @@ from qgis.core import (  # noqa: E402
     QgsPointXY,
     QgsProcessingContext,
     QgsProcessingFeedback,
+    QgsPrintLayout,
     QgsProject,
     QgsVectorFileWriter,
     QgsVectorLayer,
@@ -240,6 +241,7 @@ try:
     print("PASS: existing parcels and flood-zone QML styles load in QGIS")
     print("PASS: expression reference and synthetic processing, spatial-join, CRS, buffer and plugin-contract examples")
     print("PASS: file-backed vector analysis, spatial joins, CRS transforms, batch processing and clip/reproject")
+    print("PASS: GeoPackage and PDF exporters validate outputs and preserve files without overwrite consent")
     print("PASS: buffer execution, GeoPackage write/reopen, feature count and CRS")
     print("PASS: existing-output preservation and explicit overwrite")
     print("PASS: mixed-CRS rejection")
