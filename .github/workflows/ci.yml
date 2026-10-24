@@ -9,13 +9,48 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
+  static-validation:
+    name: Static repository validation
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Validate repository
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: Validate documentation and local links
+        run: python scripts/check_docs.py
+      - name: Syntax-check all Python resources
         run: |
-          echo "CI check passed"
-          if [ -f "README.md" ]; then echo "README present"; fi
-          if [ -f "LICENSE" ]; then echo "LICENSE present"; fi
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          roots = (Path("pyqgis"), Path("processing"), Path("expressions"))
+          files = sorted(p for root in roots for p in root.rglob("*.py"))
+          if not files:
+              raise SystemExit("No Python resources found to validate.")
+          for path in files:
+              ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+              print(f"OK {path}")
+          PY
+      - name: Validate QGIS styles as XML
+        run: |
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          files = sorted(Path("styles").rglob("*.qml"))
+          if not files:
+              raise SystemExit("No QML styles found to validate.")
+          for path in files:
+              ET.parse(path)
+              print(f"OK {path}")
+          PY
+      - name: Run expression resource tests
+        run: python -m unittest discover -s tests -v
