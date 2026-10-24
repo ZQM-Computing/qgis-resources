@@ -1,16 +1,6 @@
-"""
-Export a named print layout to a print-ready PDF (300 DPI by default).
-
-Where to run: QGIS Python Console, or adapt into a processing script for
-batch map production. Tested with QGIS 3.34.
-
-Adjust before running:
-    LAYOUT_NAME -- name of the layout in the current project.
-    OUTPUT_PDF  -- destination file.
-    DPI         -- export resolution.
-"""
-
+"""Export a named QGIS print layout to PDF."""
 import os
+from pathlib import Path
 
 from qgis.core import QgsLayoutExporter, QgsProject
 
@@ -20,6 +10,11 @@ DPI = 300
 
 
 def export_layout_pdf(layout_name: str, output_path: str, dpi: int = 300) -> None:
+    if not isinstance(dpi, int) or not 72 <= dpi <= 1200:
+        raise ValueError("dpi must be an integer between 72 and 1200")
+    destination = Path(output_path).expanduser()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+
     project = QgsProject.instance()
     layout = project.layoutManager().layoutByName(layout_name)
     if layout is None:
@@ -28,12 +23,9 @@ def export_layout_pdf(layout_name: str, output_path: str, dpi: int = 300) -> Non
     exporter = QgsLayoutExporter(layout)
     settings = QgsLayoutExporter.PdfExportSettings()
     settings.dpi = dpi
-
-    result = exporter.exportToPdf(output_path, settings)
+    result = exporter.exportToPdf(str(destination), settings)
     if result != QgsLayoutExporter.Success:
         raise RuntimeError(f"PDF export failed (exporter result code {result})")
-    print(f"Exported {output_path}")
-
-
-if __name__ == "__console__":
-    export_layout_pdf(LAYOUT_NAME, OUTPUT_PDF, DPI)
+    if not destination.is_file() or destination.stat().st_size == 0:
+        raise RuntimeError("QGIS reported success but the PDF output is missing or empty")
+    print(f"Exported {destination} at {dpi} DPI")
