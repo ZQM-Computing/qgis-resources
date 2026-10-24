@@ -93,8 +93,14 @@ class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
                 self.invalidSourceError(parameters, self.BOUNDARY)
             )
         target_crs = self.parameterAsCrs(parameters, self.TARGET_CRS, context)
+        if not source.sourceCrs().isValid():
+            raise QgsProcessingException("Input layer has no valid source CRS; assign the correct CRS before reprojection.")
+        if not boundary.sourceCrs().isValid():
+            raise QgsProcessingException("Boundary layer has no valid source CRS; assign the correct CRS before reprojection.")
         if not target_crs.isValid():
             raise QgsProcessingException("Choose a valid target CRS appropriate for the study area and measurements.")
+        if feedback.isCanceled():
+            raise QgsProcessingException("Processing was canceled before reprojection.")
 
         # Step 1: reproject both inputs into the analysis CRS.
         feedback.pushInfo("Reprojecting input layer...")
@@ -110,6 +116,8 @@ class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
             is_child_algorithm=True,
         )["OUTPUT"]
 
+        if feedback.isCanceled():
+            raise QgsProcessingException("Processing was canceled after input reprojection.")
         reprojected_boundary = processing.run(
             "native:reprojectlayer",
             {
@@ -122,6 +130,8 @@ class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
             is_child_algorithm=True,
         )["OUTPUT"]
 
+        if feedback.isCanceled():
+            raise QgsProcessingException("Processing was canceled after boundary reprojection.")
         # Step 2: clip.
         feedback.pushInfo("Clipping...")
         clipped = processing.run(
@@ -136,6 +146,8 @@ class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
             is_child_algorithm=True,
         )["OUTPUT"]
 
+        if feedback.isCanceled():
+            raise QgsProcessingException("Processing was canceled after clipping.")
         # Step 3: write to the sink in the target CRS.
         sink, dest_id = self.parameterAsSink(
             parameters,
@@ -148,6 +160,8 @@ class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
         if sink is None:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
 
+        if not clipped or not clipped.isValid():
+            raise QgsProcessingException("Clip algorithm returned an invalid output layer.")
         feature_count = 0
         for feature in clipped.getFeatures():
             if feedback.isCanceled():
