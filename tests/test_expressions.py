@@ -139,13 +139,17 @@ def test_file_exports_stage_validate_and_protect_existing_outputs():
     assert "TemporaryDirectory" in gpkg_export
     assert "Staged GeoPackage is missing or empty" in gpkg_export
     assert "Feature count mismatch" in gpkg_export
+    assert "CRS mismatch" in gpkg_export
+    assert "Geometry type mismatch" in gpkg_export
     assert "staged.replace(destination)" in gpkg_export
 
     pdf_export = (REPO_ROOT / "pyqgis" / "export_layout_pdf.py").read_text(encoding="utf-8")
     assert "overwrite: bool = False" in pdf_export
-    assert "temporary.replace(destination)" in pdf_export
+    assert "os.replace(temporary, destination)" in pdf_export
+    assert "pdf_file.read(5) != b\"%PDF-\"" in pdf_export
     assert "FileExistsError" in pdf_export
 
     batch = (REPO_ROOT / "patterns" / "05_batch_processing.py").read_text(encoding="utf-8")
     assert "os.replace(staged_path, output_path)" in batch
+    assert "CRS mismatch" in batch
     assert "finally:" in batch and "staged_path.unlink" in batch
