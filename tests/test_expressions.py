@@ -157,6 +157,19 @@ def test_file_exports_stage_validate_and_protect_existing_outputs():
     assert "finally:" in batch and "staged_path.unlink" in batch
 
 
+def test_runtime_suite_covers_existing_exporters_and_plugin_lifecycle():
+    runtime = (REPO_ROOT / "scripts" / "validate_qgis_runtime.py").read_text(encoding="utf-8")
+    for marker in (
+        "examples/01-expression-basics/run.py",
+        "patterns/clip_and_reproject.py",
+        "pyqgis/batch_export_to_geopackage.py",
+        "pyqgis/export_layout_pdf.py",
+        "Repeated initGui registered a second provider",
+        "PDF exporter overwrote an existing file without consent",
+    ):
+        assert marker in runtime, f"QGIS runtime suite missing coverage: {marker}"
+
+
 def test_documentation_link_checker_handles_fragments_and_rejects_escape(tmp_path):
     checker_path = REPO_ROOT / "scripts" / "check_docs.py"
     spec = importlib.util.spec_from_file_location("zqm_check_docs", checker_path)
