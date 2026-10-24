@@ -41,10 +41,16 @@ def raster_processing(dem_path, boundary_path, target_crs):
     projected_boundary = processing.run("native:reprojectlayer", {
         "INPUT": boundary, "TARGET_CRS": target, "OUTPUT": "TEMPORARY_OUTPUT",
     })["OUTPUT"]
-    if not projected_boundary.isValid():
+    projected_boundary_layer = (
+        projected_boundary if isinstance(projected_boundary, QgsVectorLayer)
+        else QgsVectorLayer(str(projected_boundary), "projected_boundary", "ogr")
+    )
+    if not projected_boundary_layer.isValid():
         raise RuntimeError("Boundary reprojection returned an invalid layer")
+    if projected_boundary_layer.crs() != target:
+        raise RuntimeError("Boundary reprojection did not produce the target CRS")
     clipped = processing.run("gdal:cliprasterbymasklayer", {
-        "INPUT": projected, "MASK": projected_boundary, "CROP_TO_CUTLINE": True,
+        "INPUT": projected, "MASK": projected_boundary_layer, "CROP_TO_CUTLINE": True,
         "KEEP_RESOLUTION": True, "OUTPUT": "TEMPORARY_OUTPUT",
     })["OUTPUT"]
     clipped_layer = QgsRasterLayer(clipped, "clipped_dem")
