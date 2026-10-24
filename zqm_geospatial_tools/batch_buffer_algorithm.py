@@ -134,6 +134,7 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
         skipped = 0
         failures = 0
         used_names = set()
+        reference_crs = None
 
         for index, layer in enumerate(layers):
             if feedback.isCanceled():
@@ -147,6 +148,24 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
                 feedback.reportError(f"{label}: non-spatial layer; skipped.")
                 failures += 1
                 continue
+            if not layer.crs().isValid():
+                feedback.reportError(f"{label}: missing or invalid CRS; skipped.")
+                failures += 1
+                continue
+            if reference_crs is None:
+                reference_crs = layer.crs()
+            elif layer.crs() != reference_crs:
+                feedback.reportError(
+                    f"{label}: CRS {layer.crs().authid()} differs from "
+                    f"{reference_crs.authid()}; batch inputs must share one CRS."
+                )
+                failures += 1
+                continue
+            if layer.crs().isGeographic() and distance > 0:
+                feedback.pushWarning(
+                    f"{label}: distance is in angular CRS units, not metres. "
+                    "Use a suitable projected CRS for metric buffers."
+                )
 
             stem = self._safe_stem(layer.name())
             # Avoid collisions where different layer names sanitize to the same stem.
