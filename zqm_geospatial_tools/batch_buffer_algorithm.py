@@ -172,6 +172,12 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
                 failure_details.append(message)
                 failures += 1
                 continue
+            if distance == 0 and QgsWkbTypes.geometryType(layer.wkbType()) != QgsWkbTypes.PolygonGeometry:
+                message = f"{label}: zero-distance buffers are not meaningful for point/line inputs; use a positive distance."
+                feedback.reportError(message)
+                failure_details.append(message)
+                failures += 1
+                continue
             if layer.crs().isGeographic() and distance > 0:
                 feedback.pushWarning(
                     f"{label}: distance is in angular CRS units, not metres. "
