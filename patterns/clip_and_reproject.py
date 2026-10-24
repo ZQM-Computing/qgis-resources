@@ -18,6 +18,7 @@ from qgis.core import (
     QgsProcessingParameterCrs,
     QgsProcessingParameterFeatureSink,
     QgsProcessingParameterFeatureSource,
+    QgsVectorLayer,
 )
 from qgis.PyQt.QtCore import QCoreApplication
 
@@ -116,6 +117,9 @@ class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
             is_child_algorithm=True,
         )["OUTPUT"]
 
+        reprojected_input_layer = QgsVectorLayer(str(reprojected_input), "reprojected_input", "ogr")
+        if not reprojected_input_layer.isValid() or reprojected_input_layer.crs() != target_crs:
+            raise QgsProcessingException("Input reprojection returned an invalid layer or unexpected CRS.")
         if feedback.isCanceled():
             raise QgsProcessingException("Processing was canceled after input reprojection.")
         reprojected_boundary = processing.run(
@@ -130,6 +134,9 @@ class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
             is_child_algorithm=True,
         )["OUTPUT"]
 
+        reprojected_boundary_layer = QgsVectorLayer(str(reprojected_boundary), "reprojected_boundary", "ogr")
+        if not reprojected_boundary_layer.isValid() or reprojected_boundary_layer.crs() != target_crs:
+            raise QgsProcessingException("Boundary reprojection returned an invalid layer or unexpected CRS.")
         if feedback.isCanceled():
             raise QgsProcessingException("Processing was canceled after boundary reprojection.")
         # Step 2: clip.
@@ -137,8 +144,8 @@ class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
         clipped = processing.run(
             "native:clip",
             {
-                "INPUT": reprojected_input,
-                "OVERLAY": reprojected_boundary,
+                "INPUT": reprojected_input_layer,
+                "OVERLAY": reprojected_boundary_layer,
                 "OUTPUT": "TEMPORARY_OUTPUT",
             },
             context=context,
