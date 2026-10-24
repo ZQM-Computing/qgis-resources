@@ -429,6 +429,33 @@ def _write_report(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+def _validate_report_destinations(paths: list[Path], json_path: Path,
+                                markdown_path: Path | None) -> None:
+    """Reject report destinations that could overwrite an input dataset."""
+    json_destination = json_path.resolve()
+    markdown_destination = markdown_path.resolve() if markdown_path else None
+    if markdown_destination is not None and markdown_destination == json_destination:
+        raise ValueError("JSON and Markdown report destinations must be different files")
+
+    input_datasets: set[Path] = set()
+    for supplied in paths:
+        if supplied.is_dir():
+            input_datasets.update(
+                candidate.resolve()
+                for candidate in supplied.rglob("*")
+                if candidate.is_file()
+                and candidate.suffix.casefold() in SUPPORTED_VECTOR | SUPPORTED_RASTER
+            )
+        elif supplied.is_file() and supplied.suffix.casefold() in SUPPORTED_VECTOR | SUPPORTED_RASTER:
+            input_datasets.add(supplied.resolve())
+
+    if json_destination in input_datasets or markdown_destination in input_datasets:
+        raise ValueError(
+            "Report destination matches an input dataset; choose a separate report path "
+            "to preserve read-only source data"
+        )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("paths", nargs="+", type=Path, help="Input dataset paths or directories (searched recursively)")
@@ -442,6 +469,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--fail-on-warning", action="store_true", help="Return nonzero if any warning is reported")
     args = parser.parse_args(argv)
     try:
+        _validate_report_destinations(args.paths, args.json_path, args.markdown)
         report = audit_paths(args.paths, root=args.root, required_fields=args.required_field,
                              id_fields=args.id_field, expected_crs=args.expected_crs,
                              check_geometry=not args.skip_geometry_validity,
