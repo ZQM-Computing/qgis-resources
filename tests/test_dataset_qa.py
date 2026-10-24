@@ -272,3 +272,34 @@ def test_cli_rejects_missing_input_paths_before_audit_or_report_creation(tmp_pat
         raise AssertionError("CLI accepted a missing input path")
     assert not output.exists()
 
+def test_empty_scan_is_reported_as_an_error(tmp_path, monkeypatch):
+    import sys
+    import types
+
+    gdal = types.SimpleNamespace(UseExceptions=lambda: None)
+    ogr = types.SimpleNamespace(UseExceptions=lambda: None)
+    monkeypatch.setitem(sys.modules, "osgeo", types.SimpleNamespace(gdal=gdal, ogr=ogr))
+
+    report = qa.audit_paths([tmp_path], root=tmp_path)
+    assert report["dataset_count"] == 0
+    assert any(item["rule_id"] == "NO_SUPPORTED_DATASETS_FOUND"
+               and item["severity"] == "error" for item in report["findings"])
+    assert report["summary"]["error"] >= 1
+
+
+def test_explicit_unsupported_file_is_not_silently_ignored(tmp_path, monkeypatch):
+    import sys
+    import types
+
+    source = tmp_path / "notes.txt"
+    source.write_text("not a geospatial dataset", encoding="utf-8")
+    gdal = types.SimpleNamespace(UseExceptions=lambda: None)
+    ogr = types.SimpleNamespace(UseExceptions=lambda: None)
+    monkeypatch.setitem(sys.modules, "osgeo", types.SimpleNamespace(gdal=gdal, ogr=ogr))
+
+    report = qa.audit_paths([source], root=tmp_path)
+    assert report["dataset_count"] == 0
+    rules = {item["rule_id"] for item in report["findings"]}
+    assert "INPUT_FORMAT_UNSUPPORTED" in rules
+    assert "NO_SUPPORTED_DATASETS_FOUND" in rules
+
