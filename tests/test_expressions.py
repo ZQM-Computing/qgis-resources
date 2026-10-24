@@ -49,6 +49,18 @@ def test_notebooks_are_valid_and_have_real_lesson_content():
         source = "\n".join("".join(cell.get("source", [])) for cell in cells)
         assert len(source) > 250, f"{path} appears to be a placeholder"
         assert "print('hello')" not in source and 'print("hello")' not in source
+        code_cells = [cell for cell in cells if cell.get("cell_type") == "code"]
+        assert code_cells, f"{path} needs executable lesson code"
+        for index, cell in enumerate(code_cells):
+            code = "".join(cell.get("source", []))
+            assert not code.lstrip().startswith(("!", "%")), (
+                f"{path} code cell {index} uses notebook-only shell/magic syntax"
+            )
+            ast.parse(code, filename=f"{path}:cell-{index}")
+            assert cell.get("execution_count") is None, (
+                f"{path} should not commit stale execution counts"
+            )
+            assert not cell.get("outputs"), f"{path} should not commit cell outputs"
 
 
 def test_qml_styles_are_well_formed_xml():
