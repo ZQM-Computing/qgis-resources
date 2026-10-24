@@ -18,6 +18,7 @@ from qgis.core import (
     QgsProcessingParameterCrs,
     QgsProcessingParameterFeatureSink,
     QgsProcessingParameterFeatureSource,
+    QgsProcessingUtils,
     QgsVectorLayer,
 )
 from qgis.PyQt.QtCore import QCoreApplication
@@ -82,6 +83,22 @@ class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr("Clipped"))
         )
 
+    @staticmethod
+    def _resolve_vector_output(output, name, context):
+        """Resolve Processing child outputs across QGIS layer/path return forms."""
+        if isinstance(output, QgsVectorLayer) and output.isValid():
+            return output
+        source = output.source() if isinstance(output, QgsVectorLayer) else str(output)
+        resolved = QgsProcessingUtils.mapLayerFromString(source, context)
+        if isinstance(resolved, QgsVectorLayer) and resolved.isValid():
+            return resolved
+        fallback = QgsVectorLayer(source, name, "ogr")
+        if fallback.isValid():
+            return fallback
+        raise QgsProcessingException(
+            f"{name} returned an invalid or unresolvable vector output."
+        )
+
     def processAlgorithm(self, parameters, context, feedback):
         source = self.parameterAsSource(parameters, self.INPUT, context)
         if source is None:
@@ -117,7 +134,9 @@ class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
             is_child_algorithm=True,
         )["OUTPUT"]
 
-        reprojected_input_layer = QgsVectorLayer(str(reprojected_input), "reprojected_input", "ogr")
+        reprojected_input_layer = self._resolve_vector_output(
+            reprojected_input, "reprojected_input", context
+        )
         if not reprojected_input_layer.isValid() or reprojected_input_layer.crs() != target_crs:
             raise QgsProcessingException("Input reprojection returned an invalid layer or unexpected CRS.")
         if feedback.isCanceled():
@@ -134,7 +153,9 @@ class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
             is_child_algorithm=True,
         )["OUTPUT"]
 
-        reprojected_boundary_layer = QgsVectorLayer(str(reprojected_boundary), "reprojected_boundary", "ogr")
+        reprojected_boundary_layer = self._resolve_vector_output(
+            reprojected_boundary, "reprojected_boundary", context
+        )
         if not reprojected_boundary_layer.isValid() or reprojected_boundary_layer.crs() != target_crs:
             raise QgsProcessingException("Boundary reprojection returned an invalid layer or unexpected CRS.")
         if feedback.isCanceled():
@@ -167,7 +188,7 @@ class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
         if sink is None:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
 
-        clipped_layer = clipped if hasattr(clipped, "isValid") else QgsVectorLayer(str(clipped), "clipped", "ogr")
+        clipped_layer = self._resolve_vector_output(clipped, "clipped", context)
         if not clipped_layer.isValid() or clipped_layer.crs() != target_crs:
             raise QgsProcessingException("Clip algorithm returned an invalid layer or unexpected CRS.")
         feature_count = 0
