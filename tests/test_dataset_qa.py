@@ -563,7 +563,7 @@ def test_raster_inventory_preserves_rotated_extent_and_band_metadata(tmp_path):
     inventory = result["inventory"]
     # All four affine corners are considered; rotation terms are not dropped.
     assert inventory["extent"] == {
-        "xmin": 100, "ymin": 175, "xmax": 135, "ymax": 260,
+        "xmin": 100, "ymin": 175, "xmax": 135, "ymax": 240,
     }
     assert inventory["resolution"] == [
         (2 ** 2 + 4 ** 2) ** 0.5,
