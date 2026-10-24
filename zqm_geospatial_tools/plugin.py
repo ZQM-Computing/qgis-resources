@@ -10,6 +10,8 @@ class ZqmGeospatialToolsPlugin:
         self.provider = None
 
     def initGui(self):
+        if self.provider is not None:
+            return
         self.provider = ZqmProcessingProvider()
         if not QgsApplication.processingRegistry().addProvider(self.provider):
             self.provider = None
