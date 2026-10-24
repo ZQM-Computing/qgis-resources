@@ -10,6 +10,9 @@ from pathlib import Path
 
 PLUGIN_PARENT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN_PARENT))
+for qgis_path in ("/usr/share/qgis/python", "/usr/share/qgis/python/plugins"):
+    if Path(qgis_path).is_dir() and qgis_path not in sys.path:
+        sys.path.append(qgis_path)
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -27,6 +30,7 @@ from qgis.core import (  # noqa: E402
 )
 from qgis.PyQt.QtCore import QVariant  # noqa: E402
 
+QgsApplication.setPrefixPath("/usr", True)
 app = QgsApplication([], False)
 app.initQgis()
 
