@@ -8,7 +8,7 @@ from qgis.core import QgsField, QgsVectorLayer
 from qgis.PyQt.QtCore import QVariant
 
 
-def vector_analysis(input_path, buffer_distance=500.0, area_field="area_m2"):
+def vector_analysis(input_path, buffer_distance=500.0, area_field="area_crs_units2"):
     layer = QgsVectorLayer(input_path, "input", "ogr")
     if not layer.isValid():
         raise ValueError(f"Could not load input vector layer: {input_path}")
