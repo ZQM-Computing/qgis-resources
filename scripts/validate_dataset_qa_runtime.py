@@ -10,6 +10,7 @@ import math
 import tempfile
 from pathlib import Path
 
+import numpy as np
 from osgeo import gdal, ogr, osr
 
 from dataset_qa import audit_paths, markdown_report
@@ -78,7 +79,7 @@ def create_raster_fixture(path: Path) -> None:
     ds.SetProjection(srs.ExportToWkt())
     band = ds.GetRasterBand(1)
     band.SetNoDataValue(-9999)
-    band.WriteArray([[1, 2, 3], [4, 5, -9999]])
+    band.WriteArray(np.asarray([[1, 2, 3], [4, 5, -9999]], dtype=np.int16))
     band.FlushCache()
     ds = None
 
@@ -93,7 +94,7 @@ def create_small_rotated_raster_fixture(path: Path) -> None:
     srs = osr.SpatialReference()
     assert srs.ImportFromEPSG(32617) == 0
     ds.SetProjection(srs.ExportToWkt())
-    ds.GetRasterBand(1).WriteArray([[1, 2], [3, 4], [5, 6]])
+    ds.GetRasterBand(1).WriteArray(np.asarray([[1, 2], [3, 4], [5, 6]], dtype=np.uint8))
     ds = None
 
 
@@ -107,7 +108,7 @@ def create_rotated_raster_fixture(path: Path) -> None:
     srs = osr.SpatialReference()
     assert srs.ImportFromEPSG(32617) == 0
     ds.SetProjection(srs.ExportToWkt())
-    ds.GetRasterBand(1).WriteArray([[1, 2, 3], [4, 5, 6]])
+    ds.GetRasterBand(1).WriteArray(np.asarray([[1, 2, 3], [4, 5, 6]], dtype=np.int16))
     ds = None
 
 
