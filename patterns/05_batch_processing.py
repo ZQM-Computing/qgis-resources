@@ -64,6 +64,11 @@ def batch_process(folder, distance=100.0, output_folder=None, overwrite=False):
                 check = QgsVectorLayer(str(staged_path), path.stem + "_buffer_check", "ogr")
                 if not check.isValid():
                     raise RuntimeError(f"Processing output is not a valid vector layer: {output_path}")
+                if check.crs() != layer.crs():
+                    raise RuntimeError(
+                        f"CRS mismatch for {output_path}: "
+                        f"expected {layer.crs().authid()}, found {check.crs().authid()}"
+                    )
                 if check.featureCount() != layer.featureCount():
                     raise RuntimeError(
                         f"Feature-count mismatch for {output_path}: "
