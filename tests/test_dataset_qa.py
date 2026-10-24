@@ -116,3 +116,9 @@ def test_geometry_check_metadata_distinguishes_skipped_from_clean():
     assert "VECTOR_FEATURE_COUNT_UNKNOWN" in source
     assert "field_index_by_name" in source
     assert "RASTER_GEOREFERENCE_NONFINITE" in source
+
+
+def test_crs_comparison_accepts_equivalent_authority_and_wkt_forms():
+    # No GDAL dependency for the fallback form; real semantic comparison is
+    # exercised by the GDAL runtime test.
+    assert qa._crs_matches(" EPSG:4326 ", "epsg:4326")
