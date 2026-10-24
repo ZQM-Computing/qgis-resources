@@ -46,6 +46,20 @@ def create_vector_fixture(path: Path) -> None:
     feature.SetGeometry(geometry)
     assert unreferenced.CreateFeature(feature) == 0
     feature = None
+
+    # A self-crossing polygon exercises topology validity independently from
+    # the missing/empty-geometry cases in the point layer.
+    invalid_layer = ds.CreateLayer("invalid_polygons", srs, ogr.wkbPolygon)
+    assert invalid_layer is not None
+    ring = ogr.Geometry(ogr.wkbLinearRing)
+    for x, y in [(0, 0), (2, 2), (0, 2), (2, 0), (0, 0)]:
+        ring.AddPoint_2D(x, y)
+    polygon = ogr.Geometry(ogr.wkbPolygon)
+    polygon.AddGeometry(ring)
+    invalid_feature = ogr.Feature(invalid_layer.GetLayerDefn())
+    invalid_feature.SetGeometry(polygon)
+    assert invalid_layer.CreateFeature(invalid_feature) == 0
+    invalid_feature = None
     ds = None
 
 
@@ -100,6 +114,7 @@ def main() -> None:
             "VECTOR_ID_DUPLICATE",
             "VECTOR_ID_NULL",
             "VECTOR_GEOMETRY_EMPTY",
+            "VECTOR_GEOMETRY_INVALID",
             "VECTOR_CRS_MISSING",
             "VECTOR_CRS_UNEXPECTED",
             "RASTER_CRS_UNEXPECTED",
@@ -113,6 +128,26 @@ def main() -> None:
         assert observations["crs"] == "EPSG:4326", observations
         assert observations["geometry_checks"]["enabled"] is True, observations
         assert observations["geometry_checks"]["empty"] == 1, observations
+        invalid_polygons = next(layer for layer in vector["layers"] if layer["name"] == "invalid_polygons")
+        assert invalid_polygons["geometry_checks"]["invalid"] == 1, invalid_polygons
+
+        # The explicit performance option must mark geometry validation as
+        # disabled rather than silently presenting skipped checks as clean.
+        skipped_geometry_report = audit_paths(
+            [vector_path],
+            root=root,
+            check_geometry=False,
+        )
+        skipped_vector = skipped_geometry_report["datasets"][0]
+        skipped_observations = next(
+            layer for layer in skipped_vector["layers"] if layer["name"] == "observations"
+        )
+        assert skipped_observations["geometry_checks"]["enabled"] is False
+        assert skipped_observations["geometry_checks"]["empty"] == 0
+        assert "VECTOR_GEOMETRY_EMPTY" not in {
+            item["rule_id"] for item in skipped_geometry_report["findings"]
+        }
+
         raster = next(item for item in report["datasets"] if item["kind"] == "raster")
         assert (raster["width"], raster["height"], raster["band_count"]) == (3, 2, 1), raster
         assert raster["crs"] == "EPSG:4326", raster
