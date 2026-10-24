@@ -79,6 +79,9 @@ def test_dataset_qa_documents_real_gdal_inspection_and_read_only_open():
         "RASTER_CRS_MISSING",
         "VECTOR_REQUIRED_FIELD_MISSING",
         "sort_findings",
+        "size_bytes",
+        "math.hypot(float(transform[1]), float(transform[4]))",
+        "math.hypot(float(transform[2]), float(transform[5]))",
     ):
         assert contract in source, f"Missing dataset QA contract: {contract}"
 
