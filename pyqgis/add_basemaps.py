@@ -28,11 +28,16 @@ BASEMAPS = {
 
 
 def add_basemap(name: str, uri: str):
+    project = QgsProject.instance()
+    # Make repeated execution idempotent: reuse an existing named basemap.
+    for existing in project.mapLayers().values():
+        if existing.name() == name and existing.isValid():
+            return existing
     layer = QgsRasterLayer(uri, name, "wms")
     if not layer.isValid():
         print(f"Failed to load basemap: {name}")
         return None
-    QgsProject.instance().addMapLayer(layer)
+    project.addMapLayer(layer)
     return layer
 
 
