@@ -222,6 +222,13 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
                         f"buffer={buffered.featureCount()}"
                     )
 
+                for feature in buffered.getFeatures():
+                    geometry = feature.geometry()
+                    if geometry is None or geometry.isNull() or geometry.isEmpty():
+                        raise RuntimeError(f"buffer produced an empty geometry for feature {feature.id()}")
+                    if not geometry.isGeosValid():
+                        raise RuntimeError(f"buffer produced invalid geometry for feature {feature.id()}")
+
                 options = QgsVectorFileWriter.SaveVectorOptions()
                 options.driverName = "GPKG"
                 options.fileEncoding = "UTF-8"
@@ -250,6 +257,10 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
                     )
                 del check
 
+                # Recheck immediately before publication to avoid a concurrent
+                # run silently replacing a destination when overwrite is disabled.
+                if output_path.exists() and not overwrite:
+                    raise FileExistsError(f"output appeared during processing: {output_path}")
                 # Replace only after the temporary output has passed validation.
                 os.replace(temporary_path, output_path)
                 successes += 1
