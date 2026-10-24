@@ -386,7 +386,7 @@ def main(argv: list[str] | None = None) -> int:
                              check_geometry=not args.skip_geometry_validity)
     except (RuntimeError, OSError, ValueError) as exc:
         parser.error(str(exc))
-    _write_report(args.json_path, json.dumps(report, indent=2, sort_keys=True) + "\n")
+    _write_report(args.json_path, json.dumps(json_safe(report), indent=2, sort_keys=True, allow_nan=False) + "\n")
     if args.markdown:
         _write_report(args.markdown, markdown_report(report))
     print(json.dumps(report["summary"], sort_keys=True))
