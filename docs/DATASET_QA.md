@@ -14,7 +14,7 @@ Use a Python interpreter with `osgeo.gdal` and `osgeo.ogr` available. The QGIS P
 python -c "from osgeo import gdal, ogr; print(gdal.VersionInfo('--version'))"
 ```
 
-The script currently recognizes common file-based vector formats (GeoPackage, Shapefile, GeoJSON/JSON, GML, KML, SQLite) and raster formats (GeoTIFF, VRT, IMG, ASCII grid, JP2, NetCDF). Actual driver availability depends on the GDAL build. Directory inputs are searched recursively. Unsupported formats are ignored; recognized files that cannot be opened are reported as errors. The JSON and Markdown report destinations are excluded from discovery, so rerunning an audit against a directory does not ingest its own prior report as a dataset.
+The script currently recognizes common file-based vector formats (GeoPackage, Shapefile, GeoJSON/JSON, GML, KML, SQLite) and raster formats (GeoTIFF, VRT, IMG, ASCII grid, JP2, NetCDF). Actual driver availability depends on the GDAL build. Directory inputs are searched recursively. Unsupported formats are ignored; recognized files that cannot be opened are reported as errors. The JSON and Markdown report destinations are excluded from discovery, so rerunning an audit against a directory does not ingest its own prior report as a dataset. Before auditing, the CLI rejects output paths that collide with recognized input datasets and rejects identical JSON/Markdown destinations. An existing JSON destination inside the scanned directory is allowed only when its contents match this tool's report signature, preserving safe report reruns without permitting an arbitrary GeoJSON input to be overwritten.
 
 ## Usage
 
@@ -72,7 +72,7 @@ Relative dataset paths are reported relative to `--root` when possible. For inpu
 
 ## Safety and limitations
 
-- Inputs are opened read-only. Reports are the only files this command writes.
+- Inputs are opened read-only. Reports are the only files this command writes; the CLI validates destinations before writing and refuses collisions with source datasets.
 - A missing CRS is never guessed from coordinate values.
 - Findings are diagnostic signals, not automatic repair instructions. Review data provenance before changing a dataset.
 - Geometry validity checks can be expensive and depend on GDAL/OGR/GEOS provider behavior.
