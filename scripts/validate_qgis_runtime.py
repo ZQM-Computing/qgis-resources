@@ -201,7 +201,8 @@ try:
         assert (mixed_dir / "runtime_points_buffer.gpkg").is_file()
         assert not (mixed_dir / "different_crs_buffer.gpkg").exists()
 
-    print("PASS: provider registration and algorithm discovery")\n    print("PASS: existing parcels and flood-zone QML styles load in QGIS")
+    print("PASS: provider registration and algorithm discovery")
+    print("PASS: existing parcels and flood-zone QML styles load in QGIS")
     print("PASS: synthetic processing, spatial-join, CRS, buffer and plugin-contract examples")
     print("PASS: file-backed vector analysis, spatial joins, CRS transforms and batch processing")
     print("PASS: buffer execution, GeoPackage write/reopen, feature count and CRS")
