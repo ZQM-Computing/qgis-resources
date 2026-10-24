@@ -138,15 +138,15 @@ def audit_existing_pyqgis_contracts() -> list[str]:
     """Assert that each existing console utility handles its primary failure mode."""
     contracts = {
         "pyqgis/add_basemaps.py": ("QgsRasterLayer", "isValid()", "addMapLayer"),
-        "pyqgis/batch_export_to_geopackage.py": ("FileExistsError", "writeAsVectorFormatV3", "NoError", "exported"),
-        "pyqgis/export_layout_pdf.py": ("layoutByName", "exportToPdf", "temporary.stat().st_size"),
-        "patterns/01_vector_analysis.py": ("native:buffer", "native:dissolve", "area"),
-        "patterns/02_raster_processing.py": ("gdal:warpreproject", "cliprasterbymasklayer", "target.isValid()"),
+        "pyqgis/batch_export_to_geopackage.py": ("FileExistsError", "writeAsVectorFormatV3", "NoError", "exported", "CRS mismatch", "Geometry type mismatch"),
+        "pyqgis/export_layout_pdf.py": ("layoutByName", "exportToPdf", "temporary.stat().st_size", "pdf_file.read(5)", "os.replace(temporary, destination)"),
+        "patterns/01_vector_analysis.py": ("native:buffer", "native:dissolve", "area", "math.isfinite", "already exists"),
+        "patterns/02_raster_processing.py": ("gdal:warpreproject", "cliprasterbymasklayer", "target.isValid()", "dem.crs().isValid()", "boundary.crs().isValid()"),
         "patterns/03_spatial_joins.py": ("native:joinattributesbylocation", "points.crs() != polygons.crs()"),
         "patterns/04_crs_transforms.py": ("native:reprojectlayer", "result.crs() != target"),
         "patterns/05_batch_processing.py": ("math.isfinite", "input_paths = sorted", "overwrite"),
         "patterns/06_plugin_development.py": ("initGui", "unload"),
-        "patterns/clip_and_reproject.py": ("native:reprojectlayer", "isValid"),
+        "patterns/clip_and_reproject.py": ("native:reprojectlayer", "isValid", "feedback.isCanceled()", "target_crs"),
     }
     issues = []
     for filename, markers in contracts.items():
