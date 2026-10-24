@@ -55,6 +55,22 @@ def summarize(findings: list[dict[str, Any]]) -> dict[str, int]:
     }
 
 
+def _crs_matches(actual: str, expected: str) -> bool:
+    """Compare CRS definitions semantically where GDAL can parse both."""
+    try:
+        from osgeo import osr
+        actual_srs = osr.SpatialReference()
+        expected_srs = osr.SpatialReference()
+        actual_status = actual_srs.SetFromUserInput(actual)
+        expected_status = expected_srs.SetFromUserInput(expected)
+        if actual_status == 0 and expected_status == 0:
+            return bool(actual_srs.IsSame(expected_srs))
+    except Exception:
+        # Fall back to a conservative text comparison if CRS parsing is unavailable.
+        pass
+    return actual.strip().casefold() == expected.strip().casefold()
+
+
 def _crs_text(spatial_ref: Any) -> str | None:
     if spatial_ref is None:
         return None
@@ -105,7 +121,7 @@ def _audit_vector(path: Path, display_path: str, gdal: Any, ogr: Any,
                 "Vector layer has no declared CRS; coordinates must not be guessed.",
                 dataset=display_path, layer=name,
                 remediation="Identify the source CRS from authoritative metadata, then assign or transform it explicitly."))
-        elif expected_crs and crs.casefold() != expected_crs.casefold():
+        elif expected_crs and not _crs_matches(crs, expected_crs):
             findings.append(finding("VECTOR_CRS_UNEXPECTED", "warning",
                 "Vector layer CRS does not match the configured expected CRS.",
                 dataset=display_path, layer=name,
@@ -262,17 +278,20 @@ def _audit_raster(path: Path, display_path: str, gdal: Any,
             "Raster has no affine geotransform.", dataset=display_path,
             remediation="Check whether this raster requires georeferencing before spatial use."))
     else:
-        x0, px, rx, y0, ry, py = transform
-        corners = [(x0, y0), (x0 + width * px, y0 + width * rx),
-                   (x0 + height * ry, y0 + height * py),
-                   (x0 + width * px + height * ry, y0 + width * rx + height * py)]
-        info["extent"] = {
-            "xmin": min(p[0] for p in corners), "ymin": min(p[1] for p in corners),
-            "xmax": max(p[0] for p in corners), "ymax": max(p[1] for p in corners),
-        }
         if not all(math.isfinite(float(v)) for v in transform):
             findings.append(finding("RASTER_GEOREFERENCE_NONFINITE", "error",
-                "Raster geotransform contains non-finite values.", dataset=display_path))
+                "Raster geotransform contains non-finite values; a trustworthy extent cannot be calculated.",
+                dataset=display_path,
+                remediation="Repair georeferencing in a copy using authoritative spatial metadata."))
+        else:
+            x0, px, rx, y0, ry, py = transform
+            corners = [(x0, y0), (x0 + width * px, y0 + width * rx),
+                       (x0 + height * ry, y0 + height * py),
+                       (x0 + width * px + height * ry, y0 + width * rx + height * py)]
+            info["extent"] = {
+                "xmin": min(p[0] for p in corners), "ymin": min(p[1] for p in corners),
+                "xmax": max(p[0] for p in corners), "ymax": max(p[1] for p in corners),
+            }
     for band_index in range(1, bands + 1):
         band = dataset.GetRasterBand(band_index)
         nodata = band.GetNoDataValue()
