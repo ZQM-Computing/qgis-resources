@@ -1,5 +1,7 @@
 """Apply native:buffer to every GeoPackage in a folder."""
 import math
+import os
+import tempfile
 from pathlib import Path
 import processing
 from qgis.core import QgsVectorLayer
@@ -40,17 +42,26 @@ def batch_process(folder, distance=100.0, output_folder=None, overwrite=False):
                 "error": f"output already exists (set overwrite=True to replace): {output_path}",
             })
             continue
-        output = str(output_path) if output_path else "memory:"
+        output = "memory:"
+        staged_path = None
         try:
+            if output_path:
+                with tempfile.NamedTemporaryFile(
+                    prefix=f".{output_path.stem}.", suffix=".gpkg",
+                    dir=output_path.parent, delete=False
+                ) as staged_file:
+                    staged_path = Path(staged_file.name)
+                staged_path.unlink(missing_ok=True)
+                output = str(staged_path)
             result = processing.run("native:buffer", {
                 "INPUT": layer, "DISTANCE": distance, "SEGMENTS": 8,
                 "END_CAP_STYLE": 0, "JOIN_STYLE": 0, "MITER_LIMIT": 2,
                 "DISSOLVE": False, "OUTPUT": output,
             })["OUTPUT"]
-            if output_path and (not output_path.is_file() or output_path.stat().st_size == 0):
-                raise RuntimeError(f"Processing did not create a non-empty output file: {output_path}")
+            if output_path and (staged_path is None or not staged_path.is_file() or staged_path.stat().st_size == 0):
+                raise RuntimeError(f"Processing did not create a non-empty output file: {staged_path}")
             if output_path:
-                check = QgsVectorLayer(str(output_path), path.stem + "_buffer_check", "ogr")
+                check = QgsVectorLayer(str(staged_path), path.stem + "_buffer_check", "ogr")
                 if not check.isValid():
                     raise RuntimeError(f"Processing output is not a valid vector layer: {output_path}")
                 if check.featureCount() != layer.featureCount():
