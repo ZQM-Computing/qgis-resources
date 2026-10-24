@@ -264,7 +264,7 @@ def _audit_raster(path: Path, display_path: str, gdal: Any,
             "Raster has no declared CRS; coordinates must not be guessed.",
             dataset=display_path,
             remediation="Recover the CRS from authoritative metadata before using this raster in spatial analysis."))
-    elif expected_crs and crs.casefold() != expected_crs.casefold():
+    elif expected_crs and not _crs_matches(crs, expected_crs):
         findings.append(finding("RASTER_CRS_UNEXPECTED", "warning",
             "Raster CRS does not match the configured expected CRS.", dataset=display_path,
             evidence={"actual": crs, "expected": expected_crs},
