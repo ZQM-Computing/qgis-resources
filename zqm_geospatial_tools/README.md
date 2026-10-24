@@ -15,7 +15,7 @@ For development, the directory can be symlinked into the active profile's plugin
 
 - Accepts one or more spatial vector layers.
 - Writes one GeoPackage per layer.
-- Distance is in each input layer's CRS units; it does not silently reproject mixed-CRS inputs.
+- All selected layers must share a valid CRS; mixed-CRS batches are rejected instead of being processed with inconsistent units. Distance uses that CRS's units. Geographic CRSs trigger a warning because distances are angular, not metres.
 - Existing output files are preserved by default. Explicit overwrite writes to a temporary GeoPackage, validates it, then replaces the destination.
 - Reports successes, skips, and failures separately.
 
