@@ -244,7 +244,7 @@ try:
         clip_module = load_module("patterns/clip_and_reproject.py", "zqm_clip_and_reproject")
         clip_source = QgsVectorLayer("Point?crs=EPSG:4326", "clip_source", "memory")
         assert clip_source.isValid()
-        assert clip_source.dataProvider().addAttributes([QgsFieldCompat("asset_id", QVariant.String)])[0]
+        assert clip_source.dataProvider().addAttributes([QgsFieldCompat("asset_id", QVariant.String)])
         clip_source.updateFields()
         source_features = []
         for asset_id, x, y in [
