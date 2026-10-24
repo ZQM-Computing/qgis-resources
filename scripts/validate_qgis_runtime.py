@@ -50,6 +50,21 @@ try:
         "ZQM provider did not expose the batch buffer algorithm"
     )
 
+    # Exercise the actual plugin entry lifecycle, not only direct provider registration.
+    from zqm_geospatial_tools.plugin import ZqmGeospatialToolsPlugin
+    assert registry.removeProvider(provider), "Could not reset provider for plugin lifecycle test"
+    plugin = ZqmGeospatialToolsPlugin(None)
+    plugin.initGui()
+    registered_provider = plugin.provider
+    assert registered_provider is not None
+    assert registry.providerById("zqm_geospatial_tools") is registered_provider
+    plugin.initGui()
+    assert plugin.provider is registered_provider, "Repeated initGui registered a second provider"
+    plugin.unload()
+    assert registry.providerById("zqm_geospatial_tools") is None, "Plugin unload left provider registered"
+    provider = ZqmProcessingProvider()
+    assert registry.addProvider(provider), "Could not restore provider after lifecycle test"
+
     def make_points(name, crs_id="EPSG:3857", count=2):
         layer = QgsVectorLayer(f"Point?crs={crs_id}", name, "memory")
         assert layer.isValid(), f"Could not create memory layer {name}"
@@ -221,7 +236,7 @@ try:
         assert (mixed_dir / "runtime_points_buffer.gpkg").is_file()
         assert not (mixed_dir / "different_crs_buffer.gpkg").exists()
 
-    print("PASS: provider registration and algorithm discovery")
+    print("PASS: provider registration, algorithm discovery and plugin init/unload lifecycle")
     print("PASS: existing parcels and flood-zone QML styles load in QGIS")
     print("PASS: expression reference and synthetic processing, spatial-join, CRS, buffer and plugin-contract examples")
     print("PASS: file-backed vector analysis, spatial joins, CRS transforms, batch processing and clip/reproject")
