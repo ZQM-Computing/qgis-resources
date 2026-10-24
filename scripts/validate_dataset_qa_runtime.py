@@ -82,6 +82,20 @@ def create_raster_fixture(path: Path) -> None:
     ds = None
 
 
+def create_rotated_raster_fixture(path: Path) -> None:
+    """Create a raster whose rotation terms make axis swaps observable."""
+    driver = gdal.GetDriverByName("GTiff")
+    assert driver is not None
+    ds = driver.Create(str(path), 2, 3, 1, gdal.GDT_Byte)
+    assert ds is not None
+    ds.SetGeoTransform((10, 2, 3, 20, 4, -5))
+    srs = osr.SpatialReference()
+    assert srs.ImportFromEPSG(32617) == 0
+    ds.SetProjection(srs.ExportToWkt())
+    ds.GetRasterBand(1).WriteArray([[1, 2], [3, 4], [5, 6]])
+    ds = None
+
+
 def main() -> None:
     with tempfile.TemporaryDirectory(prefix="zqm-dataset-qa-") as temporary:
         root = Path(temporary)
@@ -194,6 +208,20 @@ def main() -> None:
         assert before == {path.name: path.read_bytes() for path in (vector_path, raster_path)}, (
             "Dataset QA modified an input file"
         )
+
+        # Rotation terms affect both axes of the affine transform. This fixture
+        # catches extent calculations that accidentally swap GT(2) and GT(4).
+        rotated_path = root / "rotated.tif"
+        create_rotated_raster_fixture(rotated_path)
+        rotated_report = audit_paths([rotated_path], root=root)
+        rotated = rotated_report["datasets"][0]
+        assert rotated["extent"] == {
+            "xmin": 10.0, "ymin": 5.0, "xmax": 23.0, "ymax": 28.0
+        }, rotated
+        assert rotated["resolution"] == [
+            __import__("math").hypot(2, 4), __import__("math").hypot(3, -5)
+        ], rotated
+
         print(json.dumps({"status": "passed", "summary": report["summary"],
                           "datasets": report["dataset_count"], "rules": sorted(rules)}, sort_keys=True))
 
