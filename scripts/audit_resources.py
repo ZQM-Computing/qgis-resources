@@ -139,7 +139,7 @@ def audit_existing_pyqgis_contracts() -> list[str]:
     contracts = {
         "pyqgis/add_basemaps.py": ("QgsRasterLayer", "isValid()", "addMapLayer"),
         "pyqgis/batch_export_to_geopackage.py": ("FileExistsError", "writeAsVectorFormatV3", "NoError", "exported"),
-        "pyqgis/export_layout_pdf.py": ("layoutByName", "exportToPdf", "destination.stat().st_size"),
+        "pyqgis/export_layout_pdf.py": ("layoutByName", "exportToPdf", "temporary.stat().st_size"),
         "patterns/01_vector_analysis.py": ("native:buffer", "native:dissolve", "area"),
         "patterns/02_raster_processing.py": ("gdal:warpreproject", "cliprasterbymasklayer", "target.isValid()"),
         "patterns/03_spatial_joins.py": ("native:joinattributesbylocation", "points.crs() != polygons.crs()"),
