@@ -449,7 +449,26 @@ def _validate_report_destinations(paths: list[Path], json_path: Path,
         elif supplied.is_file() and supplied.suffix.casefold() in SUPPORTED_VECTOR | SUPPORTED_RASTER:
             input_datasets.add(supplied.resolve())
 
-    if json_destination in input_datasets or markdown_destination in input_datasets:
+    # A prior report may itself live under the scanned root. Permit that
+    # specific rerun case only when the existing JSON file has this tool's
+    # report signature; arbitrary GeoJSON/JSON inputs remain protected.
+    prior_report = False
+    if json_destination in input_datasets and json_destination.is_file():
+        try:
+            previous = json.loads(json_destination.read_text(encoding="utf-8"))
+            prior_report = (
+                isinstance(previous, dict)
+                and previous.get("schema_version") == 1
+                and isinstance(previous.get("datasets"), list)
+                and isinstance(previous.get("findings"), list)
+                and isinstance(previous.get("summary"), dict)
+            )
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            prior_report = False
+
+    if (json_destination in input_datasets and not prior_report) or (
+        markdown_destination is not None and markdown_destination in input_datasets
+    ):
         raise ValueError(
             "Report destination matches an input dataset; choose a separate report path "
             "to preserve read-only source data"
