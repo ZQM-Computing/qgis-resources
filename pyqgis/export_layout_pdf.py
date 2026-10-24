@@ -1,5 +1,6 @@
 """Export a named QGIS print layout to PDF."""
 import os
+import tempfile
 from pathlib import Path
 
 from qgis.core import QgsLayoutExporter, QgsProject
@@ -27,14 +28,26 @@ def export_layout_pdf(layout_name: str, output_path: str, dpi: int = 300, overwr
     exporter = QgsLayoutExporter(layout)
     settings = QgsLayoutExporter.PdfExportSettings()
     settings.dpi = dpi
-    # Export to a sibling temporary file so failed exports do not truncate a valid PDF.
-    temporary = destination.with_name(f".{destination.stem}.tmp{destination.suffix}")
+    # Stage beside the destination so publication stays on the same filesystem.
+    with tempfile.NamedTemporaryFile(
+        prefix=f".{destination.stem}.", suffix=destination.suffix,
+        dir=destination.parent, delete=False
+    ) as staged_file:
+        temporary = Path(staged_file.name)
+    temporary.unlink(missing_ok=True)
     result = exporter.exportToPdf(str(temporary), settings)
     if result != QgsLayoutExporter.Success:
         temporary.unlink(missing_ok=True)
         raise RuntimeError(f"PDF export failed (exporter result code {result})")
-    if not temporary.is_file() or temporary.stat().st_size == 0:
+    if not temporary.is_file() or temporary.stat().st_size < 5:
         temporary.unlink(missing_ok=True)
         raise RuntimeError("QGIS reported success but the temporary PDF is missing or empty")
-    temporary.replace(destination)
+    with temporary.open("rb") as pdf_file:
+        if pdf_file.read(5) != b"%PDF-":
+            temporary.unlink(missing_ok=True)
+            raise RuntimeError("Exported file does not have a PDF signature")
+    if destination.exists() and not overwrite:
+        temporary.unlink(missing_ok=True)
+        raise FileExistsError(f"Output appeared during export: {destination}")
+    os.replace(temporary, destination)
     print(f"Exported {destination} at {dpi} DPI")
