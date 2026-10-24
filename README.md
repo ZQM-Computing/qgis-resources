@@ -13,7 +13,7 @@
 <!-- markdownlint-enable MD033 -->
 <!-- ZQM-END -->
 
-[![Validate resources](https://github.com/ZQM-Computing/qgis-resources/actions/workflows/validate.yml/badge.svg)](https://github.com/ZQM-Computing/qgis-resources/actions)
+[![Validate resources](https://github.com/ZQM-Computing/qgis-resources/actions/workflows/ci.yml/badge.svg)](https://github.com/ZQM-Computing/qgis-resources/actions)
 
 Reusable QGIS resources: documented expressions, PyQGIS utilities, Processing patterns, QML styles, QField field-collection guidance, and worked examples. Each resource should state runtime requirements, CRS assumptions, inputs, outputs, and limitations.
 
