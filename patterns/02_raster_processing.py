@@ -3,13 +3,14 @@
 Run in QGIS with GDAL and Processing providers. Choose a projected target CRS
 appropriate for the study area; do not use one fixed UTM zone for global data.
 """
+import math
 import processing
 from qgis.core import (
     QgsApplication, QgsCoordinateReferenceSystem, QgsRasterLayer, QgsVectorLayer,
 )
 
 
-def raster_processing(dem_path, boundary_path, target_crs):
+def raster_processing(dem_path, boundary_path, target_crs, z_factor=1.0):
     dem = QgsRasterLayer(dem_path, "dem")
     boundary = QgsVectorLayer(boundary_path, "boundary", "ogr")
     if not dem.isValid():
@@ -26,6 +27,8 @@ def raster_processing(dem_path, boundary_path, target_crs):
     )
     if not target.isValid():
         raise ValueError(f"Invalid target CRS: {target_crs!r}")
+    if not isinstance(z_factor, (int, float)) or not math.isfinite(z_factor) or z_factor <= 0:
+        raise ValueError("z_factor must be a finite, positive number matching the DEM vertical/horizontal unit ratio")
     if target.isGeographic():
         raise ValueError(
             "Choose a projected target CRS for slope analysis so horizontal units "
@@ -56,6 +59,10 @@ def raster_processing(dem_path, boundary_path, target_crs):
     clipped_layer = QgsRasterLayer(clipped, "clipped_dem")
     if not clipped_layer.isValid():
         raise RuntimeError("Raster clip returned an invalid raster")
+    if clipped_layer.crs() != target:
+        raise RuntimeError("Raster clip changed the target CRS unexpectedly")
+    if clipped_layer.width() <= 0 or clipped_layer.height() <= 0:
+        raise RuntimeError("Raster clip returned an empty raster extent")
     registry = QgsApplication.processingRegistry()
     slope_algorithm = "native:slope"
     if registry.algorithmById(slope_algorithm) is None:
@@ -63,11 +70,15 @@ def raster_processing(dem_path, boundary_path, target_crs):
     if registry.algorithmById(slope_algorithm) is None:
         raise RuntimeError("No compatible QGIS slope algorithm is registered")
     slope = processing.run(slope_algorithm, {
-        "INPUT": clipped_layer, "Z_FACTOR": 1, "OUTPUT": "TEMPORARY_OUTPUT",
+        "INPUT": clipped_layer, "Z_FACTOR": z_factor, "OUTPUT": "TEMPORARY_OUTPUT",
     })["OUTPUT"]
     result = QgsRasterLayer(slope, "slope")
     if not result.isValid():
         raise RuntimeError("Slope algorithm returned an invalid raster")
+    if result.crs() != target:
+        raise RuntimeError("Slope output CRS differs from the requested target CRS")
+    if result.width() <= 0 or result.height() <= 0:
+        raise RuntimeError("Slope algorithm returned an empty raster")
     return result
 
 
