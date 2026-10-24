@@ -12,6 +12,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import numpy as np
+
 for qgis_path in ("/usr/share/qgis/python", "/usr/share/qgis/python/plugins"):
     if Path(qgis_path).is_dir() and qgis_path not in sys.path:
         sys.path.append(qgis_path)
@@ -50,7 +52,7 @@ def create_dem(path: Path) -> None:
     band = dataset.GetRasterBand(1)
     band.SetNoDataValue(-9999)
     values = [[float(col + row) for col in range(20)] for row in range(20)]
-    assert band.WriteArray(values) == 0
+    assert band.WriteArray(np.asarray(values, dtype=np.float32)) == 0
     band.FlushCache()
     dataset = None
 
