@@ -347,4 +347,24 @@ try:
     print("PASS: existing-output preservation and explicit overwrite")
     print("PASS: mixed-CRS rejection")
 finally:
-    app.exitQgis()
+    # Release project-owned and local PyQGIS objects while QGIS/GDAL providers
+    # are still initialized. Ubuntu's QGIS 3.40 bindings can segfault during
+    # interpreter shutdown if memory layers/layout items outlive exitQgis().
+    try:
+        QgsProject.instance().clear()
+    finally:
+        import gc
+        for _name in (
+            "style_layer", "points", "reopened", "example_layer", "joined_example",
+            "projected_point", "example_buffer", "plugin_contract", "expression_example",
+            "processing_example", "join_example", "crs_example", "buffer_example",
+            "style_result", "clip_module", "clip_source", "source_features",
+            "boundary_feature", "clip_boundary", "clip_algorithm", "clip_context",
+            "clip_output", "clip_result", "clipped_layer", "project", "gpkg_exporter",
+            "export_manifest", "exported_gpkg", "exported_layer", "gpkg_bytes",
+            "layout", "label", "pdf_exporter", "exported_pdf", "pdf_bytes",
+            "provider", "registered_provider", "plugin", "registry",
+        ):
+            globals().pop(_name, None)
+        gc.collect()
+        app.exitQgis()
