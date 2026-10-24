@@ -16,7 +16,14 @@ def raster_processing(dem_path, boundary_path, target_crs):
         raise ValueError(f"Could not load input raster: {dem_path}")
     if not boundary.isValid():
         raise ValueError(f"Could not load boundary layer: {boundary_path}")
-    target = QgsCoordinateReferenceSystem(str(target_crs))
+    if not dem.crs().isValid():
+        raise ValueError("Input DEM has no valid CRS; assign its true source CRS before warping")
+    if not boundary.crs().isValid():
+        raise ValueError("Boundary layer has no valid CRS; assign its true source CRS before reprojection")
+    target = (
+        target_crs if isinstance(target_crs, QgsCoordinateReferenceSystem)
+        else QgsCoordinateReferenceSystem(str(target_crs))
+    )
     if not target.isValid():
         raise ValueError(f"Invalid target CRS: {target_crs!r}")
     if target.isGeographic():
