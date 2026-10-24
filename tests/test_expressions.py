@@ -97,6 +97,7 @@ def test_batch_buffer_processing_algorithm_declares_safety_contracts():
         "QgsProcessingOutputNumber",
         "os.replace(temporary_path, output_path)",
         "feature-count mismatch",
+        "zero-distance buffers are not meaningful",
         "defaultValue=False",
         '"SUCCEEDED"', '"SKIPPED"', '"FAILED"',
     ):
