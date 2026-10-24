@@ -56,7 +56,8 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
             "Buffers each selected vector layer into its own GeoPackage. "
             "Distance uses the layer's CRS units; choose a suitable projected "
             "CRS when the intended distance is in metres. Existing outputs "
-            "are skipped unless overwrite is explicitly enabled. Each layer "
+            "are skipped unless overwrite is explicitly enabled. Point and line "
+            "inputs require a positive distance. Each layer "
             "is processed independently and the log reports successes/failures."
         )
 
