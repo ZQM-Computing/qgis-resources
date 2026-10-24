@@ -531,7 +531,7 @@ def test_raster_inventory_preserves_rotated_extent_and_band_metadata(tmp_path):
         RasterCount = 1
 
         def GetProjectionRef(self):
-            return 'PROJCS["test"]'
+            return ""
 
         def GetGeoTransform(self, can_return_null=True):
             # x = 100 + 2*col + 3*row; y = 200 + 4*col - 5*row
