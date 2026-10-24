@@ -4,7 +4,7 @@
 
 `scripts/dataset_qa.py` is the first implementation of the repository's read-only inventory and quality-report tool. It inspects supported vector and raster datasets through GDAL/OGR and writes a JSON report plus an optional Markdown summary. It does not repair or rewrite source data.
 
-**Status:** implemented; deterministic report-contract tests and a synthetic GeoPackage/GeoTIFF integration test are added. The runtime test is wired into the QGIS/GDAL workflow, but has not been observed passing on the current PR head. Do not describe this tool as runtime-validated until that run succeeds.
+**Status:** implemented; deterministic report-contract tests and a synthetic GeoPackage/GeoTIFF integration test are included. The QGIS/GDAL runtime workflow is required evidence for runtime-sensitive changes; check the current pull-request head's run before making a validation claim.
 
 ## Requirements
 
@@ -14,7 +14,7 @@ Use a Python interpreter with `osgeo.gdal` and `osgeo.ogr` available. The QGIS P
 python -c "from osgeo import gdal, ogr; print(gdal.VersionInfo('--version'))"
 ```
 
-The script currently recognizes common file-based vector formats (GeoPackage, Shapefile, GeoJSON/JSON, GML, KML, SQLite) and raster formats (GeoTIFF, VRT, IMG, ASCII grid, JP2, NetCDF). Actual driver availability depends on the GDAL build. Directory inputs are searched recursively. Unsupported formats are ignored; recognized files that cannot be opened are reported as errors. The JSON and Markdown report destinations are excluded from discovery, so rerunning an audit against a directory does not ingest its own prior report as a dataset. Before auditing, the CLI rejects output paths that collide with recognized input datasets and rejects identical JSON/Markdown destinations. An existing JSON destination inside the scanned directory is allowed only when its contents match this tool's report signature, preserving safe report reruns without permitting an arbitrary GeoJSON input to be overwritten.
+The script currently recognizes common file-based vector formats (GeoPackage, Shapefile, GeoJSON/JSON, GML, KML, SQLite) and raster formats (GeoTIFF, VRT, IMG, ASCII grid, JP2, NetCDF). Actual driver availability depends on the GDAL build. Directory inputs are searched recursively. Unsupported files encountered during directory scans are ignored; an explicitly supplied unsupported file is reported as an error. Recognized datasets that cannot be opened are reported as errors. An empty scan is also reported as an error so a misspelled or wrongly scoped input cannot appear to pass. The JSON and Markdown report destinations are excluded from discovery, so rerunning an audit against a directory does not ingest its own prior report as a dataset. Before auditing, the CLI rejects output paths that collide with recognized input datasets and rejects identical JSON/Markdown destinations. An existing JSON destination inside the scanned directory is allowed only when its contents match this tool's report signature, preserving safe report reruns without permitting an arbitrary GeoJSON input to be overwritten.
 
 ## Usage
 
@@ -52,9 +52,9 @@ Exit status:
 - Missing CRS (error), configured CRS mismatch (warning), empty layer (warning).
 - Configured required fields (error).
 - Configured candidate identifier fields: null/blank and duplicate occurrences (warnings).
-- Missing/empty geometry and provider-reported invalid geometry (warnings), unless geometry validity checks are disabled.
+- Missing/empty geometry and provider-reported invalid geometry (warnings), unless geometry validity checks are disabled. Each layer's `geometry_checks` metadata explicitly reports `enabled` plus a status of `enabled` or `disabled_by_option`, so skipped checks are not mistaken for successful checks.
 
-The identifier check treats the first configured identifier field present on a layer as the candidate key. A uniqueness rule is not inferred automatically. It does not test domain-specific uniqueness or normalize values.
+The identifier check treats the first configured identifier field present on a layer as the candidate key. Each layer's `identifier_check` inventory object records whether the check was configured, whether a field was found, the selected field, and null/blank and duplicate-occurrence counts. Findings identify the selected field explicitly. A uniqueness rule is not inferred automatically; the check does not test domain-specific uniqueness or normalize values. If no candidate field exists, the report distinguishes that from a configured check with no findings.
 
 ### Raster datasets
 
