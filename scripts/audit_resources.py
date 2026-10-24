@@ -58,6 +58,8 @@ def audit_python() -> list[str]:
             for child in ast.iter_child_nodes(parent):
                 child.parent = parent
         for node in ast.walk(tree):
+            if path.resolve() == Path(__file__).resolve():
+                break
             if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
                 continue
             parent = getattr(node, "parent", None)
