@@ -1,5 +1,6 @@
 """Static repository contracts; QGIS runtime behavior needs a QGIS-enabled test job."""
 import ast
+import importlib.util
 import json
 from pathlib import Path
 
@@ -155,3 +156,21 @@ def test_file_exports_stage_validate_and_protect_existing_outputs():
     assert "os.replace(staged_path, output_path)" in batch
     assert "CRS mismatch" in batch
     assert "finally:" in batch and "staged_path.unlink" in batch
+
+
+def test_documentation_link_checker_handles_fragments_and_rejects_escape(tmp_path):
+    checker_path = REPO_ROOT / "scripts" / "check_docs.py"
+    spec = importlib.util.spec_from_file_location("zqm_check_docs", checker_path)
+    assert spec is not None and spec.loader is not None
+    checker = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(checker)
+
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "guide.md").write_text("# Guide\\n", encoding="utf-8")
+    (tmp_path / "docs" / "index.md").write_text(
+        "[Guide](guide.md#section)\\n[Escape](../../outside.md)\\n", encoding="utf-8"
+    )
+    (tmp_path.parent / "outside.md").write_text("# Outside\\n", encoding="utf-8")
+    issues = checker.check_links(tmp_path)
+    assert len(issues) == 1 and "Escape" in issues[0]
+    assert "Guide" not in " ".join(issues)
