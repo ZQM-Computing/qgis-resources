@@ -257,3 +257,18 @@ def test_existing_geojson_input_is_not_mistaken_for_prior_report(tmp_path):
         assert "matches an input dataset" in str(exc)
     else:
         raise AssertionError("GeoJSON input collision was not rejected")
+
+def test_cli_rejects_missing_input_paths_before_audit_or_report_creation(tmp_path, monkeypatch):
+    missing = tmp_path / "does-not-exist.gpkg"
+    output = tmp_path / "report.json"
+    monkeypatch.setattr(qa, "audit_paths", lambda *args, **kwargs: (_ for _ in ()).throw(
+        AssertionError("audit must not run when an input path is missing")
+    ))
+    try:
+        qa.main([str(missing), "--json", str(output)])
+    except SystemExit as exc:
+        assert exc.code == 2
+    else:
+        raise AssertionError("CLI accepted a missing input path")
+    assert not output.exists()
+
