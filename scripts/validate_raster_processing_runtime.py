@@ -142,9 +142,21 @@ def main() -> None:
             boundary_before = boundary_path.read_bytes()
 
             print("STAGE: starting reprojection/clip/slope workflow", flush=True)
-            result = raster_module.raster_processing(
-                str(dem_path), str(boundary_path), "EPSG:32618", z_factor=1.0
-            )
+            original_processing_run = raster_module.processing.run
+
+            def traced_processing_run(algorithm, parameters, *args, **kwargs):
+                print(f"PROCESSING START: {algorithm}", flush=True)
+                child_result = original_processing_run(algorithm, parameters, *args, **kwargs)
+                print(f"PROCESSING END: {algorithm}", flush=True)
+                return child_result
+
+            raster_module.processing.run = traced_processing_run
+            try:
+                result = raster_module.raster_processing(
+                    str(dem_path), str(boundary_path), "EPSG:32618", z_factor=1.0
+                )
+            finally:
+                raster_module.processing.run = original_processing_run
             print("STAGE: reprojection/clip/slope workflow returned", flush=True)
             print("STAGE: checking result validity", flush=True)
             assert result.isValid(), "Raster workflow returned an invalid slope raster"
