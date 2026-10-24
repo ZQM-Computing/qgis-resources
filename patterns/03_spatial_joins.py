@@ -13,6 +13,8 @@ def spatial_join(points_path, polygons_path, predicate="within"):
     predicates = {"intersects": 0, "within": 6}
     if predicate not in predicates:
         raise ValueError(f"Unsupported predicate {predicate!r}; choose {sorted(predicates)}")
+    if not points.crs().isValid() or not polygons.crs().isValid():
+        raise ValueError("Both input layers must have valid coordinate reference systems")
     if points.crs() != polygons.crs():
         raise ValueError("Input layers must share a CRS; reproject one before joining")
     result = processing.run("native:joinattributesbylocation", {
@@ -22,6 +24,8 @@ def spatial_join(points_path, polygons_path, predicate="within"):
     })["OUTPUT"]
     if not result.isValid():
         raise RuntimeError("Spatial join returned an invalid layer")
+    if result.fields().count() < points.fields().count():
+        raise RuntimeError("Spatial join unexpectedly removed input fields")
     return result
 
 
