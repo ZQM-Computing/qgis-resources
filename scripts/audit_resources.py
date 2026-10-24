@@ -141,7 +141,7 @@ def audit_existing_pyqgis_contracts() -> list[str]:
         "pyqgis/batch_export_to_geopackage.py": ("FileExistsError", "writeAsVectorFormatV3", "NoError", "exported", "CRS mismatch", "Geometry type mismatch"),
         "pyqgis/export_layout_pdf.py": ("layoutByName", "exportToPdf", "temporary.stat().st_size", "pdf_file.read(5)", "os.replace(temporary, destination)"),
         "patterns/01_vector_analysis.py": ("native:buffer", "native:dissolve", "area", "math.isfinite", "already exists"),
-        "patterns/02_raster_processing.py": ("gdal:warpreproject", "cliprasterbymasklayer", "target.isValid()", "dem.crs().isValid()", "boundary.crs().isValid()"),
+        "patterns/02_raster_processing.py": ("gdal:warpreproject", "cliprasterbymasklayer", "target.isValid()", "dem.crs().isValid()", "boundary.crs().isValid()", "projected_boundary_layer = (", "projected_boundary_layer.crs() != target", "math.isfinite(z_factor)", "clipped_layer.width() <= 0", "result.width() <= 0"),
         "patterns/03_spatial_joins.py": ("native:joinattributesbylocation", "points.crs() != polygons.crs()"),
         "patterns/04_crs_transforms.py": ("native:reprojectlayer", "result.crs() != target"),
         "patterns/05_batch_processing.py": ("math.isfinite", "input_paths = sorted", "overwrite"),
