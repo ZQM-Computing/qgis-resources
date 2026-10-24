@@ -236,6 +236,13 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
                 check = QgsVectorLayer(str(temporary_path), options.layerName, "ogr")
                 if not check.isValid():
                     raise RuntimeError("written GeoPackage cannot be reopened")
+                if check.crs() != layer.crs():
+                    raise RuntimeError(
+                        f"written CRS mismatch: expected={layer.crs().authid()}, "
+                        f"actual={check.crs().authid()}"
+                    )
+                if QgsWkbTypes.geometryType(check.wkbType()) != QgsWkbTypes.PolygonGeometry:
+                    raise RuntimeError("written output geometry type is not polygonal")
                 if check.featureCount() != layer.featureCount():
                     raise RuntimeError(
                         f"written feature-count mismatch: expected={layer.featureCount()}, "
