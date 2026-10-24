@@ -111,7 +111,12 @@ def _audit_vector(path: Path, display_path: str, gdal: Any, ogr: Any,
                 dataset=display_path, layer=name,
                 evidence={"actual": crs, "expected": expected_crs},
                 remediation="Confirm the intended analysis CRS and transform a copy if required."))
-        if feature_count == 0:
+        if feature_count < 0:
+            findings.append(finding("VECTOR_FEATURE_COUNT_UNKNOWN", "info",
+                "Provider did not return a reliable feature count; the audit still streams features for configured checks.",
+                dataset=display_path, layer=name,
+                remediation="If a count is required for acceptance, compute it with a provider-supported count operation and record the method."))
+        elif feature_count == 0:
             findings.append(finding("VECTOR_LAYER_EMPTY", "warning",
                 "Vector layer contains no features.", dataset=display_path, layer=name,
                 remediation="Confirm that the source is expected to be empty and review upstream filters or exports."))
@@ -121,7 +126,13 @@ def _audit_vector(path: Path, display_path: str, gdal: Any, ogr: Any,
                     f"Required field {required!r} is missing.", dataset=display_path, layer=name,
                     evidence={"required_field": required, "available_fields": [f["name"] for f in fields]},
                     remediation="Correct the schema or update the audit configuration to the authoritative field name."))
-        selected_ids = [f for f in id_fields if f.casefold() in field_names]
+        # Resolve configured names to provider field indexes once. OGR field lookup
+        # is not consistently case-insensitive across drivers.
+        field_index_by_name = {field["name"].casefold(): index for index, field in enumerate(fields)}
+        selected_ids = [
+            (configured, field_index_by_name[configured.casefold()])
+            for configured in id_fields if configured.casefold() in field_index_by_name
+        ]
         if id_fields and not selected_ids:
             findings.append(finding("VECTOR_ID_FIELD_MISSING", "warning",
                 "None of the configured identifier fields exists on this layer.",
@@ -129,20 +140,24 @@ def _audit_vector(path: Path, display_path: str, gdal: Any, ogr: Any,
                 evidence={"configured_fields": id_fields},
                 remediation="Configure the identifier field used by this layer or accept that uniqueness was not checked."))
         layer.ResetReading()
-        seen: set[str] = set()
+        seen: set[tuple[str, str]] = set()
         null_ids = 0
         duplicate_ids = 0
         empty_geometries = 0
         invalid_geometries = 0
+        unchecked_geometries = 0
         checked_geometries = 0
         for feature in layer:
             if selected_ids:
-                id_name = next((f for f in selected_ids if feature.GetFieldIndex(f) >= 0), None)
-                value = feature.GetField(id_name) if id_name else None
+                # Use the first configured candidate present on this layer.
+                id_name, id_index = selected_ids[0]
+                value = feature.GetField(id_index)
                 if value is None or (isinstance(value, str) and not value.strip()):
                     null_ids += 1
                 else:
-                    key = str(value)
+                    # Preserve type identity: integer 1 and string "1" are not
+                    # silently treated as the same identifier.
+                    key = (type(value).__name__, str(value))
                     if key in seen:
                         duplicate_ids += 1
                     else:
@@ -152,15 +167,18 @@ def _audit_vector(path: Path, display_path: str, gdal: Any, ogr: Any,
                 if geometry is None or geometry.IsEmpty():
                     empty_geometries += 1
                 else:
-                    checked_geometries += 1
                     try:
-                        if not geometry.IsValid():
-                            invalid_geometries += 1
+                        is_valid = geometry.IsValid()
                     except Exception:
-                        # Some provider geometry implementations cannot report validity.
-                        pass
+                        unchecked_geometries += 1
+                    else:
+                        checked_geometries += 1
+                        if not is_valid:
+                            invalid_geometries += 1
         layer_info["geometry_checks"] = {
+            "enabled": check_geometry,
             "checked_nonempty": checked_geometries,
+            "unchecked_validity": unchecked_geometries,
             "empty": empty_geometries,
             "invalid": invalid_geometries,
         }
