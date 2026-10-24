@@ -179,12 +179,26 @@ def main() -> None:
             projection = osr.SpatialReference()
             assert projection.ImportFromWkt(output.GetProjectionRef()) == 0
             assert projection.GetAuthorityCode(None) == "32618"
-            print("STAGE: reading slope output band", flush=True)
+            print("STAGE: getting slope output band", flush=True)
             band = output.GetRasterBand(1)
-            array = band.ReadAsArray()
+            assert band is not None, "Slope output has no readable first band"
             nodata = band.GetNoDataValue()
+            print("STAGE: reading slope output bytes", flush=True)
+            # Avoid GDAL's ReadAsArray NumPy bridge in the runtime harness. Some
+            # distro GDAL/NumPy combinations crash in that bridge even when the
+            # raster itself is readable. ReadRaster returns a byte buffer, which
+            # NumPy can interpret without invoking GDAL's array-conversion code.
+            raw = band.ReadRaster(
+                0, 0, output.RasterXSize, output.RasterYSize,
+                buf_type=gdal.GDT_Float32,
+            )
+            assert raw is not None, "GDAL could not read slope output pixels"
+            print(f"STAGE: slope output bytes read ({len(raw)} bytes)", flush=True)
+            array = np.frombuffer(raw, dtype=np.float32).reshape(
+                output.RasterYSize, output.RasterXSize
+            )
             values = [
-                float(value) for row in array for value in row
+                float(value) for value in array.flat
                 if math.isfinite(float(value)) and (nodata is None or float(value) != nodata)
             ]
             assert values, "Slope output has no finite non-nodata cells"
