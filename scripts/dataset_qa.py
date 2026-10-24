@@ -354,7 +354,7 @@ def audit_paths(paths: list[Path], *, root: Path, required_fields: list[str] | N
             unreadable.append(display)
             all_findings.append(finding("DATASET_READ_FAILED", "error",
                 "GDAL/OGR raised an error while inspecting this dataset.",
-                dataset=display, evidence={"error_type": type(exc).__name__, "message": str(exc)},
+                dataset=display, evidence={"error_type": type(exc).__name__},
                 remediation="Check dataset integrity, provider support, file permissions, and sidecar files."))
             continue
         if result is None:
