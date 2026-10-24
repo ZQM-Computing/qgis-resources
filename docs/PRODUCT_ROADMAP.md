@@ -9,6 +9,7 @@ This repository should help GIS analysts and geospatial developers inspect, prep
 The repository has useful building blocks: expression recipes, vector and raster patterns, CRS transformations, spatial joins, batch processing, QML styles, PyQGIS exporters, QField guidance, worked examples, and an initial Processing plugin.
 
 The main gaps are integration and evidence:
+
 - Many resources are isolated examples rather than complete, reproducible workflows.
 - Static checks cannot establish that QGIS algorithms produce correct spatial results.
 - The plugin currently offers a narrow batch-buffer operation rather than a cohesive data-preparation toolkit.
@@ -47,6 +48,7 @@ This is a working assessment, not a claim that every existing resource is defect
 The first CLI increment exists at `scripts/dataset_qa.py`; its usage and current limits are documented in [DATASET_QA.md](DATASET_QA.md). It inventories supported vector and raster inputs through GDAL/OGR and emits JSON plus an optional Markdown report. Report-contract tests cover stable findings, sorting, summaries, Markdown rendering, non-finite metadata, and undefined CRS placeholders. A synthetic GeoPackage/GeoTIFF runtime test is wired into the QGIS workflow; the run has not yet been observed on the current PR head.
 
 Initial checks:
+
 - Dataset/layer discovery, file format, and size.
 - Vector geometry type, feature count, CRS, field names/types, empty or invalid geometries, and duplicate/null identifiers when configured.
 - Raster dimensions, band count, CRS, resolution, extent, and nodata metadata.
@@ -60,6 +62,7 @@ The default audit must not modify source data or silently assign a CRS, repair g
 ### P2 — Integrate a reproducible preparation workflow
 
 Build on existing scripts rather than rewriting them wholesale. Support explicit configuration for:
+
 1. Discovering inputs.
 2. Validating preconditions.
 3. Reprojecting to a user-selected CRS.
@@ -75,6 +78,7 @@ Where available, the manifest records repository/tool version, QGIS/GDAL version
 ### P3 — Expand the Processing plugin around repeated work
 
 Prioritize:
+
 1. Dataset inventory and validation.
 2. Batch reproject and export.
 3. Geometry and attribute QA.
@@ -90,6 +94,7 @@ Each algorithm must define parameters, supported geometry types, CRS behavior, u
 ### P4 — Ship one complete reference project
 
 Use synthetic data to demonstrate an end-to-end watershed or land-cover assessment:
+
 - Study boundary, land-cover polygons, sample observations, and a small synthetic elevation raster.
 - A QGIS project and explicit processing configuration.
 - Expected output layers and a print layout.
@@ -116,6 +121,7 @@ Use synthetic data to demonstrate an end-to-end watershed or land-cover assessme
 ## Definition of done for any new resource
 
 A resource is not complete merely because its file exists or parses. It should include:
+
 - The problem it solves and when not to use it.
 - Supported QGIS/Python/GDAL versions or explicit assumptions.
 - Inputs, parameters, outputs, schema, and failure behavior.

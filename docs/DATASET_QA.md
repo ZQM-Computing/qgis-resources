@@ -39,6 +39,7 @@ python scripts/dataset_qa.py parcels.gpkg elevation.tif \
 ```
 
 Exit status:
+
 - `0`: no errors found.
 - `1`: errors found, or warnings found when `--fail-on-warning` is set.
 - `2`: command-line/configuration error (including missing GDAL bindings).
@@ -46,6 +47,7 @@ Exit status:
 ## Checks currently implemented
 
 ### Vector layers
+
 - Driver, file size, layer name, geometry type, feature count, CRS, and field names/types.
 - Missing CRS (error), configured CRS mismatch (warning), empty layer (warning).
 - Configured required fields (error).
@@ -55,6 +57,7 @@ Exit status:
 The identifier check treats the first configured identifier field present on a layer as the candidate key. A uniqueness rule is not inferred automatically. It does not test domain-specific uniqueness or normalize values.
 
 ### Raster datasets
+
 - Driver, file size, dimensions, band count, CRS, affine geotransform, extent, pixel resolution (including rotated-grid pixel-vector magnitudes), and per-band data type, nodata, scale, offset, and block size.
 - Missing CRS or nonpositive dimensions/band count (errors).
 - Missing geotransform and configured CRS mismatch (warnings).

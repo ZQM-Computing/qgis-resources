@@ -7,6 +7,7 @@ This document defines expected behavior for geospatial tools. It guides implemen
 Validate actual input objects and declared assumptions before processing.
 
 ### Vector inputs
+
 - Layer exists, is valid, and has a usable provider.
 - Geometry type is supported by the selected algorithm.
 - CRS is valid when the operation requires coordinate interpretation or measurement.
@@ -15,6 +16,7 @@ Validate actual input objects and declared assumptions before processing.
 - Multi-layer operations declare whether mixed CRSs are supported and how they are normalized.
 
 ### Raster inputs
+
 - Dataset opens and has at least one usable band.
 - CRS, extent, dimensions, resolution, and nodata metadata are inspected.
 - Algorithms requiring a projected CRS reject unsuitable inputs or explicitly reproject them.
@@ -37,6 +39,7 @@ Never infer a CRS from coordinate values. Assigning a CRS labels existing coordi
 ## 3. Spatial semantics
 
 Every algorithm should document:
+
 - CRS of inputs and outputs.
 - Units used for distances, areas, buffers, elevations, and thresholds.
 - Whether operations are planar or geodesic.
@@ -62,6 +65,7 @@ A projected CRS alone does not guarantee that it is appropriate for every measur
 Use small synthetic datasets with known answers. Avoid external downloads for the core test suite.
 
 Minimum test classes:
+
 1. Happy path with known feature/raster result.
 2. Empty input or no spatial overlap.
 3. Invalid/missing CRS.
@@ -86,6 +90,7 @@ Report each layer separately. Static CI success is not runtime or production val
 ## 7. Run manifest
 
 For multi-step workflows, record where practical:
+
 - Tool/repository version and run identifier.
 - QGIS, GDAL, and relevant provider versions.
 - Parameters and target CRS.

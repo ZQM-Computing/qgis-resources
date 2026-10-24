@@ -26,6 +26,9 @@ from qgis.core import (  # noqa: E402
     QgsProcessingContext,
     QgsProcessingFeedback,
     QgsPrintLayout,
+    QgsLayoutItemLabel,
+    QgsLayoutPoint,
+    QgsLayoutSize,
     QgsProject,
     QgsVectorFileWriter,
     QgsVectorLayer,
@@ -236,6 +239,104 @@ try:
         assert result["SUCCEEDED"] == 1 and result["FAILED"] == 1
         assert (mixed_dir / "runtime_points_buffer.gpkg").is_file()
         assert not (mixed_dir / "different_crs_buffer.gpkg").exists()
+
+        # Execute the actual clip/reproject Processing algorithm against synthetic geographic data.
+        clip_module = load_module("patterns/clip_and_reproject.py", "zqm_clip_and_reproject")
+        clip_source = QgsVectorLayer("Point?crs=EPSG:4326", "clip_source", "memory")
+        assert clip_source.isValid()
+        assert clip_source.dataProvider().addAttributes([QgsFieldCompat("asset_id", QVariant.String)])[0]
+        clip_source.updateFields()
+        source_features = []
+        for asset_id, x, y in [
+            ("inside", -81.0, 28.5),
+            ("outside", -80.0, 28.5),
+        ]:
+            feature = QgsFeature(clip_source.fields())
+            feature.setAttribute("asset_id", asset_id)
+            feature.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+            source_features.append(feature)
+        assert clip_source.dataProvider().addFeatures(source_features)[0]
+        clip_source.updateExtents()
+
+        clip_boundary = QgsVectorLayer("Polygon?crs=EPSG:4326", "clip_boundary", "memory")
+        assert clip_boundary.isValid()
+        boundary_feature = QgsFeature(clip_boundary.fields())
+        boundary_feature.setGeometry(QgsGeometry.fromWkt(
+            "POLYGON((-81.5 28,-80.5 28,-80.5 29,-81.5 29,-81.5 28))"
+        ))
+        assert clip_boundary.dataProvider().addFeatures([boundary_feature])[0]
+        clip_boundary.updateExtents()
+
+        clip_algorithm = clip_module.ClipAndReprojectAlgorithm()
+        clip_algorithm.initAlgorithm()
+        clip_context = QgsProcessingContext()
+        clip_context.setProject(QgsProject.instance())
+        clip_output = root / "clip_and_reproject.gpkg"
+        clip_result = clip_algorithm.processAlgorithm(
+            {
+                "INPUT": clip_source,
+                "BOUNDARY": clip_boundary,
+                "TARGET_CRS": QgsCoordinateReferenceSystem("EPSG:32617"),
+                "OUTPUT": str(clip_output),
+            },
+            clip_context,
+            QgsProcessingFeedback(),
+        )
+        assert clip_output.is_file() and clip_output.stat().st_size > 0, clip_result
+        clipped_layer = QgsVectorLayer(str(clip_output), "clip_runtime_check", "ogr")
+        assert clipped_layer.isValid(), "Clip/reproject output did not reopen"
+        assert clipped_layer.crs().authid() == "EPSG:32617", clipped_layer.crs().authid()
+        assert clipped_layer.featureCount() == 1, (
+            f"Clip/reproject should retain only the inside point; got {clipped_layer.featureCount()}"
+        )
+        assert next(clipped_layer.getFeatures())["asset_id"] == "inside"
+
+        # Exercise both file exporters and verify overwrite refusal preserves existing bytes.
+        project = QgsProject.instance()
+        project.clear()
+        project.addMapLayer(points, False)
+        gpkg_exporter = load_module(
+            "pyqgis/batch_export_to_geopackage.py", "zqm_gpkg_exporter_runtime"
+        )
+        exported_gpkg = root / "project_export.gpkg"
+        export_manifest = gpkg_exporter.export_project_layers(str(exported_gpkg))
+        assert len(export_manifest) == 1 and exported_gpkg.is_file()
+        exported_layer = QgsVectorLayer(
+            f"{exported_gpkg}|layername={export_manifest[0]['output_layer']}",
+            "export_runtime_check",
+            "ogr",
+        )
+        assert exported_layer.isValid() and exported_layer.featureCount() == points.featureCount()
+        gpkg_bytes = exported_gpkg.read_bytes()
+        try:
+            gpkg_exporter.export_project_layers(str(exported_gpkg))
+        except FileExistsError:
+            assert exported_gpkg.read_bytes() == gpkg_bytes
+        else:
+            raise AssertionError("GeoPackage exporter overwrote an existing file without consent")
+
+        layout = QgsPrintLayout(project)
+        layout.initializeDefaults()
+        layout.setName("Runtime Export Layout")
+        label = QgsLayoutItemLabel(layout)
+        label.setText("ZQM QGIS runtime export validation")
+        layout.addLayoutItem(label)
+        label.attemptMove(QgsLayoutPoint(10, 10))
+        label.attemptResize(QgsLayoutSize(100, 20))
+        assert project.layoutManager().addLayout(layout)
+        pdf_exporter = load_module(
+            "pyqgis/export_layout_pdf.py", "zqm_pdf_exporter_runtime"
+        )
+        exported_pdf = root / "runtime_layout.pdf"
+        pdf_exporter.export_layout_pdf(layout.name(), str(exported_pdf), dpi=150)
+        assert exported_pdf.is_file() and exported_pdf.read_bytes().startswith(b"%PDF-")
+        pdf_bytes = exported_pdf.read_bytes()
+        try:
+            pdf_exporter.export_layout_pdf(layout.name(), str(exported_pdf), dpi=150)
+        except FileExistsError:
+            assert exported_pdf.read_bytes() == pdf_bytes
+        else:
+            raise AssertionError("PDF exporter overwrote an existing file without consent")
 
     print("PASS: provider registration, algorithm discovery and plugin init/unload lifecycle")
     print("PASS: existing parcels and flood-zone QML styles load in QGIS")
