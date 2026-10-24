@@ -146,15 +146,20 @@ def main() -> None:
                 str(dem_path), str(boundary_path), "EPSG:32618", z_factor=1.0
             )
             print("STAGE: reprojection/clip/slope workflow returned", flush=True)
+            print("STAGE: checking result validity", flush=True)
             assert result.isValid(), "Raster workflow returned an invalid slope raster"
+            print("STAGE: result validity passed", flush=True)
             target = QgsCoordinateReferenceSystem("EPSG:32618")
             assert result.crs() == target, f"Unexpected slope CRS: {result.crs().authid()}"
+            print("STAGE: result CRS passed", flush=True)
             assert result.width() > 0 and result.height() > 0
             assert result.width() < 30 and result.height() < 30, (
                 "Clipping did not reduce the synthetic raster to the boundary"
             )
 
+            print("STAGE: opening slope output with GDAL", flush=True)
             output = gdal.Open(result.source(), gdal.GA_ReadOnly)
+            print("STAGE: slope output opened with GDAL", flush=True)
             assert output is not None, f"Could not reopen slope output: {result.source()}"
             assert output.RasterXSize == result.width()
             assert output.RasterYSize == result.height()
@@ -162,6 +167,7 @@ def main() -> None:
             projection = osr.SpatialReference()
             assert projection.ImportFromWkt(output.GetProjectionRef()) == 0
             assert projection.GetAuthorityCode(None) == "32618"
+            print("STAGE: reading slope output band", flush=True)
             band = output.GetRasterBand(1)
             array = band.ReadAsArray()
             nodata = band.GetNoDataValue()
