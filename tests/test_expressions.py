@@ -78,7 +78,7 @@ def test_core_patterns_document_runtime_and_crs_contracts():
         "02_raster_processing.py": ("target_crs", "gdal:warpreproject"),
         "03_spatial_joins.py": ("predicate", "points.crs()"),
         "04_crs_transforms.py": ("QgsCoordinateReferenceSystem", "target.isValid()"),
-        "05_batch_processing.py": ("Path(folder)", "native:buffer"),
+        "05_batch_processing.py": ("Path(folder)", "native:buffer", "math.isfinite", "input_paths = sorted"),
         "06_plugin_development.py": ("initGui", "unload"),
     }
     for filename, markers in expected.items():
