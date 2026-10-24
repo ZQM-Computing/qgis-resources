@@ -107,6 +107,15 @@ try:
                 f"QGIS algorithm failed: {exc}\nFeedback details:\n{details}"
             ) from exc
 
+    # Load existing QML resources into live QGIS layers, not only an XML parser.
+    style_layer = QgsVectorLayer("Polygon?crs=EPSG:3857", "style_smoke_test", "memory")
+    assert style_layer.isValid(), "Could not create polygon layer for QML test"
+    for style_name in ("parcels.qml", "flood_zones.qml"):
+        style_path = PLUGIN_PARENT / "styles" / style_name
+        message, loaded = style_layer.loadNamedStyle(str(style_path))
+        assert loaded, f"QGIS could not load {style_name}: {message}"
+        assert style_layer.renderer() is not None, f"{style_name} produced no renderer"
+
     with tempfile.TemporaryDirectory(prefix="zqm-qgis-runtime-") as temp:
         root = Path(temp)
         output_dir = root / "outputs"
@@ -149,7 +158,7 @@ try:
         assert (mixed_dir / "runtime_points_buffer.gpkg").is_file()
         assert not (mixed_dir / "different_crs_buffer.gpkg").exists()
 
-    print("PASS: provider registration and algorithm discovery")
+    print("PASS: provider registration and algorithm discovery")\n    print("PASS: existing parcels and flood-zone QML styles load in QGIS")
     print("PASS: buffer execution, GeoPackage write/reopen, feature count and CRS")
     print("PASS: existing-output preservation and explicit overwrite")
     print("PASS: mixed-CRS rejection")
