@@ -186,3 +186,26 @@ def test_documentation_link_checker_handles_fragments_and_rejects_escape(tmp_pat
     issues = checker.check_links(tmp_path)
     assert len(issues) == 1 and "Escape" in issues[0]
     assert "Guide" not in " ".join(issues)
+
+
+def test_geospatial_portfolio_links_use_current_canonical_names():
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    assert "https://github.com/ZQM-Computing/geospatial-cookbooks" in readme
+    legacy_slugs = (
+        "geospatial-patterns",
+        "postgis-patterns",
+        "duckdb-spatial-patterns",
+        "pgrouting-patterns",
+        "geopandas-patterns",
+        "gdal-patterns",
+        "stac-patterns",
+        "maplibre-patterns",
+        "cog-patterns",
+        "geoparquet-patterns",
+        "h3-patterns",
+        "ollama-fleet-patterns",
+    )
+    for slug in legacy_slugs:
+        assert f"github.com/ZQM-Computing/{slug}" not in readme, (
+            f"README still points at renamed repository {slug}"
+        )
