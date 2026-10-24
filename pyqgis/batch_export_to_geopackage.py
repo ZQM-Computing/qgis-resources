@@ -63,7 +63,8 @@ def export_project_layers(output_path: str, overwrite: bool = False) -> list:
             raise RuntimeError("Staged GeoPackage is missing or empty")
         # Verify every intended layer can be reopened before publication.
         for item in exported:
-            check = QgsVectorLayer(f"{staged}|layername={item[\"output_layer\"]}", item["output_layer"], "ogr")
+            layer_uri = str(staged) + "|layername=" + item["output_layer"]
+            check = QgsVectorLayer(layer_uri, item["output_layer"], "ogr")
             if not check.isValid():
                 raise RuntimeError(f"Staged layer failed to reopen: {item[\"output_layer\"]}")
             source = next(layer for layer in vector_layers if layer.name() == item["source_layer"])
