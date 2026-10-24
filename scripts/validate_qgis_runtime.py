@@ -66,9 +66,9 @@ try:
         layer.updateExtents()
         return layer
 
-    def QgsFieldCompat(name):
+    def QgsFieldCompat(name, field_type=QVariant.Int):
         from qgis.core import QgsField
-        return QgsField(name, QVariant.Int)
+        return QgsField(name, field_type)
 
     class DiagnosticFeedback(QgsProcessingFeedback):
         """Keep provider diagnostics visible when an algorithm raises."""
