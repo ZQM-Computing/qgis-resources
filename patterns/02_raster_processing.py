@@ -7,6 +7,7 @@ import math
 import processing
 from qgis.core import (
     QgsApplication, QgsCoordinateReferenceSystem, QgsRasterLayer, QgsVectorLayer,
+    QgsWkbTypes,
 )
 
 
@@ -21,13 +22,17 @@ def raster_processing(dem_path, boundary_path, target_crs, z_factor=1.0):
         raise ValueError("Input DEM has no valid CRS; assign its true source CRS before warping")
     if not boundary.crs().isValid():
         raise ValueError("Boundary layer has no valid CRS; assign its true source CRS before reprojection")
+    if QgsWkbTypes.geometryType(boundary.wkbType()) != QgsWkbTypes.PolygonGeometry:
+        raise ValueError("Boundary layer must contain polygon or multipolygon geometry")
+    if boundary.featureCount() <= 0:
+        raise ValueError("Boundary layer contains no features; clipping would not produce a meaningful raster")
     target = (
         target_crs if isinstance(target_crs, QgsCoordinateReferenceSystem)
         else QgsCoordinateReferenceSystem(str(target_crs))
     )
     if not target.isValid():
         raise ValueError(f"Invalid target CRS: {target_crs!r}")
-    if not isinstance(z_factor, (int, float)) or not math.isfinite(z_factor) or z_factor <= 0:
+    if isinstance(z_factor, bool) or not isinstance(z_factor, (int, float)) or not math.isfinite(z_factor) or z_factor <= 0:
         raise ValueError("z_factor must be a finite, positive number matching the DEM vertical/horizontal unit ratio")
     if target.isGeographic():
         raise ValueError(
@@ -41,6 +46,8 @@ def raster_processing(dem_path, boundary_path, target_crs, z_factor=1.0):
     projected_layer = QgsRasterLayer(projected, "projected_dem")
     if not projected_layer.isValid() or projected_layer.crs() != target:
         raise RuntimeError("DEM reprojection did not produce a valid raster in the target CRS")
+    if projected_layer.bandCount() < 1:
+        raise RuntimeError("DEM reprojection returned a raster with no bands")
     projected_boundary = processing.run("native:reprojectlayer", {
         "INPUT": boundary, "TARGET_CRS": target, "OUTPUT": "TEMPORARY_OUTPUT",
     })["OUTPUT"]
@@ -61,8 +68,8 @@ def raster_processing(dem_path, boundary_path, target_crs, z_factor=1.0):
         raise RuntimeError("Raster clip returned an invalid raster")
     if clipped_layer.crs() != target:
         raise RuntimeError("Raster clip changed the target CRS unexpectedly")
-    if clipped_layer.width() <= 0 or clipped_layer.height() <= 0:
-        raise RuntimeError("Raster clip returned an empty raster extent")
+    if clipped_layer.width() <= 0 or clipped_layer.height() <= 0 or clipped_layer.bandCount() < 1:
+        raise RuntimeError("Raster clip returned an empty raster extent or no data bands")
     registry = QgsApplication.processingRegistry()
     slope_algorithm = "native:slope"
     if registry.algorithmById(slope_algorithm) is None:
@@ -77,8 +84,8 @@ def raster_processing(dem_path, boundary_path, target_crs, z_factor=1.0):
         raise RuntimeError("Slope algorithm returned an invalid raster")
     if result.crs() != target:
         raise RuntimeError("Slope output CRS differs from the requested target CRS")
-    if result.width() <= 0 or result.height() <= 0:
-        raise RuntimeError("Slope algorithm returned an empty raster")
+    if result.width() <= 0 or result.height() <= 0 or result.bandCount() < 1:
+        raise RuntimeError("Slope algorithm returned an empty raster or no data bands")
     return result
 
 
