@@ -54,7 +54,7 @@ Coordinate transformations change coordinates; CRS assignment does not. Area, di
 
 - **Static checks:** Python syntax, notebook structure and cell parsing, QML structure, empty/placeholder implementation checks, existing-script contracts, and internal Markdown links.
 - **Unit tests:** repository contracts and deterministic checks that do not require QGIS.
-- **QGIS runtime:** the QGIS-enabled workflow executes synthetic examples, checks file-backed vector/join/CRS/batch patterns, loads existing QML styles, and exercises the packaged batch-buffer algorithm. Raster processing and GUI-driven plugin interactions still require dedicated representative-data/manual checks. A green static workflow does not imply complete production validation.
+- **QGIS runtime:** the QGIS-enabled workflow executes the expression and synthetic examples, checks file-backed vector/join/CRS/batch patterns, runs clip/reproject, loads existing QML styles, and exercises the packaged batch-buffer algorithm. Raster processing and GUI-driven plugin interactions still require dedicated representative-data/manual checks. A green static workflow does not imply complete production validation.
 
 ## Contributing
 
