@@ -52,5 +52,7 @@ jobs:
               ET.parse(path)
               print(f"OK {path}")
           PY
+      - name: Install test runner
+        run: python -m pip install --disable-pip-version-check pytest
       - name: Run expression resource tests
-        run: python -m unittest discover -s tests -v
+        run: python -m pytest -q
