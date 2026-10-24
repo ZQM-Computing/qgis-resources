@@ -31,6 +31,7 @@ def export_layout_pdf(layout_name: str, output_path: str, dpi: int = 300, overwr
     temporary = destination.with_name(f".{destination.stem}.tmp{destination.suffix}")
     result = exporter.exportToPdf(str(temporary), settings)
     if result != QgsLayoutExporter.Success:
+        temporary.unlink(missing_ok=True)
         raise RuntimeError(f"PDF export failed (exporter result code {result})")
     if not temporary.is_file() or temporary.stat().st_size == 0:
         temporary.unlink(missing_ok=True)
