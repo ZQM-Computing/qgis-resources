@@ -35,7 +35,7 @@ This is a working assessment, not a claim that every existing resource is defect
 
 - [ ] Obtain CI results for the exact PR head before treating it as validated.
 - [ ] Run the QGIS runtime suite on a supported QGIS version and record the version in test output.
-- [ ] Add synthetic-raster integration tests for reprojection, clipping, slope generation, CRS, dimensions, nodata, and expected numeric behavior.
+- [x] Add a synthetic-raster integration test for reprojection, clipping, slope generation, CRS, dimensions, nodata handling, and expected numeric bounds; execution on the current PR head remains pending.
 - [ ] Test invalid/missing CRS, empty intersection, malformed inputs, cancellation, unwritable destinations, and existing-output preservation.
 - [ ] Review output-type assumptions (paths versus live QGIS layers), Processing result validation, and resource cleanup.
 - [ ] Keep the PR in draft until these checks pass; a missing run is not a passing run.
@@ -44,7 +44,7 @@ This is a working assessment, not a claim that every existing resource is defect
 
 ### P1 — Build a read-only dataset inventory and QA report (initial CLI implemented; runtime validation outstanding)
 
-The first CLI increment now exists at `scripts/dataset_qa.py`; its usage and current limits are documented in [DATASET_QA.md](DATASET_QA.md). It inventories supported vector and raster inputs through GDAL/OGR and emits JSON plus an optional Markdown report. Report-contract tests cover stable findings, sorting, summaries, and Markdown rendering. The CLI has not yet been demonstrated against synthetic datasets in a GDAL-enabled runtime.
+The first CLI increment exists at `scripts/dataset_qa.py`; its usage and current limits are documented in [DATASET_QA.md](DATASET_QA.md). It inventories supported vector and raster inputs through GDAL/OGR and emits JSON plus an optional Markdown report. Report-contract tests cover stable findings, sorting, summaries, Markdown rendering, non-finite metadata, and undefined CRS placeholders. A synthetic GeoPackage/GeoTIFF runtime test is wired into the QGIS workflow; the run has not yet been observed on the current PR head.
 
 Initial checks:
 - Dataset/layer discovery, file format, and size.
@@ -55,7 +55,7 @@ Initial checks:
 
 The default audit must not modify source data or silently assign a CRS, repair geometries, delete features, or rewrite fields.
 
-**Remaining exit criteria:** add synthetic GeoPackage and raster fixtures to the GDAL-enabled runtime workflow; plant deliberate CRS, field, identifier, geometry, and raster metadata issues; assert actual inventory values and finding severity; prove repeat runs produce deterministic reports and source files remain unchanged.
+**Remaining exit criteria:** obtain an exact-head passing QGIS/GDAL workflow run; extend runtime assertions for repeat-run byte-for-byte report determinism and additional malformed-input cases; keep source immutability checks. The synthetic GeoPackage/GeoTIFF fixtures and deliberate CRS, field, identifier, empty-geometry, and raster metadata checks are implemented and wired into CI, but not yet runtime-verified.
 
 ### P2 — Integrate a reproducible preparation workflow
 
