@@ -1,0 +1,16 @@
+[general]
+name=ZQM Geospatial Tools
+description=Repeatable vector processing utilities with explicit validation and safe outputs.
+version=0.1.0
+qgisMinimumVersion=3.28
+author=ZQM Computing
+email=
+about=Initial Processing provider with batch buffering for selected vector layers. Distance uses each input layer's CRS units; review CRS and outputs before operational use.
+category=Vector
+icon=
+homepage=https://github.com/ZQM-Computing/qgis-resources
+tracker=https://github.com/ZQM-Computing/qgis-resources/issues
+repository=https://github.com/ZQM-Computing/qgis-resources
+experimental=True
+deprecated=False
+tags=processing,vector,buffer,geopackage,quality
