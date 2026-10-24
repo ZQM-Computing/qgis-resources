@@ -106,8 +106,18 @@ def main() -> None:
         assert raster["size_bytes"] == raster_path.stat().st_size, raster
         assert raster["resolution"] == [10.0, 10.0], raster
         assert raster["extent"] == {"xmin": 100.0, "ymin": 180.0, "xmax": 130.0, "ymax": 200.0}, raster
-        encoded = json.dumps(__import__("dataset_qa").json_safe(report), sort_keys=True, allow_nan=False)
+        qa_module = __import__("dataset_qa")
+        encoded = json.dumps(qa_module.json_safe(report), sort_keys=True, allow_nan=False)
         assert json.loads(encoded)["summary"]["error"] >= 1
+        repeat_report = audit_paths(
+            [vector_path, raster_path],
+            root=root,
+            required_fields=["required_name"],
+            id_fields=["asset_id"],
+            expected_crs="EPSG:3857",
+        )
+        repeat_encoded = json.dumps(qa_module.json_safe(repeat_report), sort_keys=True, allow_nan=False)
+        assert repeat_encoded == encoded, "Repeated audits produced nondeterministic JSON reports"
         assert "VECTOR_ID_DUPLICATE" in markdown_report(report)
         assert before == {path.name: path.read_bytes() for path in (vector_path, raster_path)}, (
             "Dataset QA modified an input file"
