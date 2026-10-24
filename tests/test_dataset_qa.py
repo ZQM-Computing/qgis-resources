@@ -504,3 +504,112 @@ def test_vector_report_distinguishes_unconfigured_identifier_check(tmp_path):
     assert layer["identifier_check"]["status"] == "not_configured"
     assert layer["identifier_check"]["selected_field"] is None
     assert layer["geometry_checks"]["status"] == "enabled"
+
+
+def test_raster_inventory_preserves_rotated_extent_and_band_metadata(tmp_path):
+    class Driver:
+        ShortName = "GTiff"
+
+    class Band:
+        DataType = 6
+
+        def GetNoDataValue(self):
+            return float("nan")
+
+        def GetScale(self):
+            return 2.0
+
+        def GetOffset(self):
+            return -1.0
+
+        def GetBlockSize(self):
+            return (16, 16)
+
+    class Dataset:
+        RasterXSize = 10
+        RasterYSize = 5
+        RasterCount = 1
+
+        def GetProjectionRef(self):
+            return 'PROJCS["test"]'
+
+        def GetGeoTransform(self, can_return_null=True):
+            # x = 100 + 2*col + 3*row; y = 200 + 4*col - 5*row
+            return (100, 2, 3, 200, 4, -5)
+
+        def GetDriver(self):
+            return Driver()
+
+        def GetRasterBand(self, index):
+            assert index == 1
+            return Band()
+
+    class GDAL:
+        GA_ReadOnly = 0
+
+        @staticmethod
+        def Open(path, mode):
+            assert mode == 0
+            return Dataset()
+
+        @staticmethod
+        def GetDataTypeName(_):
+            return "Float32"
+
+    source = tmp_path / "rotated.tif"
+    source.write_bytes(b"fake raster")
+    result = qa._audit_raster(source, "rotated.tif", GDAL(), expected_crs=None)
+    assert result is not None
+    inventory = result["inventory"]
+    # All four affine corners are considered; rotation terms are not dropped.
+    assert inventory["extent"] == {
+        "xmin": 100, "ymin": 175, "xmax": 135, "ymax": 260,
+    }
+    assert inventory["resolution"] == [
+        (2 ** 2 + 4 ** 2) ** 0.5,
+        (3 ** 2 + (-5) ** 2) ** 0.5,
+    ]
+    assert inventory["bands"] == [{
+        "index": 1, "data_type": "Float32", "nodata": "nan",
+        "scale": 2.0, "offset": -1.0, "block_size": [16, 16],
+    }]
+
+
+def test_raster_nonfinite_geotransform_withholds_extent(tmp_path):
+    class Driver:
+        ShortName = "GTiff"
+
+    class Dataset:
+        RasterXSize = 4
+        RasterYSize = 4
+        RasterCount = 1
+
+        def GetProjectionRef(self):
+            return ""
+
+        def GetGeoTransform(self, can_return_null=True):
+            return (0, 1, 0, 0, float("inf"), -1)
+
+        def GetDriver(self):
+            return Driver()
+
+        def GetRasterBand(self, index):
+            raise AssertionError("invalid geotransform should not affect band inventory")
+
+    class GDAL:
+        GA_ReadOnly = 0
+
+        @staticmethod
+        def Open(path, mode):
+            return Dataset()
+
+    source = tmp_path / "bad-transform.tif"
+    source.write_bytes(b"fake raster")
+    result = qa._audit_raster(source, "bad-transform.tif", GDAL(), expected_crs=None)
+    assert result is not None
+    assert result["inventory"]["extent"] is None
+    assert result["inventory"]["resolution"] is None
+    assert any(item["rule_id"] == "RASTER_GEOREFERENCE_NONFINITE"
+               and item["severity"] == "error" for item in result["findings"])
+    assert any(item["rule_id"] == "RASTER_CRS_MISSING"
+               and item["severity"] == "error" for item in result["findings"])
