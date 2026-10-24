@@ -62,7 +62,11 @@ def _crs_text(spatial_ref: Any) -> str | None:
     authority_name = spatial_ref.GetAuthorityName(None)
     if authority and authority_name:
         return f"{authority_name}:{authority}"
-    return spatial_ref.ExportToWkt() or None
+    wkt = spatial_ref.ExportToWkt() or None
+    # GeoPackage/OGR may expose an explicitly undefined CRS as a placeholder WKT.
+    if wkt and "undefined" in wkt.casefold():
+        return None
+    return wkt
 
 
 def _audit_vector(path: Path, display_path: str, gdal: Any, ogr: Any,
