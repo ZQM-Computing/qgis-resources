@@ -189,3 +189,43 @@ def test_cli_returns_nonzero_when_errors_are_reported(tmp_path, monkeypatch):
     monkeypatch.setattr(qa, "audit_paths", lambda paths, **kwargs: report)
     assert qa.main(["inputs", "--json", str(tmp_path / "report.json")]) == 1
 
+
+
+
+def test_report_destinations_cannot_overwrite_input_datasets(tmp_path):
+    source = tmp_path / "source.tif"
+    source.write_bytes(b"source dataset")
+    report = tmp_path / "report.json"
+    qa._validate_report_destinations([source], report, None)
+    try:
+        qa._validate_report_destinations([source], source, None)
+    except ValueError as exc:
+        assert "matches an input dataset" in str(exc)
+    else:
+        raise AssertionError("Report destination was allowed to overwrite an input dataset")
+    assert source.read_bytes() == b"source dataset"
+
+
+def test_json_and_markdown_report_destinations_must_be_distinct(tmp_path):
+    destination = tmp_path / "report.out"
+    try:
+        qa._validate_report_destinations([], destination, destination)
+    except ValueError as exc:
+        assert "must be different files" in str(exc)
+    else:
+        raise AssertionError("Conflicting report destinations were accepted")
+
+
+def test_report_destination_collision_is_rejected_before_audit(tmp_path, monkeypatch):
+    source = tmp_path / "source.gpkg"
+    source.write_bytes(b"immutable input")
+    monkeypatch.setattr(qa, "audit_paths", lambda *args, **kwargs: (_ for _ in ()).throw(
+        AssertionError("audit must not run after an output collision")
+    ))
+    try:
+        qa.main([str(source), "--json", str(source)])
+    except SystemExit as exc:
+        assert exc.code == 2
+    else:
+        raise AssertionError("CLI did not reject output collision")
+    assert source.read_bytes() == b"immutable input"
