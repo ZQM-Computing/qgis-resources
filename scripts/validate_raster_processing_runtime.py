@@ -21,6 +21,8 @@ for qgis_path in ("/usr/share/qgis/python", "/usr/share/qgis/python/plugins"):
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from osgeo import gdal, ogr, osr  # noqa: E402
+
+gdal.UseExceptions()
 from qgis.core import (  # noqa: E402
     QgsApplication,
     QgsCoordinateReferenceSystem,
@@ -122,6 +124,7 @@ def main() -> None:
     try:
         from processing.core.Processing import Processing
         Processing.initialize()
+        print("STAGE: Processing initialized", flush=True)
         with tempfile.TemporaryDirectory(prefix="zqm-raster-runtime-") as temporary:
             root = Path(temporary)
             dem_path = root / "synthetic_dem.tif"
@@ -129,15 +132,20 @@ def main() -> None:
             empty_boundary_path = root / "empty_boundary.gpkg"
             invalid_boundary_path = root / "invalid_boundary.gpkg"
             create_dem(dem_path)
+            print("STAGE: synthetic DEM created", flush=True)
             create_boundary(boundary_path)
+            print("STAGE: valid boundary created", flush=True)
             create_empty_boundary(empty_boundary_path)
             create_invalid_boundary(invalid_boundary_path)
+            print("STAGE: invalid-input fixtures created", flush=True)
             dem_before = dem_path.read_bytes()
             boundary_before = boundary_path.read_bytes()
 
+            print("STAGE: starting reprojection/clip/slope workflow", flush=True)
             result = raster_module.raster_processing(
                 str(dem_path), str(boundary_path), "EPSG:32618", z_factor=1.0
             )
+            print("STAGE: reprojection/clip/slope workflow returned", flush=True)
             assert result.isValid(), "Raster workflow returned an invalid slope raster"
             target = QgsCoordinateReferenceSystem("EPSG:32618")
             assert result.crs() == target, f"Unexpected slope CRS: {result.crs().authid()}"
