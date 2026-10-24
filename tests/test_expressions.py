@@ -76,7 +76,7 @@ def test_qml_styles_are_well_formed_xml():
 def test_core_patterns_document_runtime_and_crs_contracts():
     expected = {
         "01_vector_analysis.py": ("import processing", "buffer_distance"),
-        "02_raster_processing.py": ("target_crs", "gdal:warpreproject", "projected_boundary_layer = (", "projected_boundary_layer.crs() != target"),
+        "02_raster_processing.py": ("target_crs", "gdal:warpreproject", "projected_boundary_layer = (", "projected_boundary_layer.crs() != target", "math.isfinite(z_factor)", "clipped_layer.width() <= 0", "result.width() <= 0"),
         "03_spatial_joins.py": ("predicate", "points.crs()"),
         "04_crs_transforms.py": ("QgsCoordinateReferenceSystem", "target.isValid()"),
         "05_batch_processing.py": ("Path(folder)", "native:buffer", "math.isfinite", "input_paths = sorted"),
