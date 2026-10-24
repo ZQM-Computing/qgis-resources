@@ -83,7 +83,7 @@ try:
             self.warnings.append(str(warning))
             super().pushWarning(warning)
 
-    def run_algorithm(layers, output_dir, overwrite=False):
+    def run_algorithm(layers, output_dir, overwrite=False, distance=5.0):
         algorithm = BatchBufferAlgorithm()
         algorithm.initAlgorithm()
         context = QgsProcessingContext()
@@ -93,7 +93,7 @@ try:
             return algorithm.processAlgorithm(
             {
                 "LAYERS": layers,
-                "DISTANCE": 5.0,
+                "DISTANCE": distance,
                 "SEGMENTS": 4,
                 "OUTPUT_FOLDER": str(output_dir),
                 "OVERWRITE": overwrite,
@@ -124,7 +124,7 @@ try:
             f"Buffer extent does not reflect the requested distance: {extent.toString()}"
         )
 
-        # Default behavior must preserve existing output and report a skip.
+        # Non-finite values must be rejected before running native:buffer.\n        try:\n            run_algorithm([points], root / "invalid-distance", distance=float("inf"))\n        except Exception as exc:\n            assert "finite and non-negative" in str(exc), f"Unexpected invalid-distance error: {exc}"\n        else:\n            raise AssertionError("Infinite buffer distance was accepted")\n\n        # Default behavior must preserve existing output and report a skip.
         original_bytes = output.read_bytes()
         result = run_algorithm([points], output_dir, overwrite=False)
         assert result["SKIPPED"] == 1 and result["SUCCEEDED"] == 0
