@@ -46,7 +46,7 @@ Exit status:
 ## Checks currently implemented
 
 ### Vector layers
-- Driver, layer name, geometry type, feature count, CRS, and field names/types.
+- Driver, file size, layer name, geometry type, feature count, CRS, and field names/types.
 - Missing CRS (error), configured CRS mismatch (warning), empty layer (warning).
 - Configured required fields (error).
 - Configured candidate identifier fields: null/blank and duplicate occurrences (warnings).
@@ -55,7 +55,7 @@ Exit status:
 The identifier check treats the first configured identifier field present on a layer as the candidate key. A uniqueness rule is not inferred automatically. It does not test domain-specific uniqueness or normalize values.
 
 ### Raster datasets
-- Driver, dimensions, band count, CRS, affine geotransform, extent, pixel resolution, and per-band data type, nodata, scale, offset, and block size.
+- Driver, file size, dimensions, band count, CRS, affine geotransform, extent, pixel resolution (including rotated-grid pixel-vector magnitudes), and per-band data type, nodata, scale, offset, and block size.
 - Missing CRS or nonpositive dimensions/band count (errors).
 - Missing geotransform and configured CRS mismatch (warnings).
 - Non-finite affine transform values (error).
