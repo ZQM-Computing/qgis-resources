@@ -10,7 +10,6 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -194,7 +193,8 @@ def _audit_raster(path: Path, display_path: str, gdal: Any,
     projection = dataset.GetProjectionRef() or ""
     crs = None
     if projection:
-        srs = gdal.osr.SpatialReference()
+        from osgeo import osr
+        srs = osr.SpatialReference()
         if srs.ImportFromWkt(projection) == 0:
             authority = srs.GetAuthorityCode(None)
             authority_name = srs.GetAuthorityName(None)
@@ -292,8 +292,6 @@ def audit_paths(paths: list[Path], *, root: Path, required_fields: list[str] | N
         else:
             datasets.append(result["inventory"])
             all_findings.extend(result["findings"])
-    for path in unreadable:
-        pass
     sorted_findings = sort_findings(all_findings)
     return {
         "schema_version": 1,
