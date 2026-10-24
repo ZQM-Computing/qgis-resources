@@ -25,7 +25,8 @@ def _function_is_empty(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant) and isinstance(body[0].value.value, str):
         body.pop(0)
     return len(body) == 1 and (
-        isinstance(body[0], (ast.Pass, ast.Ellipsis))
+        isinstance(body[0], ast.Pass)
+        or (isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant) and body[0].value.value is Ellipsis)
         or (
             isinstance(body[0], ast.Raise)
             and isinstance(body[0].exc, ast.Call)
@@ -52,11 +53,20 @@ def audit_python() -> list[str]:
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _function_is_empty(node):
                 issues.append(f"{rel}:{node.lineno}: empty implementation {node.name}()")
-        # Avoid flagging explanatory prose/comments: only scan executable string constants.
+        # Attach parent links so we can distinguish executable literals from comments.
+        for parent in ast.walk(tree):
+            for child in ast.iter_child_nodes(parent):
+                child.parent = parent
         for node in ast.walk(tree):
-            if isinstance(node, ast.Constant) and isinstance(node.value, str) and isinstance(getattr(node, "parent", None), ast.AST):
-                if PLACEHOLDER.search(node.value):
-                    issues.append(f"{rel}: placeholder marker in executable string: {PLACEHOLDER.search(node.value).group(0)}")
+            if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
+                continue
+            parent = getattr(node, "parent", None)
+            if isinstance(parent, ast.Expr) and isinstance(parent.value, ast.Constant) and parent.value is node:
+                # Module/class/function docstrings are documentation, not executable placeholders.
+                if isinstance(getattr(parent, "parent", None), (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                    continue
+            if PLACEHOLDER.search(node.value):
+                issues.append(f"{rel}: placeholder marker in string literal: {PLACEHOLDER.search(node.value).group(0)}")
     return issues
 
 
