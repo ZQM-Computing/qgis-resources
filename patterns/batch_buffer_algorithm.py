@@ -11,7 +11,6 @@ from pathlib import Path
 import processing
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
-    QgsApplication,
     QgsProcessing,
     QgsProcessingAlgorithm,
     QgsProcessingException,
@@ -20,6 +19,7 @@ from qgis.core import (
     QgsProcessingParameterFolderDestination,
     QgsProcessingParameterMultipleLayers,
     QgsProcessingParameterNumber,
+    QgsProcessingOutputNumber,
     QgsVectorLayer,
     QgsVectorFileWriter,
 )
@@ -97,6 +97,9 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
                 defaultValue=False,
             )
         )
+        self.addOutput(QgsProcessingOutputNumber("SUCCEEDED", self.tr("Successful layers")))
+        self.addOutput(QgsProcessingOutputNumber("SKIPPED", self.tr("Skipped layers")))
+        self.addOutput(QgsProcessingOutputNumber("FAILED", self.tr("Failed layers")))
 
     @staticmethod
     def _safe_stem(name):
@@ -240,8 +243,3 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
             "SKIPPED": skipped,
             "FAILED": failures,
         }
-
-
-def classFactory():
-    """Not a plugin entry point; provided only as a discoverable script marker."""
-    return BatchBufferAlgorithm()
