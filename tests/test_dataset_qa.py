@@ -229,3 +229,31 @@ def test_report_destination_collision_is_rejected_before_audit(tmp_path, monkeyp
     else:
         raise AssertionError("CLI did not reject output collision")
     assert source.read_bytes() == b"immutable input"
+
+
+
+def test_existing_json_report_inside_scanned_root_can_be_replaced(tmp_path):
+    import json
+
+    report = tmp_path / "report.json"
+    report.write_text(json.dumps({
+        "schema_version": 1,
+        "root": ".",
+        "dataset_count": 0,
+        "datasets": [],
+        "findings": [],
+        "summary": {"error": 0, "warning": 0, "info": 0, "total": 0},
+        "unreadable_datasets": [],
+    }), encoding="utf-8")
+    qa._validate_report_destinations([tmp_path], report, None)
+
+
+def test_existing_geojson_input_is_not_mistaken_for_prior_report(tmp_path):
+    source = tmp_path / "features.geojson"
+    source.write_text('{"type":"FeatureCollection","features":[]}', encoding="utf-8")
+    try:
+        qa._validate_report_destinations([tmp_path], source, None)
+    except ValueError as exc:
+        assert "matches an input dataset" in str(exc)
+    else:
+        raise AssertionError("GeoJSON input collision was not rejected")
