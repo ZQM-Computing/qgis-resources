@@ -167,10 +167,11 @@ class ClipAndReprojectAlgorithm(QgsProcessingAlgorithm):
         if sink is None:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
 
-        if not clipped or not clipped.isValid():
-            raise QgsProcessingException("Clip algorithm returned an invalid output layer.")
+        clipped_layer = clipped if hasattr(clipped, "isValid") else QgsVectorLayer(str(clipped), "clipped", "ogr")
+        if not clipped_layer.isValid() or clipped_layer.crs() != target_crs:
+            raise QgsProcessingException("Clip algorithm returned an invalid layer or unexpected CRS.")
         feature_count = 0
-        for feature in clipped.getFeatures():
+        for feature in clipped_layer.getFeatures():
             if feedback.isCanceled():
                 raise QgsProcessingException("Processing was canceled; output may be incomplete.")
             if not sink.addFeature(feature):
