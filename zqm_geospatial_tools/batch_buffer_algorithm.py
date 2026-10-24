@@ -3,6 +3,7 @@
 Install this file through Processing Toolbox -> Scripts -> Add Script from File.
 Requires QGIS with the native Processing provider initialized.
 """
+import math
 import os
 import re
 import uuid
@@ -112,8 +113,8 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
             raise QgsProcessingException("Select at least one input vector layer.")
 
         distance = self.parameterAsDouble(parameters, self.DISTANCE, context)
-        if distance < 0:
-            raise QgsProcessingException("Buffer distance must be non-negative.")
+        if not math.isfinite(distance) or distance < 0:
+            raise QgsProcessingException("Buffer distance must be finite and non-negative.")
 
         segments = self.parameterAsInt(parameters, self.SEGMENTS, context)
         if segments < 1:
@@ -133,6 +134,7 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
         successes = 0
         skipped = 0
         failures = 0
+        failure_details = []
         used_names = set()
         reference_crs = None
 
@@ -141,24 +143,32 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
                 break
             label = layer.name() if layer else f"input_{index + 1}"
             if layer is None or not layer.isValid():
-                feedback.reportError(f"{label}: invalid input layer; skipped.")
+                message = f"{label}: invalid input layer; skipped."
+                feedback.reportError(message)
+                failure_details.append(message)
                 failures += 1
                 continue
             if QgsWkbTypes.geometryType(layer.wkbType()) == QgsWkbTypes.NullGeometry:
-                feedback.reportError(f"{label}: non-spatial layer; skipped.")
+                message = f"{label}: non-spatial layer; skipped."
+                feedback.reportError(message)
+                failure_details.append(message)
                 failures += 1
                 continue
             if not layer.crs().isValid():
-                feedback.reportError(f"{label}: missing or invalid CRS; skipped.")
+                message = f"{label}: missing or invalid CRS; skipped."
+                feedback.reportError(message)
+                failure_details.append(message)
                 failures += 1
                 continue
             if reference_crs is None:
                 reference_crs = layer.crs()
             elif layer.crs() != reference_crs:
-                feedback.reportError(
+                message = (
                     f"{label}: CRS {layer.crs().authid()} differs from "
                     f"{reference_crs.authid()}; batch inputs must share one CRS."
                 )
+                feedback.reportError(message)
+                failure_details.append(message)
                 failures += 1
                 continue
             if layer.crs().isGeographic() and distance > 0:
@@ -241,7 +251,9 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
                 )
             except Exception as exc:
                 failures += 1
-                feedback.reportError(f"{label}: {exc}")
+                message = f"{label}: {exc}"
+                feedback.reportError(message)
+                failure_details.append(message)
             finally:
                 try:
                     if temporary_path.exists():
@@ -262,7 +274,10 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
             f"failed: {failures}; total: {len(layers)}."
         )
         if failures and successes == 0 and skipped == 0:
-            raise QgsProcessingException("All batch buffer operations failed; see the log.")
+            details = " | ".join(failure_details)
+            raise QgsProcessingException(
+                f"All batch buffer operations failed; see the log. Details: {details}"
+            )
         return {
             self.OUTPUT_FOLDER: str(output_dir),
             "SUCCEEDED": successes,
