@@ -1,7 +1,8 @@
 """Buffer and dissolve a vector layer, then calculate planar geometry area.
 
 Run in QGIS with Processing initialized. Buffer distance uses the layer CRS
-units; reproject to an appropriate projected CRS before using metres.
+units; reproject to an appropriate projected CRS before using metres. The area
+field is expressed in squared CRS units, which are not always square metres.
 """
 import processing
 from qgis.core import QgsField, QgsVectorLayer
@@ -30,15 +31,23 @@ def vector_analysis(input_path, buffer_distance=500.0, area_field="area_crs_unit
     area_index = dissolved.fields().indexFromName(area_field)
     if area_index < 0:
         raise RuntimeError(f"Could not create area field {area_field!r}")
+    areas = []
     for feature in dissolved.getFeatures():
         geometry = feature.geometry()
         if geometry is None or geometry.isNull() or geometry.isEmpty():
             raise ValueError(f"Feature {feature.id()} has no usable geometry")
-        provider.changeAttributeValues({feature.id(): {area_index: geometry.area()}})
+        area = geometry.area()
+        areas.append(area)
+        provider.changeAttributeValues({feature.id(): {area_index: area}})
     dissolved.updateFields()
-    stats = processing.run("qgis:basicstatisticsforfields", {
-        "INPUT": dissolved, "FIELD_NAME": area_field, "OUTPUT": "memory:",
-    })
+    stats = {
+        "count": len(areas),
+        "sum": sum(areas),
+        "minimum": min(areas) if areas else None,
+        "maximum": max(areas) if areas else None,
+        "mean": sum(areas) / len(areas) if areas else None,
+        "units": "squared layer CRS units; not necessarily m²",
+    }
     return dissolved, stats
 
 
