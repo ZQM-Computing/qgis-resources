@@ -4,7 +4,7 @@ Run in QGIS with GDAL and Processing providers. Choose a projected target CRS
 appropriate for the study area; do not use one fixed UTM zone for global data.
 """
 import processing
-from qgis.core import QgsRasterLayer, QgsVectorLayer
+from qgis.core import QgsApplication, QgsRasterLayer, QgsVectorLayer
 
 
 def raster_processing(dem_path, boundary_path, target_crs):
@@ -24,7 +24,13 @@ def raster_processing(dem_path, boundary_path, target_crs):
         "INPUT": projected, "MASK": boundary, "CROP_TO_CUTLINE": True,
         "KEEP_RESOLUTION": True, "OUTPUT": "TEMPORARY_OUTPUT",
     })["OUTPUT"]
-    slope = processing.run("qgis:slope", {
+    registry = QgsApplication.processingRegistry()
+    slope_algorithm = "native:slope"
+    if registry.algorithmById(slope_algorithm) is None:
+        slope_algorithm = "qgis:slope"
+    if registry.algorithmById(slope_algorithm) is None:
+        raise RuntimeError("No compatible QGIS slope algorithm is registered")
+    slope = processing.run(slope_algorithm, {
         "INPUT": clipped, "Z_FACTOR": 1, "OUTPUT": "TEMPORARY_OUTPUT",
     })["OUTPUT"]
     result = QgsRasterLayer(slope, "slope")
