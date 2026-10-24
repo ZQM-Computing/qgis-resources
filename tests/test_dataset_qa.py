@@ -303,3 +303,35 @@ def test_explicit_unsupported_file_is_not_silently_ignored(tmp_path, monkeypatch
     assert "INPUT_FORMAT_UNSUPPORTED" in rules
     assert "NO_SUPPORTED_DATASETS_FOUND" in rules
 
+def test_vector_dataset_with_no_layers_is_an_error(tmp_path):
+    class Driver:
+        @staticmethod
+        def GetName():
+            return "FakeVector"
+
+    class Dataset:
+        @staticmethod
+        def GetDriver():
+            return Driver()
+
+        @staticmethod
+        def GetLayerCount():
+            return 0
+
+    class OGR:
+        @staticmethod
+        def Open(path, mode):
+            assert mode == 0
+            return Dataset()
+
+    source = tmp_path / "empty.gpkg"
+    source.write_bytes(b"fake dataset")
+    result = qa._audit_vector(
+        source, "empty.gpkg", object(), OGR(),
+        required_fields=[], id_fields=[], expected_crs=None, check_geometry=True,
+    )
+    assert result is not None
+    assert result["inventory"]["layers"] == []
+    assert any(item["rule_id"] == "VECTOR_DATASET_NO_LAYERS"
+               and item["severity"] == "error" for item in result["findings"])
+
