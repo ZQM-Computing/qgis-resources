@@ -42,9 +42,9 @@ This is a working assessment, not a claim that every existing resource is defect
 
 **Exit criteria:** a fresh checkout runs the documented static and QGIS runtime commands; the exact commit has visible passing checks; remaining gaps are documented.
 
-### P1 — Build a read-only dataset inventory and QA report
+### P1 — Build a read-only dataset inventory and QA report (initial CLI implemented; runtime validation outstanding)
 
-Create a focused tool that inventories supported vector and raster inputs and emits JSON plus a human-readable report.
+The first CLI increment now exists at `scripts/dataset_qa.py`; its usage and current limits are documented in [DATASET_QA.md](DATASET_QA.md). It inventories supported vector and raster inputs through GDAL/OGR and emits JSON plus an optional Markdown report. Report-contract tests cover stable findings, sorting, summaries, and Markdown rendering. The CLI has not yet been demonstrated against synthetic datasets in a GDAL-enabled runtime.
 
 Initial checks:
 - Dataset/layer discovery, file format, and size.
@@ -55,7 +55,7 @@ Initial checks:
 
 The default audit must not modify source data or silently assign a CRS, repair geometries, delete features, or rewrite fields.
 
-**Exit criteria:** tiny synthetic vector/raster fixtures contain deliberately planted issues; expected findings and severity are asserted; repeated runs produce deterministic reports.
+**Remaining exit criteria:** add synthetic GeoPackage and raster fixtures to the GDAL-enabled runtime workflow; plant deliberate CRS, field, identifier, geometry, and raster metadata issues; assert actual inventory values and finding severity; prove repeat runs produce deterministic reports and source files remain unchanged.
 
 ### P2 — Integrate a reproducible preparation workflow
 
