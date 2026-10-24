@@ -55,7 +55,7 @@ Initial checks:
 
 The default audit must not modify source data or silently assign a CRS, repair geometries, delete features, or rewrite fields.
 
-**Remaining exit criteria:** obtain an exact-head passing QGIS/GDAL workflow run; extend runtime assertions for repeat-run byte-for-byte report determinism and additional malformed-input cases; keep source immutability checks. The synthetic GeoPackage/GeoTIFF fixtures and deliberate CRS, field, identifier, empty-geometry, and raster metadata checks are implemented and wired into CI, but not yet runtime-verified.
+**Remaining exit criteria:** obtain an exact-head passing QGIS/GDAL workflow run; extend malformed-input and provider-compatibility cases as issues are found; keep source immutability checks. The synthetic GeoPackage/GeoTIFF fixtures, deliberate CRS/schema/identifier/empty-geometry checks, repeated-report determinism assertion, and source immutability checks are implemented and wired into CI, but not yet runtime-verified.
 
 ### P2 — Integrate a reproducible preparation workflow
 
