@@ -134,3 +134,58 @@ def test_provider_exception_evidence_does_not_include_raw_exception_text():
     source = (ROOT / "scripts" / "dataset_qa.py").read_text(encoding="utf-8")
     assert 'evidence={"error_type": type(exc).__name__}' in source
     assert 'evidence={"error_type": type(exc).__name__, "message": str(exc)}' not in source
+
+def test_cli_exit_code_and_reports_for_clean_dataset_run(tmp_path, monkeypatch, capsys):
+    output_json = tmp_path / "report.json"
+    output_md = tmp_path / "report.md"
+    report = {
+        "schema_version": 1,
+        "root": ".",
+        "dataset_count": 0,
+        "datasets": [],
+        "findings": [],
+        "summary": {"error": 0, "warning": 0, "info": 0, "total": 0},
+        "unreadable_datasets": [],
+    }
+    captured = {}
+
+    def fake_audit_paths(paths, **kwargs):
+        captured["paths"] = paths
+        captured.update(kwargs)
+        return report
+
+    monkeypatch.setattr(qa, "audit_paths", fake_audit_paths)
+    assert qa.main(["inputs", "--json", str(output_json), "--markdown", str(output_md)]) == 0
+    assert output_json.exists()
+    assert output_md.exists()
+    assert '"error": 0' in capsys.readouterr().out
+    assert captured["exclude_paths"] == [output_json, output_md]
+
+
+def test_cli_fail_on_warning_returns_nonzero(tmp_path, monkeypatch):
+    report = {
+        "schema_version": 1,
+        "root": ".",
+        "dataset_count": 0,
+        "datasets": [],
+        "findings": [qa.finding("VECTOR_LAYER_EMPTY", "warning", "empty", dataset="x.gpkg")],
+        "summary": {"error": 0, "warning": 1, "info": 0, "total": 1},
+        "unreadable_datasets": [],
+    }
+    monkeypatch.setattr(qa, "audit_paths", lambda paths, **kwargs: report)
+    assert qa.main(["inputs", "--json", str(tmp_path / "report.json"), "--fail-on-warning"]) == 1
+
+
+def test_cli_returns_nonzero_when_errors_are_reported(tmp_path, monkeypatch):
+    report = {
+        "schema_version": 1,
+        "root": ".",
+        "dataset_count": 0,
+        "datasets": [],
+        "findings": [qa.finding("VECTOR_CRS_MISSING", "error", "missing CRS", dataset="x.gpkg")],
+        "summary": {"error": 1, "warning": 0, "info": 0, "total": 1},
+        "unreadable_datasets": ["x.gpkg"],
+    }
+    monkeypatch.setattr(qa, "audit_paths", lambda paths, **kwargs: report)
+    assert qa.main(["inputs", "--json", str(tmp_path / "report.json")]) == 1
+
