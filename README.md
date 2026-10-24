@@ -37,6 +37,7 @@ The roadmap prioritizes trustworthy runtime validation, a read-only dataset inve
 | Styles | QML starting styles and cartographic palettes | [styles/](styles/) |
 | Field collection | QField offline-collection and packaging guidance | [qfield/](qfield/) |
 | Worked examples | Expression basics, Processing, spatial join, CRS transform, buffering, plugin lifecycle | [examples/](examples/) |
+| Dataset QA | Read-only GDAL/OGR vector/raster inventory and JSON/Markdown findings | [dataset QA guide](docs/DATASET_QA.md) and [scripts/dataset_qa.py](scripts/dataset_qa.py) |
 | Validation | Documentation checks, static audits, unit/contract tests, and QGIS runtime tests | [scripts/](scripts/) and [tests/](tests/) |
 | Engineering plan | Prioritized product roadmap and geospatial workflow contracts | [docs/PRODUCT_ROADMAP.md](docs/PRODUCT_ROADMAP.md) and [docs/WORKFLOW_CONTRACTS.md](docs/WORKFLOW_CONTRACTS.md) |
 | QGIS plugin | Processing provider with batch-buffer tool | [zqm_geospatial_tools/](zqm_geospatial_tools/) |
@@ -47,6 +48,7 @@ The roadmap prioritizes trustworthy runtime validation, a read-only dataset inve
 - **PyQGIS:** run scripts from the QGIS Python Console after reviewing configuration constants.
 - **Processing script:** add [patterns/clip_and_reproject.py](patterns/clip_and_reproject.py) through Processing Toolbox → Scripts → Add Script from File.
 - **Styles:** load .qml files through Layer Properties → Symbology → Style → Load Style. These are starting styles, not validated thematic classification schemes.
+- **Dataset inventory and QA:** see [docs/DATASET_QA.md](docs/DATASET_QA.md). The initial CLI reads supported datasets through GDAL/OGR and writes JSON plus optional Markdown reports; it does not modify inputs. Runtime testing against synthetic datasets is still required.
 - **Examples:** see [examples/](examples/). QGIS-dependent examples must run in a QGIS Python environment with Processing initialized.
 - **ZQM Geospatial Tools plugin:** see [zqm_geospatial_tools/README.md](zqm_geospatial_tools/README.md) for installation. The initial Processing tool buffers selected vector layers into separate GeoPackages.
 - **Notebooks:** notebooks require a Python kernel with QGIS bindings available; they will not run in a generic Python kernel without QGIS.
