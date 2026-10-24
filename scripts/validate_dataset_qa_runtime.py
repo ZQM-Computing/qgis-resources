@@ -6,6 +6,7 @@ Run with the same GDAL-enabled Python used by QGIS:
 from __future__ import annotations
 
 import json
+import math
 import tempfile
 from pathlib import Path
 
@@ -96,13 +97,29 @@ def create_rotated_raster_fixture(path: Path) -> None:
     ds = None
 
 
+def create_rotated_raster_fixture(path: Path) -> None:
+    driver = gdal.GetDriverByName("GTiff")
+    assert driver is not None, "GDAL build lacks GeoTIFF driver"
+    ds = driver.Create(str(path), 3, 2, 1, gdal.GDT_Int16)
+    assert ds is not None, "Could not create rotated synthetic GeoTIFF"
+    # Non-zero rotation terms catch axis swaps in affine extent calculations.
+    ds.SetGeoTransform((100, 10, 2, 200, 3, -10))
+    srs = osr.SpatialReference()
+    assert srs.ImportFromEPSG(32617) == 0
+    ds.SetProjection(srs.ExportToWkt())
+    ds.GetRasterBand(1).WriteArray([[1, 2, 3], [4, 5, 6]])
+    ds = None
+
+
 def main() -> None:
     with tempfile.TemporaryDirectory(prefix="zqm-dataset-qa-") as temporary:
         root = Path(temporary)
         vector_path = root / "synthetic.gpkg"
         raster_path = root / "synthetic.tif"
+        rotated_raster_path = root / "rotated.tif"
         create_vector_fixture(vector_path)
         create_raster_fixture(raster_path)
+        create_rotated_raster_fixture(rotated_raster_path)
         before = {path.name: path.read_bytes() for path in (vector_path, raster_path)}
 
         report = audit_paths(
@@ -180,6 +197,14 @@ def main() -> None:
         assert raster["size_bytes"] == raster_path.stat().st_size, raster
         assert raster["resolution"] == [10.0, 10.0], raster
         assert raster["extent"] == {"xmin": 100.0, "ymin": 180.0, "xmax": 130.0, "ymax": 200.0}, raster
+
+        rotated_report = audit_paths([rotated_raster_path], root=root)
+        rotated = rotated_report["datasets"][0]
+        assert rotated["extent"] == {
+            "xmin": 100.0, "ymin": 180.0, "xmax": 134.0, "ymax": 209.0
+        }, rotated
+        assert math.isclose(rotated["resolution"][0], math.sqrt(109.0)), rotated
+        assert math.isclose(rotated["resolution"][1], math.sqrt(104.0)), rotated
         qa_module = __import__("dataset_qa")
         encoded = json.dumps(qa_module.json_safe(report), sort_keys=True, allow_nan=False)
         assert json.loads(encoded)["summary"]["error"] >= 1
