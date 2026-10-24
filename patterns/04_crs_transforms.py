@@ -7,6 +7,8 @@ def crs_transform(layer_path, target_crs="EPSG:4326"):
     layer = QgsVectorLayer(layer_path, "input", "ogr")
     if not layer.isValid():
         raise ValueError(f"Could not load input layer: {layer_path}")
+    if not layer.crs().isValid():
+        raise ValueError("Input layer has no valid CRS; assign the correct source CRS before reprojection")
     target = QgsCoordinateReferenceSystem(target_crs)
     if not target.isValid():
         raise ValueError(f"Invalid target CRS: {target_crs!r}")
@@ -15,6 +17,8 @@ def crs_transform(layer_path, target_crs="EPSG:4326"):
     })["OUTPUT"]
     if not result.isValid() or result.crs() != target:
         raise RuntimeError("Reprojection did not produce a valid layer in the target CRS")
+    if result.featureCount() != layer.featureCount():
+        raise RuntimeError("Reprojection changed the feature count unexpectedly")
     return result
 
 
