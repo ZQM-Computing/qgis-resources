@@ -1,6 +1,6 @@
 """Processing Toolbox algorithm: safely buffer several selected vector layers.
 
-Install this file through Processing Toolbox -> Scripts -> Add Script from File.
+Install the complete zqm_geospatial_tools directory as a QGIS plugin and enable it.
 Requires QGIS with the native Processing provider initialized.
 """
 import math
