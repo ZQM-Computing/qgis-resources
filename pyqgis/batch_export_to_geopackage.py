@@ -67,6 +67,10 @@ def export_project_layers(output_path: str, overwrite: bool = False) -> list:
             check = QgsVectorLayer(layer_uri, item["output_layer"], "ogr")
             if not check.isValid():
                 raise RuntimeError("Staged layer failed to reopen: " + item["output_layer"])
+            if check.crs() != source.crs():
+                raise RuntimeError("CRS mismatch for exported layer " + item["output_layer"])
+            if check.wkbType() != source.wkbType():
+                raise RuntimeError("Geometry type mismatch for exported layer " + item["output_layer"])
             if check.featureCount() != source.featureCount():
                 raise RuntimeError("Feature count mismatch for exported layer " + item["output_layer"])
             del check
