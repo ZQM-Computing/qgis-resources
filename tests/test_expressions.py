@@ -88,7 +88,7 @@ def test_core_patterns_document_runtime_and_crs_contracts():
 
 
 def test_batch_buffer_processing_algorithm_declares_safety_contracts():
-    source = (REPO_ROOT / "patterns" / "batch_buffer_algorithm.py").read_text(encoding="utf-8")
+    source = (REPO_ROOT / "zqm_geospatial_tools" / "batch_buffer_algorithm.py").read_text(encoding="utf-8")
     for marker in (
         "class BatchBufferAlgorithm(QgsProcessingAlgorithm)",
         "QgsProcessingParameterMultipleLayers",
@@ -100,8 +100,13 @@ def test_batch_buffer_processing_algorithm_declares_safety_contracts():
         '"SUCCEEDED"', '"SKIPPED"', '"FAILED"',
     ):
         assert marker in source, f"Batch buffer algorithm missing contract: {marker}"
-    docs = (REPO_ROOT / "processing" / "README.md").read_text(encoding="utf-8")
-    assert "patterns/batch_buffer_algorithm.py" in docs
+    plugin = REPO_ROOT / "zqm_geospatial_tools"
+    assert (plugin / "__init__.py").is_file()
+    assert (plugin / "plugin.py").is_file()
+    assert (plugin / "provider.py").is_file()
+    assert (plugin / "metadata.txt").is_file()
+    docs = (plugin / "README.md").read_text(encoding="utf-8")
+    assert "Processing provider" in docs
     assert "preserved by default" in docs
 
 
