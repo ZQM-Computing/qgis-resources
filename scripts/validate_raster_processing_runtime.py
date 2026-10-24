@@ -267,14 +267,24 @@ def main() -> None:
                 raise AssertionError("Geographic target CRS was accepted for slope analysis")
 
             print("STAGE: geographic target CRS rejected", flush=True)
+            print("STAGE: checking source immutability", flush=True)
             assert dem_path.read_bytes() == dem_before, "Raster workflow modified source DEM"
             assert boundary_path.read_bytes() == boundary_before, "Raster workflow modified source boundary"
+            print("STAGE: source immutability passed", flush=True)
+            # The returned QgsRasterLayer owns a provider backed by a temporary
+            # Processing output. Release it before TemporaryDirectory removes
+            # those files and before QgsApplication teardown.
+            result = None
+            print("STAGE: released returned slope layer", flush=True)
 
+        print("STAGE: temporary raster fixtures cleaned", flush=True)
         print("PASS: synthetic DEM reprojection, mask clipping, slope values, target CRS and dimensions")
         print("PASS: invalid z_factor, empty/invalid boundary, and geographic target CRS rejected")
         print("PASS: raster and boundary source files remain unchanged")
     finally:
+        print("STAGE: entering QGIS shutdown", flush=True)
         app.exitQgis()
+        print("STAGE: QGIS shutdown completed", flush=True)
 
 
 if __name__ == "__main__":
