@@ -89,6 +89,30 @@ def create_empty_boundary(path: Path) -> None:
     dataset = None
 
 
+def create_invalid_boundary(path: Path) -> None:
+    driver = ogr.GetDriverByName("GPKG")
+    assert driver is not None
+    dataset = driver.CreateDataSource(str(path))
+    assert dataset is not None
+    srs = osr.SpatialReference()
+    assert srs.ImportFromEPSG(32617) == 0
+    layer = dataset.CreateLayer("invalid_boundary", srs, ogr.wkbPolygon)
+    ring = ogr.Geometry(ogr.wkbLinearRing)
+    # Self-crossing bow-tie polygon.
+    for x, y in [
+        (500040, 3200160), (500160, 3200040), (500160, 3200160),
+        (500040, 3200040), (500040, 3200160),
+    ]:
+        ring.AddPoint_2D(x, y)
+    polygon = ogr.Geometry(ogr.wkbPolygon)
+    polygon.AddGeometry(ring)
+    feature = ogr.Feature(layer.GetLayerDefn())
+    feature.SetGeometry(polygon)
+    assert layer.CreateFeature(feature) == 0
+    feature = None
+    dataset = None
+
+
 def main() -> None:
     QgsApplication.setPrefixPath("/usr", True)
     app = QgsApplication([], False)
@@ -101,9 +125,11 @@ def main() -> None:
             dem_path = root / "synthetic_dem.tif"
             boundary_path = root / "study_boundary.gpkg"
             empty_boundary_path = root / "empty_boundary.gpkg"
+            invalid_boundary_path = root / "invalid_boundary.gpkg"
             create_dem(dem_path)
             create_boundary(boundary_path)
             create_empty_boundary(empty_boundary_path)
+            create_invalid_boundary(invalid_boundary_path)
             dem_before = dem_path.read_bytes()
             boundary_before = boundary_path.read_bytes()
 
@@ -169,6 +195,15 @@ def main() -> None:
 
             try:
                 raster_module.raster_processing(
+                    str(dem_path), str(invalid_boundary_path), "EPSG:32618", z_factor=1.0
+                )
+            except ValueError as exc:
+                assert "invalid geometry" in str(exc)
+            else:
+                raise AssertionError("Invalid polygon boundary was accepted")
+
+            try:
+                raster_module.raster_processing(
                     str(dem_path), str(boundary_path), "EPSG:4326", z_factor=1.0
                 )
             except ValueError as exc:
@@ -180,7 +215,7 @@ def main() -> None:
             assert boundary_path.read_bytes() == boundary_before, "Raster workflow modified source boundary"
 
         print("PASS: synthetic DEM reprojection, mask clipping, slope values, target CRS and dimensions")
-        print("PASS: invalid z_factor, empty boundary, and geographic target CRS rejected")
+        print("PASS: invalid z_factor, empty/invalid boundary, and geographic target CRS rejected")
         print("PASS: raster and boundary source files remain unchanged")
     finally:
         app.exitQgis()
