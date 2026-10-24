@@ -155,8 +155,13 @@ try:
     assert style_layer.isValid(), "Could not create polygon layer for QML test"
     for style_name in ("parcels.qml", "flood_zones.qml"):
         style_path = PLUGIN_PARENT / "styles" / style_name
-        message, loaded = style_layer.loadNamedStyle(str(style_path))
-        assert loaded, f"QGIS could not load {style_name}: {message}"
+        style_result = style_layer.loadNamedStyle(str(style_path))
+        if isinstance(style_result, tuple):
+            message, loaded = style_result
+            assert loaded, f"QGIS could not load {style_name}: {message}"
+        else:
+            # Some QGIS/SIP versions return only an error-message string.
+            assert not style_result, f"QGIS could not load {style_name}: {style_result}"
         assert style_layer.renderer() is not None, f"{style_name} produced no renderer"
 
     with tempfile.TemporaryDirectory(prefix="zqm-qgis-runtime-") as temp:
