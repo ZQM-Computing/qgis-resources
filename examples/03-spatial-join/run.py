@@ -28,7 +28,8 @@ def run_example():
     points.updateExtents()
     joined = processing.run("native:joinattributesbylocation", {
         "INPUT": points, "JOIN": polygons, "PREDICATE": [0],
-        "METHOD": 0, "DISCARD_NONMATCHING": False, "OUTPUT": "memory:",
+        "METHOD": 0, "DISCARD_NONMATCHING": False,
+        "PREFIX": "join_", "OUTPUT": "memory:",
     })["OUTPUT"]
     if not joined.isValid() or joined.featureCount() != 2:
         raise RuntimeError("Spatial join did not retain both test points")
