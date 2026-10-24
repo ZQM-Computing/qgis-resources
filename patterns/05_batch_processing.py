@@ -53,6 +53,12 @@ def batch_process(folder, distance=100.0, output_folder=None, overwrite=False):
                 check = QgsVectorLayer(str(output_path), path.stem + "_buffer_check", "ogr")
                 if not check.isValid():
                     raise RuntimeError(f"Processing output is not a valid vector layer: {output_path}")
+                if check.featureCount() != layer.featureCount():
+                    raise RuntimeError(
+                        f"Feature-count mismatch for {output_path}: "
+                        f"expected {layer.featureCount()}, found {check.featureCount()}"
+                    )
+                del check
             results.append({"input": str(path), "ok": True, "output": result})
         except Exception as exc:
             results.append({"input": str(path), "ok": False, "error": str(exc)})
