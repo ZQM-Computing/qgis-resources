@@ -96,7 +96,15 @@ def _audit_vector(path: Path, display_path: str, gdal: Any, ogr: Any,
         "size_bytes": path.stat().st_size, "layers": [],
     }
     findings: list[dict[str, Any]] = []
-    for index in range(dataset.GetLayerCount()):
+    layer_count = dataset.GetLayerCount()
+    if layer_count == 0:
+        findings.append(finding(
+            "VECTOR_DATASET_NO_LAYERS", "error",
+            "Vector dataset opened successfully but contains no accessible layers.",
+            dataset=display_path,
+            remediation="Confirm the file is the intended dataset and that its driver exposes the expected layers.",
+        ))
+    for index in range(layer_count):
         layer = dataset.GetLayerByIndex(index)
         if layer is None:
             findings.append(finding("VECTOR_LAYER_UNREADABLE", "error",
