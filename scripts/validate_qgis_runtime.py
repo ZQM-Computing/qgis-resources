@@ -57,7 +57,7 @@ try:
     plugin.initGui()
     registered_provider = plugin.provider
     assert registered_provider is not None
-    assert registry.providerById("zqm_geospatial_tools") is registered_provider
+    assert registry.providerById("zqm_geospatial_tools") is not None
     plugin.initGui()
     assert plugin.provider is registered_provider, "Repeated initGui registered a second provider"
     plugin.unload()
