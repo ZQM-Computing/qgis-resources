@@ -77,7 +77,7 @@ def _audit_vector(path: Path, display_path: str, gdal: Any, ogr: Any,
         return None
     inventory: dict[str, Any] = {
         "path": display_path, "kind": "vector", "driver": dataset.GetDriver().GetName(),
-        "layers": [],
+        "size_bytes": path.stat().st_size, "layers": [],
     }
     findings: list[dict[str, Any]] = []
     for index in range(dataset.GetLayerCount()):
@@ -223,13 +223,23 @@ def _audit_raster(path: Path, display_path: str, gdal: Any,
             crs = f"{authority_name}:{authority}" if authority and authority_name else projection
     transform = dataset.GetGeoTransform(can_return_null=True)
     width, height, bands = dataset.RasterXSize, dataset.RasterYSize, dataset.RasterCount
+    finite_transform = transform is not None and all(math.isfinite(float(v)) for v in transform)
+    pixel_resolution = None
+    if finite_transform:
+        # Affine pixel/line vectors can be rotated; use vector magnitudes rather
+        # than abs(GT(1))/abs(GT(5)), which is wrong for rotated grids.
+        pixel_resolution = [
+            math.hypot(float(transform[1]), float(transform[4])),
+            math.hypot(float(transform[2]), float(transform[5])),
+        ]
     info: dict[str, Any] = {
         "path": display_path, "kind": "raster",
         "driver": dataset.GetDriver().ShortName,
+        "size_bytes": path.stat().st_size,
         "width": width, "height": height, "band_count": bands,
         "crs": crs,
         "geotransform": list(transform) if transform is not None else None,
-        "resolution": ([abs(transform[1]), abs(transform[5])] if transform is not None else None),
+        "resolution": pixel_resolution,
         "extent": None, "bands": [],
     }
     findings: list[dict[str, Any]] = []
