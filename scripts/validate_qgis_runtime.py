@@ -68,13 +68,29 @@ try:
         from qgis.core import QgsField
         return QgsField(name, QVariant.Int)
 
+    class DiagnosticFeedback(QgsProcessingFeedback):
+        """Keep provider diagnostics visible when an algorithm raises."""
+        def __init__(self):
+            super().__init__()
+            self.errors = []
+            self.warnings = []
+
+        def reportError(self, error, fatalError=False):
+            self.errors.append(str(error))
+            super().reportError(error, fatalError)
+
+        def pushWarning(self, warning):
+            self.warnings.append(str(warning))
+            super().pushWarning(warning)
+
     def run_algorithm(layers, output_dir, overwrite=False):
         algorithm = BatchBufferAlgorithm()
         algorithm.initAlgorithm()
         context = QgsProcessingContext()
         context.setProject(QgsProject.instance())
-        feedback = QgsProcessingFeedback()
-        return algorithm.processAlgorithm(
+        feedback = DiagnosticFeedback()
+        try:
+            return algorithm.processAlgorithm(
             {
                 "LAYERS": layers,
                 "DISTANCE": 5.0,
@@ -83,8 +99,11 @@ try:
                 "OVERWRITE": overwrite,
             },
             context,
-            feedback,
-        )
+                feedback,
+            )
+        except Exception as exc:
+            details = "\\n".join(feedback.errors + feedback.warnings)
+            raise AssertionError(f"QGIS algorithm failed: {exc}\\nFeedback details:\\n{details}") from exc
 
     with tempfile.TemporaryDirectory(prefix="zqm-qgis-runtime-") as temp:
         root = Path(temp)
