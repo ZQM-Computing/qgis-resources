@@ -216,6 +216,7 @@ def main() -> None:
             print("STAGE: GDAL slope dataset closed", flush=True)
 
             # Invalid physical parameters and angular horizontal units must fail early.
+            print("STAGE: testing NaN z_factor rejection", flush=True)
             try:
                 raster_module.raster_processing(
                     str(dem_path), str(boundary_path), "EPSG:32618", z_factor=float("nan")
@@ -225,6 +226,7 @@ def main() -> None:
             else:
                 raise AssertionError("NaN z_factor was accepted")
 
+            print("STAGE: NaN z_factor rejected", flush=True)
             try:
                 raster_module.raster_processing(
                     str(dem_path), str(boundary_path), "EPSG:32618", z_factor=True
@@ -234,6 +236,7 @@ def main() -> None:
             else:
                 raise AssertionError("Boolean z_factor was accepted as a numeric multiplier")
 
+            print("STAGE: boolean z_factor rejected", flush=True)
             try:
                 raster_module.raster_processing(
                     str(dem_path), str(empty_boundary_path), "EPSG:32618", z_factor=1.0
@@ -243,6 +246,7 @@ def main() -> None:
             else:
                 raise AssertionError("Empty boundary layer was accepted")
 
+            print("STAGE: empty boundary rejected", flush=True)
             try:
                 raster_module.raster_processing(
                     str(dem_path), str(invalid_boundary_path), "EPSG:32618", z_factor=1.0
@@ -252,6 +256,7 @@ def main() -> None:
             else:
                 raise AssertionError("Invalid polygon boundary was accepted")
 
+            print("STAGE: invalid geometry rejected", flush=True)
             try:
                 raster_module.raster_processing(
                     str(dem_path), str(boundary_path), "EPSG:4326", z_factor=1.0
@@ -261,6 +266,7 @@ def main() -> None:
             else:
                 raise AssertionError("Geographic target CRS was accepted for slope analysis")
 
+            print("STAGE: geographic target CRS rejected", flush=True)
             assert dem_path.read_bytes() == dem_before, "Raster workflow modified source DEM"
             assert boundary_path.read_bytes() == boundary_before, "Raster workflow modified source boundary"
 
