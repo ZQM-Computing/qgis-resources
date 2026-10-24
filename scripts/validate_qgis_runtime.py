@@ -178,7 +178,15 @@ try:
             f"Buffer extent does not reflect the requested distance: {extent.toString()}"
         )
 
-        # Non-finite values must be rejected before running native:buffer.\n        try:\n            run_algorithm([points], root / "invalid-distance", distance=float("inf"))\n        except Exception as exc:\n            assert "finite and non-negative" in str(exc), f"Unexpected invalid-distance error: {exc}"\n        else:\n            raise AssertionError("Infinite buffer distance was accepted")\n\n        # Default behavior must preserve existing output and report a skip.
+        # Non-finite values must be rejected before running native:buffer.
+        try:
+            run_algorithm([points], root / "invalid-distance", distance=float("inf"))
+        except Exception as exc:
+            assert "finite and non-negative" in str(exc), f"Unexpected invalid-distance error: {exc}"
+        else:
+            raise AssertionError("Infinite buffer distance was accepted")
+
+        # Default behavior must preserve existing output and report a skip.
         original_bytes = output.read_bytes()
         result = run_algorithm([points], output_dir, overwrite=False)
         assert result["SKIPPED"] == 1 and result["SUCCEEDED"] == 0
