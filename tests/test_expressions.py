@@ -120,3 +120,32 @@ def test_documented_processing_script_path_exists():
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     assert "patterns/clip_and_reproject.py" in readme
     assert (REPO_ROOT / "patterns" / "clip_and_reproject.py").is_file()
+
+
+
+def test_existing_examples_assert_results_not_just_execution():
+    spatial_join = (REPO_ROOT / "examples" / "03-spatial-join" / "run.py").read_text(encoding="utf-8")
+    assert "zone_name" in spatial_join
+    assert "join_zone_name" in spatial_join
+    assert "Unexpected join results" in spatial_join
+
+    vector_example = (REPO_ROOT / "examples" / "02-processing-script" / "run.py").read_text(encoding="utf-8")
+    assert "Could not add expected point attributes" in vector_example
+    assert "Stored attributes do not match" in vector_example
+
+
+def test_file_exports_stage_validate_and_protect_existing_outputs():
+    gpkg_export = (REPO_ROOT / "pyqgis" / "batch_export_to_geopackage.py").read_text(encoding="utf-8")
+    assert "TemporaryDirectory" in gpkg_export
+    assert "Staged GeoPackage is missing or empty" in gpkg_export
+    assert "Feature count mismatch" in gpkg_export
+    assert "staged.replace(destination)" in gpkg_export
+
+    pdf_export = (REPO_ROOT / "pyqgis" / "export_layout_pdf.py").read_text(encoding="utf-8")
+    assert "overwrite: bool = False" in pdf_export
+    assert "temporary.replace(destination)" in pdf_export
+    assert "FileExistsError" in pdf_export
+
+    batch = (REPO_ROOT / "patterns" / "05_batch_processing.py").read_text(encoding="utf-8")
+    assert "os.replace(staged_path, output_path)" in batch
+    assert "finally:" in batch and "staged_path.unlink" in batch
