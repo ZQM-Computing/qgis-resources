@@ -120,7 +120,7 @@ def main() -> None:
         create_vector_fixture(vector_path)
         create_raster_fixture(raster_path)
         create_rotated_raster_fixture(rotated_raster_path)
-        before = {path.name: path.read_bytes() for path in (vector_path, raster_path)}
+        before = {path.name: path.read_bytes() for path in (vector_path, raster_path, rotated_raster_path)}
 
         report = audit_paths(
             [vector_path, raster_path],
@@ -230,7 +230,7 @@ def main() -> None:
         repeat_encoded = json.dumps(qa_module.json_safe(repeat_report), sort_keys=True, allow_nan=False)
         assert repeat_encoded == encoded, "Repeated audits produced nondeterministic JSON reports"
         assert "VECTOR_ID_DUPLICATE" in markdown_report(report)
-        assert before == {path.name: path.read_bytes() for path in (vector_path, raster_path)}, (
+        assert before == {path.name: path.read_bytes() for path in (vector_path, raster_path, rotated_raster_path)}, (
             "Dataset QA modified an input file"
         )
 
