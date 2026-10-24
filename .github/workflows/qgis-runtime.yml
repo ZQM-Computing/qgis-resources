@@ -34,3 +34,7 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: /usr/bin/python3 scripts/validate_dataset_qa_runtime.py
+      - name: Exercise reprojection, raster clipping, and slope against a synthetic DEM
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: /usr/bin/python3 scripts/validate_raster_processing_runtime.py
