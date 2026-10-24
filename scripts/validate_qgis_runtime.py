@@ -91,19 +91,21 @@ try:
         feedback = DiagnosticFeedback()
         try:
             return algorithm.processAlgorithm(
-            {
-                "LAYERS": layers,
-                "DISTANCE": distance,
-                "SEGMENTS": 4,
-                "OUTPUT_FOLDER": str(output_dir),
-                "OVERWRITE": overwrite,
-            },
-            context,
+                {
+                    "LAYERS": layers,
+                    "DISTANCE": distance,
+                    "SEGMENTS": 4,
+                    "OUTPUT_FOLDER": str(output_dir),
+                    "OVERWRITE": overwrite,
+                },
+                context,
                 feedback,
             )
         except Exception as exc:
-            details = "\\n".join(feedback.errors + feedback.warnings)
-            raise AssertionError(f"QGIS algorithm failed: {exc}\\nFeedback details:\\n{details}") from exc
+            details = "\n".join(feedback.errors + feedback.warnings)
+            raise AssertionError(
+                f"QGIS algorithm failed: {exc}\nFeedback details:\n{details}"
+            ) from exc
 
     with tempfile.TemporaryDirectory(prefix="zqm-qgis-runtime-") as temp:
         root = Path(temp)
