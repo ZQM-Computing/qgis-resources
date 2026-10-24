@@ -1,17 +1,23 @@
-"""Example 01: QGIS expression basics."""
-# These expressions can be used in QGIS Field Calculator or Filter
+"""QGIS expression reference: expressions are evaluated by QGIS, not plain Python.
 
+Paste an expression into QGIS Field Calculator or the expression editor only
+after replacing example layer names and confirming geometry CRS and field names.
+"""
 expressions = {
+    # Buffer distances use the layer CRS units, not always metres.
     "buffer_distance": "buffer($geometry, 100)",
-    "nearest_feature": "overlay_nearest('layers', $geometry, limit:=5)",
+    # Replace 'sites' with a real layer name; requires compatible CRSs.
+    "nearest_feature": "overlay_nearest('sites', $geometry, limit:=5)",
+    # area($geometry) follows QGIS measurement settings and project/layer context.
     "area_hectares": "area($geometry) / 10000",
+    # Centroid coordinates are in the geometry CRS; they are not automatically lon/lat.
     "centroid_x": "x(centroid($geometry))",
     "centroid_y": "y(centroid($geometry))",
 }
 
-print("QGIS Expression Basics:")
-print("=" * 40)
-for name, expr in expressions.items():
-    print(f"  {name}:")
-    print(f"    {expr}")
-    print()
+if __name__ == "__main__":
+    print("QGIS Expression Reference")
+    print("=" * 40)
+    for name, expression in expressions.items():
+        print(f"{name}: {expression}")
+    print("Review CRS, measurement ellipsoid, layer names, and field names before use.")
