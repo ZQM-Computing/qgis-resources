@@ -122,3 +122,9 @@ def test_crs_comparison_accepts_equivalent_authority_and_wkt_forms():
     # No GDAL dependency for the fallback form; real semantic comparison is
     # exercised by the GDAL runtime test.
     assert qa._crs_matches(" EPSG:4326 ", "epsg:4326")
+
+
+def test_audit_paths_supports_excluding_generated_report_paths():
+    source = (ROOT / "scripts" / "dataset_qa.py").read_text(encoding="utf-8")
+    assert "exclude_paths: list[Path] | None = None" in source
+    assert "exclude_paths=[args.json_path" in source
