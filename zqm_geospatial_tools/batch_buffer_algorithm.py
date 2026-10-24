@@ -232,6 +232,12 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
                         f"Could not remove temporary file {temporary_path}: {exc}"
                     )
 
+        if feedback.isCanceled():
+            raise QgsProcessingException(
+                "Canceled by user. Completed per-layer outputs remain on disk; "
+                "review the log before rerunning."
+            )
+
         feedback.pushInfo(
             f"Batch buffer summary — succeeded: {successes}; skipped: {skipped}; "
             f"failed: {failures}; total: {len(layers)}."
