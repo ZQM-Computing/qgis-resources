@@ -43,10 +43,7 @@ def export_project_layers(output_path: str, overwrite: bool = False) -> list:
         options.driverName = "GPKG"
         options.layerName = name
         if index == 0:
-            options.actionOnExistingFile = (
-                QgsVectorFileWriter.CreateOrOverwriteFile
-                if overwrite else QgsVectorFileWriter.CreateOrOverwriteFile
-            )
+            options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteFile
         else:
             options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
         result = QgsVectorFileWriter.writeAsVectorFormatV3(
