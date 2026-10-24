@@ -103,6 +103,8 @@ def main() -> None:
         assert (raster["width"], raster["height"], raster["band_count"]) == (3, 2, 1), raster
         assert raster["crs"] == "EPSG:4326", raster
         assert raster["bands"][0]["nodata"] == -9999, raster
+        assert raster["size_bytes"] == raster_path.stat().st_size, raster
+        assert raster["resolution"] == [10.0, 10.0], raster
         assert raster["extent"] == {"xmin": 100.0, "ymin": 180.0, "xmax": 130.0, "ymax": 200.0}, raster
         encoded = json.dumps(__import__("dataset_qa").json_safe(report), sort_keys=True, allow_nan=False)
         assert json.loads(encoded)["summary"]["error"] >= 1
