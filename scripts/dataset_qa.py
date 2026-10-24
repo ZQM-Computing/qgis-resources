@@ -243,9 +243,14 @@ def _audit_raster(path: Path, display_path: str, gdal: Any,
                 "Raster geotransform contains non-finite values.", dataset=display_path))
     for band_index in range(1, bands + 1):
         band = dataset.GetRasterBand(band_index)
+        nodata = band.GetNoDataValue()
+        if nodata is not None and not math.isfinite(float(nodata)):
+            nodata = str(nodata).lower() if math.isnan(float(nodata)) else ("infinity" if nodata > 0 else "-infinity")
+        scale = band.GetScale()
+        offset = band.GetOffset()
         band_info = {"index": band_index, "data_type": gdal.GetDataTypeName(band.DataType),
-                     "nodata": band.GetNoDataValue(), "scale": band.GetScale(),
-                     "offset": band.GetOffset(), "block_size": list(band.GetBlockSize())}
+                     "nodata": nodata, "scale": scale, "offset": offset,
+                     "block_size": list(band.GetBlockSize())}
         info["bands"].append(band_info)
     dataset = None
     return {"inventory": info, "findings": findings}
@@ -279,10 +284,18 @@ def audit_paths(paths: list[Path], *, root: Path, required_fields: list[str] | N
         except ValueError:
             display = path.name
         result = None
-        if path.suffix.casefold() in SUPPORTED_VECTOR:
-            result = _audit_vector(path, display, gdal, ogr, required_fields, id_fields, expected_crs, check_geometry)
-        if result is None and path.suffix.casefold() in SUPPORTED_RASTER:
-            result = _audit_raster(path, display, gdal, expected_crs)
+        try:
+            if path.suffix.casefold() in SUPPORTED_VECTOR:
+                result = _audit_vector(path, display, gdal, ogr, required_fields, id_fields, expected_crs, check_geometry)
+            if result is None and path.suffix.casefold() in SUPPORTED_RASTER:
+                result = _audit_raster(path, display, gdal, expected_crs)
+        except Exception as exc:
+            unreadable.append(display)
+            all_findings.append(finding("DATASET_READ_FAILED", "error",
+                "GDAL/OGR raised an error while inspecting this dataset.",
+                dataset=display, evidence={"error_type": type(exc).__name__, "message": str(exc)},
+                remediation="Check dataset integrity, provider support, file permissions, and sidecar files."))
+            continue
         if result is None:
             # Vector formats can be opened by GDAL as well; retry raster opening only for supported raster suffixes.
             unreadable.append(display)
