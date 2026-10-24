@@ -24,7 +24,7 @@ def raster_processing(dem_path, boundary_path, target_crs):
         "INPUT": projected, "MASK": boundary, "CROP_TO_CUTLINE": True,
         "KEEP_RESOLUTION": True, "OUTPUT": "TEMPORARY_OUTPUT",
     })["OUTPUT"]
-    slope = processing.run("native:slope", {
+    slope = processing.run("qgis:slope", {
         "INPUT": clipped, "Z_FACTOR": 1, "OUTPUT": "TEMPORARY_OUTPUT",
     })["OUTPUT"]
     result = QgsRasterLayer(slope, "slope")
