@@ -4,7 +4,7 @@
 
 `scripts/dataset_qa.py` is the first implementation of the repository's read-only inventory and quality-report tool. It inspects supported vector and raster datasets through GDAL/OGR and writes a JSON report plus an optional Markdown summary. It does not repair or rewrite source data.
 
-**Status:** implemented; deterministic report-contract tests are added. Dataset-level execution still requires testing in a Python environment with GDAL bindings and synthetic datasets. Do not describe this tool as runtime-validated until those tests have been run.
+**Status:** implemented; deterministic report-contract tests and a synthetic GeoPackage/GeoTIFF integration test are added. The runtime test is wired into the QGIS/GDAL workflow, but has not been observed passing on the current PR head. Do not describe this tool as runtime-validated until that run succeeds.
 
 ## Requirements
 
@@ -75,4 +75,4 @@ Relative dataset paths are reported relative to `--root` when possible. For inpu
 - Findings are diagnostic signals, not automatic repair instructions. Review data provenance before changing a dataset.
 - Geometry validity checks can be expensive and depend on GDAL/OGR/GEOS provider behavior.
 - This is an inventory/QA first increment, not a replacement for QGIS project inspection or domain-specific validation.
-- Current tests validate report schema, deterministic ordering, summary counts, and report rendering without GDAL. The runtime integration script is `scripts/validate_dataset_qa_runtime.py`. It creates synthetic GeoPackage and GeoTIFF inputs, asserts inventory values and deliberate findings, checks JSON serialization, and verifies that the source files are unchanged. The QGIS runtime workflow invokes it after installing QGIS/GDAL. This test is implemented but remains unverified until the workflow completes successfully on the current PR head.
+- Unit tests validate report schema, deterministic ordering, summary counts, report rendering, non-finite metadata serialization, and undefined-CRS handling without requiring GDAL. `scripts/validate_dataset_qa_runtime.py` creates synthetic GeoPackage and GeoTIFF inputs, asserts inventory values and deliberate CRS/schema/identifier/empty-geometry findings, checks JSON serialization, and verifies that the source files are unchanged. The QGIS runtime workflow invokes it after installing QGIS/GDAL. This test is implemented but remains unverified until the workflow completes successfully on the current PR head.
