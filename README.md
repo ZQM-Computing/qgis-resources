@@ -23,6 +23,10 @@ Reusable QGIS resources: documented expressions, PyQGIS utilities, Processing pa
 
 This repository is the QGIS-specific part of the ZQM Computing geospatial portfolio. Examples use synthetic data where practical. Scripts intended for the QGIS Python Console or a QGIS Python environment are labelled accordingly. Static CI checks do not substitute for executing algorithms inside QGIS.
 
+## What we are building
+
+The roadmap prioritizes trustworthy runtime validation, a read-only dataset inventory/QA report, a reproducible preparation workflow, focused Processing algorithms, and one end-to-end synthetic reference project. See the [product roadmap](docs/PRODUCT_ROADMAP.md) for priorities and exit criteria and the [workflow contracts](docs/WORKFLOW_CONTRACTS.md) for input/output safety, spatial semantics, and test expectations. These documents describe intended direction; they do not imply every planned capability is implemented.
+
 ## What's inside
 
 | Resource | What you get | Folder |
@@ -33,7 +37,8 @@ This repository is the QGIS-specific part of the ZQM Computing geospatial portfo
 | Styles | QML starting styles and cartographic palettes | [styles/](styles/) |
 | Field collection | QField offline-collection and packaging guidance | [qfield/](qfield/) |
 | Worked examples | Expression basics, Processing, spatial join, CRS transform, buffering, plugin lifecycle | [examples/](examples/) |
-| Validation | Documentation checks and automated tests | [scripts/](scripts/) and [tests/](tests/) |
+| Validation | Documentation checks, static audits, unit/contract tests, and QGIS runtime tests | [scripts/](scripts/) and [tests/](tests/) |
+| Engineering plan | Prioritized product roadmap and geospatial workflow contracts | [docs/PRODUCT_ROADMAP.md](docs/PRODUCT_ROADMAP.md) and [docs/WORKFLOW_CONTRACTS.md](docs/WORKFLOW_CONTRACTS.md) |
 | QGIS plugin | Processing provider with batch-buffer tool | [zqm_geospatial_tools/](zqm_geospatial_tools/) |
 
 ## Quick start
@@ -51,6 +56,8 @@ This repository is the QGIS-specific part of the ZQM Computing geospatial portfo
 Coordinate transformations change coordinates; CRS assignment does not. Area, distance, and buffer values use the relevant geometry or algorithm units. Do not assume degrees are metres or that EPSG:3857 is suitable for measurement. Select a local or regional projected CRS appropriate to the study area and state the choice in analysis outputs. EPSG:4326 is used for interchange examples, not as a universal measurement CRS.
 
 ## Validation levels
+
+Use [workflow contracts and test strategy](docs/WORKFLOW_CONTRACTS.md) when adding or changing a tool. Use [the product roadmap](docs/PRODUCT_ROADMAP.md) to prioritize work; do not add snippets solely to increase repository size.
 
 - **Static checks:** Python syntax, notebook structure and cell parsing, QML structure, empty/placeholder implementation checks, existing-script contracts, and internal Markdown links.
 - **Unit tests:** repository contracts and deterministic checks that do not require QGIS.
