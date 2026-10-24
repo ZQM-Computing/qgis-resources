@@ -26,6 +26,11 @@ def raster_processing(dem_path, boundary_path, target_crs, z_factor=1.0):
         raise ValueError("Boundary layer must contain polygon or multipolygon geometry")
     if boundary.featureCount() <= 0:
         raise ValueError("Boundary layer contains no features; clipping would not produce a meaningful raster")
+    for feature in boundary.getFeatures():
+        if not feature.hasGeometry() or feature.geometry().isEmpty():
+            raise ValueError(f"Boundary feature {feature.id()} has no usable geometry")
+        if not feature.geometry().isGeosValid():
+            raise ValueError(f"Boundary feature {feature.id()} has invalid geometry")
     target = (
         target_crs if isinstance(target_crs, QgsCoordinateReferenceSystem)
         else QgsCoordinateReferenceSystem(str(target_crs))
