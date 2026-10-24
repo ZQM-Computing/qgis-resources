@@ -81,3 +81,35 @@ def test_dataset_qa_documents_real_gdal_inspection_and_read_only_open():
         "sort_findings",
     ):
         assert contract in source, f"Missing dataset QA contract: {contract}"
+
+
+
+def test_json_safe_normalizes_nonfinite_metadata_without_invalid_json():
+    import json
+    report = {"nan": float("nan"), "positive": float("inf"), "negative": float("-inf")}
+    safe = qa.json_safe(report)
+    assert safe == {"nan": "nan", "positive": "infinity", "negative": "-infinity"}
+    assert json.loads(json.dumps(safe, allow_nan=False)) == safe
+
+
+def test_crs_placeholder_marked_undefined_is_not_reported_as_real_crs():
+    class UndefinedSpatialReference:
+        def GetAuthorityCode(self, _):
+            return None
+
+        def GetAuthorityName(self, _):
+            return None
+
+        def ExportToWkt(self):
+            return 'LOCAL_CS["Undefined Cartesian SRS"]'
+
+    assert qa._crs_text(UndefinedSpatialReference()) is None
+
+
+def test_geometry_check_metadata_distinguishes_skipped_from_clean():
+    source = (ROOT / "scripts" / "dataset_qa.py").read_text(encoding="utf-8")
+    assert '"enabled": check_geometry' in source
+    assert '"unchecked_validity": unchecked_geometries' in source
+    assert "VECTOR_FEATURE_COUNT_UNKNOWN" in source
+    assert "field_index_by_name" in source
+    assert "RASTER_GEOREFERENCE_NONFINITE" in source
