@@ -26,6 +26,7 @@ from qgis.core import (  # noqa: E402
     QgsProcessingContext,
     QgsProcessingFeedback,
     QgsProject,
+    QgsVectorFileWriter,
     QgsVectorLayer,
     QgsWkbTypes,
 )
@@ -137,6 +138,18 @@ try:
     plugin_contract = load_module("examples/06-plugin-dev/run.py", "zqm_example_plugin_contract")
     plugin_contract.main()
 
+    def write_gpkg(layer, path, layer_name):
+        options = QgsVectorFileWriter.SaveVectorOptions()
+        options.driverName = "GPKG"
+        options.layerName = layer_name
+        result = QgsVectorFileWriter.writeAsVectorFormatV3(
+            layer, str(path), QgsProject.instance().transformContext(), options
+        )
+        assert result[0] == QgsVectorFileWriter.NoError, f"Could not write {path}: {result[1]}"
+        reopened = QgsVectorLayer(str(path), layer_name, "ogr")
+        assert reopened.isValid() and reopened.featureCount() == layer.featureCount()
+        return reopened
+
     # Load existing QML resources into live QGIS layers, not only an XML parser.
     style_layer = QgsVectorLayer("Polygon?crs=EPSG:3857", "style_smoke_test", "memory")
     assert style_layer.isValid(), "Could not create polygon layer for QML test"
@@ -190,6 +203,7 @@ try:
 
     print("PASS: provider registration and algorithm discovery")\n    print("PASS: existing parcels and flood-zone QML styles load in QGIS")
     print("PASS: synthetic processing, spatial-join, CRS, buffer and plugin-contract examples")
+    print("PASS: file-backed vector analysis, spatial joins, CRS transforms and batch processing")
     print("PASS: buffer execution, GeoPackage write/reopen, feature count and CRS")
     print("PASS: existing-output preservation and explicit overwrite")
     print("PASS: mixed-CRS rejection")
