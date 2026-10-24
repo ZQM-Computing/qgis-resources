@@ -1,31 +1,57 @@
 """
 Tests for QGIS resources repository structure and content.
+
+Current scope (2026-10-24): only qfield/, scripts/, and tests/ ship.
+expressions/, pyqgis/, processing/, styles/, and examples/ are planned,
+not yet shipped — see README.md. Tests for those folders are skipped
+with that reason below, and must be re-enabled when the content lands.
 """
-import os
-import re
+import pytest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent
 
-
-def test_expressions_directory_exists():
-    """Verify the expressions directory exists."""
-    assert (REPO_ROOT / "examples").is_dir(), "expressions/ directory must exist"
-
-
-def test_processing_directory_exists():
-    """Verify the processing directory exists."""
-    assert (REPO_ROOT / "processing").is_dir(), "processing/ directory must exist"
+PLANNED_FOLDERS = ["expressions", "pyqgis", "processing", "styles", "examples"]
+PLANNED_REASON = (
+    "Planned, not yet shipped (see README.md): "
+    + ", ".join(f"{f}/" for f in PLANNED_FOLDERS)
+    + " do not exist in this tree yet."
+)
 
 
-def test_styles_directory_exists():
-    """Verify the styles directory exists."""
-    assert (REPO_ROOT / "styles").is_dir(), "styles/ directory must exist"
+def test_qfield_directory_exists():
+    """Verify the QField guide directory exists."""
+    assert (REPO_ROOT / "qfield").is_dir(), "qfield/ directory must exist"
 
 
-def test_examples_directory_exists():
-    """Verify the examples directory exists."""
-    assert (REPO_ROOT / "examples").is_dir(), "examples/ directory must exist"
+def test_qfield_guide_exists():
+    """Verify the QField guide itself exists."""
+    assert (REPO_ROOT / "qfield" / "README.md").is_file(), "qfield/README.md must exist"
+
+
+def test_scripts_directory_exists():
+    """Verify the validation scripts directory exists."""
+    assert (REPO_ROOT / "scripts").is_dir(), "scripts/ directory must exist"
+
+
+def test_tests_directory_exists():
+    """Verify the tests directory exists."""
+    assert (REPO_ROOT / "tests").is_dir(), "tests/ directory must exist"
+
+
+@pytest.mark.skip(reason=PLANNED_REASON)
+def test_planned_resource_directories_exist():
+    """Planned folders only — skipped until the content ships."""
+    for folder in PLANNED_FOLDERS:
+        assert (REPO_ROOT / folder).is_dir(), f"{folder}/ directory must exist"
+
+
+@pytest.mark.skip(reason=PLANNED_REASON)
+def test_at_least_one_example():
+    """Planned examples only — skipped until examples/ ships."""
+    examples_dir = REPO_ROOT / "examples"
+    examples = [d for d in examples_dir.iterdir() if d.is_dir()]
+    assert len(examples) > 0, "Must have at least one example"
 
 
 def test_readme_exists():
@@ -36,13 +62,6 @@ def test_readme_exists():
 def test_license_exists():
     """Verify LICENSE file exists."""
     assert (REPO_ROOT / "LICENSE").is_file(), "LICENSE must exist"
-
-
-def test_at_least_one_example():
-    """Verify at least one example directory exists."""
-    examples_dir = REPO_ROOT / "examples"
-    examples = [d for d in examples_dir.iterdir() if d.is_dir()]
-    assert len(examples) > 0, "Must have at least one example"
 
 
 def test_readme_has_content():

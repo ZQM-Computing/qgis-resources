@@ -4,7 +4,7 @@ A practical checklist for packaging a QGIS project for offline field collection 
 
 ## 1. Build the project for the field, not the office
 
-- **One GeoPackage per project** for editable layers. GeoPackage survives offline editing, sync, and round-tripping far better than shapefiles (no 10-character field names, no multi-file breakage). The batch-export snippet in [`../pyqgis/`](../pyqgis/) produces one from an existing project.
+- **One GeoPackage per project** for editable layers. GeoPackage survives offline editing, sync, and round-tripping far better than shapefiles (no 10-character field names, no multi-file breakage). The planned PyQGIS batch-export snippet (not yet shipped — see the main README) would produce one from an existing project; until it lands, export the project to GeoPackage from QGIS directly (Project → Export → GeoPackage).
 - **Basemaps offline:** export a raster tile package (MBTiles) of your work area at the zooms you actually need, or use QFieldCloud's offline basemap packaging. Field areas with no signal are the norm, not the exception.
 - **CRS:** keep the project in the CRS your deliverable needs (for Florida: EPSG:2236 or the data's native CRS). QField handles on-the-fly reprojection, but a single consistent project CRS removes a whole class of "why is this offset" field problems.
 
