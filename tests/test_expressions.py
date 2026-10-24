@@ -142,8 +142,6 @@ def test_file_exports_stage_validate_and_protect_existing_outputs():
     assert "Feature count mismatch" in gpkg_export
     assert "CRS mismatch" in gpkg_export
     assert "Geometry type mismatch" in gpkg_export
-    assert "CRS mismatch" in gpkg_export
-    assert "Geometry type mismatch" in gpkg_export
     assert "staged.replace(destination)" in gpkg_export
 
     pdf_export = (REPO_ROOT / "pyqgis" / "export_layout_pdf.py").read_text(encoding="utf-8")
@@ -166,11 +164,11 @@ def test_documentation_link_checker_handles_fragments_and_rejects_escape(tmp_pat
     spec.loader.exec_module(checker)
 
     (tmp_path / "docs").mkdir()
-    (tmp_path / "docs" / "guide.md").write_text("# Guide\\n", encoding="utf-8")
+    (tmp_path / "docs" / "guide.md").write_text("# Guide\n", encoding="utf-8")
     (tmp_path / "docs" / "index.md").write_text(
-        "[Guide](guide.md#section)\\n[Escape](../../outside.md)\\n", encoding="utf-8"
+        "[Guide](guide.md#section)\n[Escape](../../outside.md)\n", encoding="utf-8"
     )
-    (tmp_path.parent / "outside.md").write_text("# Outside\\n", encoding="utf-8")
+    (tmp_path.parent / "outside.md").write_text("# Outside\n", encoding="utf-8")
     issues = checker.check_links(tmp_path)
     assert len(issues) == 1 and "Escape" in issues[0]
     assert "Guide" not in " ".join(issues)
