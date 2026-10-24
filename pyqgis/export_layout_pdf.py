@@ -35,7 +35,11 @@ def export_layout_pdf(layout_name: str, output_path: str, dpi: int = 300, overwr
     ) as staged_file:
         temporary = Path(staged_file.name)
     temporary.unlink(missing_ok=True)
-    result = exporter.exportToPdf(str(temporary), settings)
+    try:
+        result = exporter.exportToPdf(str(temporary), settings)
+    except Exception:
+        temporary.unlink(missing_ok=True)
+        raise
     if result != QgsLayoutExporter.Success:
         temporary.unlink(missing_ok=True)
         raise RuntimeError(f"PDF export failed (exporter result code {result})")
