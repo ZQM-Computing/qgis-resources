@@ -30,3 +30,7 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: /usr/bin/python3 scripts/validate_qgis_runtime.py
+      - name: Exercise dataset QA against synthetic vector and raster files
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: /usr/bin/python3 scripts/validate_dataset_qa_runtime.py
