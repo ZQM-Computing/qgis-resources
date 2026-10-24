@@ -66,10 +66,10 @@ def export_project_layers(output_path: str, overwrite: bool = False) -> list:
             layer_uri = str(staged) + "|layername=" + item["output_layer"]
             check = QgsVectorLayer(layer_uri, item["output_layer"], "ogr")
             if not check.isValid():
-                raise RuntimeError(f"Staged layer failed to reopen: {item[\"output_layer\"]}")
+                raise RuntimeError("Staged layer failed to reopen: " + item["output_layer"])
             source = next(layer for layer in vector_layers if layer.name() == item["source_layer"])
             if check.featureCount() != source.featureCount():
-                raise RuntimeError(f"Feature count mismatch for exported layer {item[\"output_layer\"]}")
+                raise RuntimeError("Feature count mismatch for exported layer " + item["output_layer"])
             del check
         if destination.exists() and not overwrite:
             raise FileExistsError(f"Output appeared during export: {destination}")
