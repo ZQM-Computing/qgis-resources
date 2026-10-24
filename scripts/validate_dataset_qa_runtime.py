@@ -86,6 +86,14 @@ def main() -> None:
         srs_wkt = osr.SpatialReference()
         assert srs_wkt.ImportFromEPSG(4326) == 0
         assert __import__("dataset_qa")._crs_matches(srs_wkt.ExportToWkt(), "EPSG:4326")
+        semantic_raster_report = audit_paths(
+            [raster_path],
+            root=root,
+            expected_crs="EPSG:4326",
+        )
+        assert "RASTER_CRS_UNEXPECTED" not in {
+            item["rule_id"] for item in semantic_raster_report["findings"]
+        }, semantic_raster_report
         rules = {item["rule_id"] for item in report["findings"]}
         expected_rules = {
             "VECTOR_REQUIRED_FIELD_MISSING",
