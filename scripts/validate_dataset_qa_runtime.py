@@ -86,6 +86,7 @@ def main() -> None:
             "VECTOR_REQUIRED_FIELD_MISSING",
             "VECTOR_ID_DUPLICATE",
             "VECTOR_ID_NULL",
+            "VECTOR_GEOMETRY_EMPTY",
             "VECTOR_CRS_MISSING",
             "VECTOR_CRS_UNEXPECTED",
             "RASTER_CRS_UNEXPECTED",
