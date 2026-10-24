@@ -23,6 +23,7 @@ from qgis.core import (  # noqa: E402
     QgsProcessingFeedback,
     QgsProject,
     QgsVectorLayer,
+    QgsWkbTypes,
 )
 from qgis.PyQt.QtCore import QVariant  # noqa: E402
 
@@ -94,6 +95,11 @@ try:
         assert reopened.isValid(), "Output GeoPackage failed to reopen"
         assert reopened.featureCount() == points.featureCount(), "Output feature count differs"
         assert reopened.crs() == points.crs(), "Output CRS differs from input"
+        assert QgsWkbTypes.geometryType(reopened.wkbType()) == QgsWkbTypes.PolygonGeometry
+        extent = reopened.extent()
+        assert extent.xMinimum() <= -4.9 and extent.xMaximum() >= 14.9, (
+            f"Buffer extent does not reflect the requested distance: {extent.toString()}"
+        )
 
         # Default behavior must preserve existing output and report a skip.
         original_bytes = output.read_bytes()
@@ -123,8 +129,4 @@ try:
     print("PASS: existing-output preservation and explicit overwrite")
     print("PASS: mixed-CRS rejection")
 finally:
-    try:
-        QgsApplication.processingRegistry().removeProvider("zqm_geospatial_tools")
-    except Exception:
-        pass
     app.exitQgis()
