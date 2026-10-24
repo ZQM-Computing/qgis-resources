@@ -15,13 +15,13 @@ from qgis.core import (
     QgsProcessingAlgorithm,
     QgsProcessingException,
     QgsProcessingParameterBoolean,
-    QgsProcessingParameterDistance,
     QgsProcessingParameterFolderDestination,
     QgsProcessingParameterMultipleLayers,
     QgsProcessingParameterNumber,
     QgsProcessingOutputNumber,
     QgsVectorLayer,
     QgsVectorFileWriter,
+    QgsWkbTypes,
 )
 
 
@@ -68,12 +68,12 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
-            QgsProcessingParameterDistance(
+            QgsProcessingParameterNumber(
                 self.DISTANCE,
-                self.tr("Buffer distance (layer CRS units)"),
+                self.tr("Buffer distance (input layer CRS units)"),
+                type=QgsProcessingParameterNumber.Double,
                 defaultValue=100.0,
                 minValue=0.0,
-                parentParameterName=self.LAYERS,
             )
         )
         self.addParameter(
@@ -119,9 +119,10 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
         if segments < 1:
             raise QgsProcessingException("Segments per quarter circle must be at least 1.")
 
-        output_dir = Path(self.parameterAsString(parameters, self.OUTPUT_FOLDER, context))
-        if not str(output_dir):
+        output_folder = self.parameterAsString(parameters, self.OUTPUT_FOLDER, context)
+        if not output_folder:
             raise QgsProcessingException("Choose an output folder.")
+        output_dir = Path(output_folder)
         output_dir.mkdir(parents=True, exist_ok=True)
         overwrite = self.parameterAsBool(parameters, self.OVERWRITE, context)
 
@@ -142,7 +143,7 @@ class BatchBufferAlgorithm(QgsProcessingAlgorithm):
                 feedback.reportError(f"{label}: invalid input layer; skipped.")
                 failures += 1
                 continue
-            if not layer.isSpatial():
+            if QgsWkbTypes.geometryType(layer.wkbType()) == QgsWkbTypes.NullGeometry:
                 feedback.reportError(f"{label}: non-spatial layer; skipped.")
                 failures += 1
                 continue
