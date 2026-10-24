@@ -58,7 +58,9 @@ The identifier check treats the first configured identifier field present on a l
 - Driver, file size, dimensions, band count, CRS, affine geotransform, extent, pixel resolution (including rotated-grid pixel-vector magnitudes), and per-band data type, nodata, scale, offset, and block size.
 - Missing CRS or nonpositive dimensions/band count (errors).
 - Missing geotransform and configured CRS mismatch (warnings).
-- Non-finite affine transform values (error).
+- Non-finite affine transform values (error); extent is withheld when the transform is invalid.
+- CRS comparisons attempt semantic GDAL/OSR equivalence before falling back to normalized text comparison.
+- Recursive audits exclude their configured JSON/Markdown report destinations, preventing prior reports from being re-ingested on reruns.
 
 This initial version does not yet compute raster statistics, inspect every pixel for nodata/NaN anomalies, compare raster alignment across a collection, or assert an expected resolution/extent. Those checks should be added only with clear configuration semantics and synthetic tests.
 
@@ -66,7 +68,7 @@ This initial version does not yet compute raster statistics, inspect every pixel
 
 JSON includes `schema_version`, inventory records, findings, a severity summary, and unreadable recognized datasets. Each finding has a stable `rule_id`, severity, dataset, message, and remediation guidance; layer/evidence fields are included when applicable. Findings are sorted deterministically to support review and diffing. Markdown is a human-readable rendering of the same findings.
 
-Relative dataset paths are reported relative to `--root` when possible. For inputs outside that root, only the basename is reported to avoid accidentally publishing full machine paths.
+Relative dataset paths are reported relative to `--root` when possible. For inputs outside that root, only the basename is reported to avoid accidentally publishing full machine paths. Provider exception records include the exception type rather than raw exception text, which may contain local paths.
 
 ## Safety and limitations
 
