@@ -24,10 +24,12 @@ def create_vector_fixture(path: Path) -> None:
     layer = ds.CreateLayer("observations", srs, ogr.wkbPoint)
     assert layer is not None
     assert layer.CreateField(ogr.FieldDefn("asset_id", ogr.OFTString)) == 0
-    for value, x, y in [("dup", 0, 0), ("dup", 1, 1), (None, 2, 2)]:
+    assert layer.CreateField(ogr.FieldDefn("alternate_id", ogr.OFTString)) == 0
+    for index, (value, x, y) in enumerate([("dup", 0, 0), ("dup", 1, 1), (None, 2, 2)]):
         feature = ogr.Feature(layer.GetLayerDefn())
         if value is not None:
             feature.SetField("asset_id", value)
+        feature.SetField("alternate_id", f"alternate-{index + 1}")
         geometry = ogr.Geometry(ogr.wkbPoint)
         geometry.AddPoint_2D(x, y)
         feature.SetGeometry(geometry)
@@ -36,6 +38,7 @@ def create_vector_fixture(path: Path) -> None:
     # Missing geometry is distinct from a null identifier and should be reported.
     empty_feature = ogr.Feature(layer.GetLayerDefn())
     empty_feature.SetField("asset_id", "empty-geometry")
+    empty_feature.SetField("alternate_id", "alternate-4")
     assert layer.CreateFeature(empty_feature) == 0
     empty_feature = None
     unreferenced = ds.CreateLayer("unreferenced", None, ogr.wkbPoint)
@@ -92,7 +95,7 @@ def main() -> None:
             [vector_path, raster_path],
             root=root,
             required_fields=["required_name"],
-            id_fields=["asset_id"],
+            id_fields=["asset_id", "alternate_id"],
             expected_crs="EPSG:3857",
         )
         # Equivalent authority-code and WKT representations should not produce
@@ -128,6 +131,14 @@ def main() -> None:
         assert observations["crs"] == "EPSG:4326", observations
         assert observations["geometry_checks"]["enabled"] is True, observations
         assert observations["geometry_checks"]["empty"] == 1, observations
+        id_findings = {
+            item["rule_id"]: item
+            for item in report["findings"]
+            if item["rule_id"] in {"VECTOR_ID_NULL", "VECTOR_ID_DUPLICATE"}
+            and item.get("layer") == "observations"
+        }
+        assert id_findings["VECTOR_ID_NULL"]["evidence"]["fields"] == ["asset_id"], id_findings
+        assert id_findings["VECTOR_ID_DUPLICATE"]["evidence"]["fields"] == ["asset_id"], id_findings
         invalid_polygons = next(layer for layer in vector["layers"] if layer["name"] == "invalid_polygons")
         assert invalid_polygons["geometry_checks"]["invalid"] == 1, invalid_polygons
 
@@ -174,7 +185,7 @@ def main() -> None:
             [vector_path, raster_path],
             root=root,
             required_fields=["required_name"],
-            id_fields=["asset_id"],
+            id_fields=["asset_id", "alternate_id"],
             expected_crs="EPSG:3857",
         )
         repeat_encoded = json.dumps(qa_module.json_safe(repeat_report), sort_keys=True, allow_nan=False)
