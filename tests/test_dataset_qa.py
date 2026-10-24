@@ -128,3 +128,9 @@ def test_audit_paths_supports_excluding_generated_report_paths():
     source = (ROOT / "scripts" / "dataset_qa.py").read_text(encoding="utf-8")
     assert "exclude_paths: list[Path] | None = None" in source
     assert "exclude_paths=[args.json_path" in source
+
+
+def test_provider_exception_evidence_does_not_include_raw_exception_text():
+    source = (ROOT / "scripts" / "dataset_qa.py").read_text(encoding="utf-8")
+    assert 'evidence={"error_type": type(exc).__name__}' in source
+    assert 'evidence={"error_type": type(exc).__name__, "message": str(exc)}' not in source
