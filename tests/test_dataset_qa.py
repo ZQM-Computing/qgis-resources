@@ -335,3 +335,172 @@ def test_vector_dataset_with_no_layers_is_an_error(tmp_path):
     assert any(item["rule_id"] == "VECTOR_DATASET_NO_LAYERS"
                and item["severity"] == "error" for item in result["findings"])
 
+
+
+def test_vector_report_states_identifier_coverage_and_skipped_geometry_checks(tmp_path):
+    class FieldDefn:
+        def __init__(self, name):
+            self.name = name
+
+        def GetName(self):
+            return self.name
+
+        def GetTypeName(self):
+            return "String"
+
+    class LayerDefn:
+        def GetFieldCount(self):
+            return 1
+
+        def GetFieldDefn(self, index):
+            assert index == 0
+            return FieldDefn("asset_id")
+
+    class Feature:
+        def __init__(self, value):
+            self.value = value
+
+        def GetField(self, index):
+            assert index == 0
+            return self.value
+
+        def GetGeometryRef(self):
+            raise AssertionError("geometry access must be skipped when disabled")
+
+    class Layer:
+        def __init__(self):
+            self.features = iter([Feature(None), Feature("A-1"), Feature("A-1")])
+
+        def GetName(self):
+            return "assets"
+
+        def GetSpatialRef(self):
+            return None
+
+        def GetLayerDefn(self):
+            return LayerDefn()
+
+        def GetFeatureCount(self, force=1):
+            return 3
+
+        def GetGeomType(self):
+            return 1
+
+        def ResetReading(self):
+            self.features = iter([Feature(None), Feature("A-1"), Feature("A-1")])
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            return next(self.features)
+
+    class Driver:
+        def GetName(self):
+            return "FakeVector"
+
+    class Dataset:
+        def GetDriver(self):
+            return Driver()
+
+        def GetLayerCount(self):
+            return 1
+
+        def GetLayerByIndex(self, index):
+            assert index == 0
+            return Layer()
+
+    class OGR:
+        @staticmethod
+        def Open(path, mode):
+            assert mode == 0
+            return Dataset()
+
+        @staticmethod
+        def GeometryTypeToName(_):
+            return "Point"
+
+    source = tmp_path / "assets.gpkg"
+    source.write_bytes(b"fake vector")
+    result = qa._audit_vector(
+        source, "assets.gpkg", object(), OGR(),
+        required_fields=[], id_fields=["asset_id", "fid"],
+        expected_crs=None, check_geometry=False,
+    )
+
+    layer = result["inventory"]["layers"][0]
+    assert layer["identifier_check"] == {
+        "enabled": True,
+        "status": "checked",
+        "configured_fields": ["asset_id", "fid"],
+        "selected_field": "asset_id",
+        "null_or_blank_count": 1,
+        "duplicate_occurrences": 1,
+    }
+    assert layer["geometry_checks"]["enabled"] is False
+    assert layer["geometry_checks"]["status"] == "disabled_by_option"
+    assert layer["geometry_checks"]["checked_nonempty"] == 0
+    assert not any(item["rule_id"] == "VECTOR_GEOMETRY_INVALID"
+                   for item in result["findings"])
+
+
+def test_vector_report_distinguishes_unconfigured_identifier_check(tmp_path):
+    class Definition:
+        def GetFieldCount(self):
+            return 0
+
+    class Layer:
+        def GetName(self):
+            return "roads"
+
+        def GetSpatialRef(self):
+            return None
+
+        def GetLayerDefn(self):
+            return Definition()
+
+        def GetFeatureCount(self, force=1):
+            return 0
+
+        def GetGeomType(self):
+            return 1
+
+        def ResetReading(self):
+            pass
+
+        def __iter__(self):
+            return iter(())
+
+    class Driver:
+        def GetName(self):
+            return "FakeVector"
+
+    class Dataset:
+        def GetDriver(self):
+            return Driver()
+
+        def GetLayerCount(self):
+            return 1
+
+        def GetLayerByIndex(self, index):
+            return Layer()
+
+    class OGR:
+        @staticmethod
+        def Open(path, mode):
+            return Dataset()
+
+        @staticmethod
+        def GeometryTypeToName(_):
+            return "Line String"
+
+    source = tmp_path / "roads.gpkg"
+    source.write_bytes(b"fake vector")
+    result = qa._audit_vector(
+        source, "roads.gpkg", object(), OGR(),
+        required_fields=[], id_fields=[], expected_crs=None, check_geometry=True,
+    )
+    layer = result["inventory"]["layers"][0]
+    assert layer["identifier_check"]["status"] == "not_configured"
+    assert layer["identifier_check"]["selected_field"] is None
+    assert layer["geometry_checks"]["status"] == "enabled"
