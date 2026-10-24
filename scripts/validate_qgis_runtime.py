@@ -37,7 +37,8 @@ try:
     Processing.initialize()
     registry = QgsApplication.processingRegistry()
     provider = ZqmProcessingProvider()
-    assert provider.load(), "ZQM provider failed to load"
+    assert registry.addProvider(provider), "QGIS could not register the ZQM provider"
+    assert registry.providerById("zqm_geospatial_tools") is not None
     assert any(a.name() == "zqm_batch_buffer" for a in provider.algorithms()), (
         "ZQM provider did not expose the batch buffer algorithm"
     )
@@ -100,6 +101,9 @@ try:
         assert result["SKIPPED"] == 1 and result["SUCCEEDED"] == 0
         assert output.read_bytes() == original_bytes, "Existing output changed without overwrite"
 
+        # Close the reader before replacing the GeoPackage.
+        del reopened
+
         # Explicit overwrite must successfully replace with a validated GeoPackage.
         result = run_algorithm([points], output_dir, overwrite=True)
         assert result["SUCCEEDED"] == 1
@@ -119,4 +123,8 @@ try:
     print("PASS: existing-output preservation and explicit overwrite")
     print("PASS: mixed-CRS rejection")
 finally:
+    try:
+        QgsApplication.processingRegistry().removeProvider("zqm_geospatial_tools")
+    except Exception:
+        pass
     app.exitQgis()
