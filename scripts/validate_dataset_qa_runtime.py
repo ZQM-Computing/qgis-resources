@@ -81,6 +81,11 @@ def main() -> None:
             id_fields=["asset_id"],
             expected_crs="EPSG:3857",
         )
+        # Equivalent authority-code and WKT representations should not produce
+        # a false CRS mismatch warning.
+        srs_wkt = osr.SpatialReference()
+        assert srs_wkt.ImportFromEPSG(4326) == 0
+        assert __import__("dataset_qa")._crs_matches(srs_wkt.ExportToWkt(), "EPSG:4326")
         rules = {item["rule_id"] for item in report["findings"]}
         expected_rules = {
             "VECTOR_REQUIRED_FIELD_MISSING",
