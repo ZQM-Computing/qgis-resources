@@ -285,9 +285,15 @@ def _audit_raster(path: Path, display_path: str, gdal: Any,
                 remediation="Repair georeferencing in a copy using authoritative spatial metadata."))
         else:
             x0, px, rx, y0, ry, py = transform
-            corners = [(x0, y0), (x0 + width * px, y0 + width * rx),
-                       (x0 + height * ry, y0 + height * py),
-                       (x0 + width * px + height * ry, y0 + width * rx + height * py)]
+            # GDAL affine mapping is x = x0 + col*px + row*rx and
+            # y = y0 + col*ry + row*py. Keep the rotation terms paired with
+            # their correct axis; swapping rx/ry corrupts rotated-grid extents.
+            corners = [
+                (x0, y0),
+                (x0 + width * px, y0 + width * ry),
+                (x0 + height * rx, y0 + height * py),
+                (x0 + width * px + height * rx, y0 + width * ry + height * py),
+            ]
             info["extent"] = {
                 "xmin": min(p[0] for p in corners), "ymin": min(p[1] for p in corners),
                 "xmax": max(p[0] for p in corners), "ymax": max(p[1] for p in corners),
