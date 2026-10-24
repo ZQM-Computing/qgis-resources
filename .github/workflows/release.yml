@@ -6,12 +6,17 @@ on:
 
 permissions:
   contents: write
-  packages: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Create release artifacts
-        run: echo "Release workflow placeholder"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Generate changelog
+        run: |
+          echo "## Release Notes" > release_notes.md
+          git log --oneline --decorate $(git describe --tags --abbrev=0 HEAD^ 2>/dev/null)..HEAD 2>/dev/null >> release_notes.md || git log --oneline -20 >> release_notes.md
+      - name: Upload release notes
+        run: gh release edit ${{ github.event.release.tag_name }} --notes-file release_notes.md || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
