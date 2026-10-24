@@ -197,15 +197,23 @@ def main() -> None:
             array = np.frombuffer(raw, dtype=np.float32).reshape(
                 output.RasterYSize, output.RasterXSize
             )
+            print("STAGE: slope bytes decoded", flush=True)
+            # Convert to plain Python scalars before any QGIS/GDAL teardown.
             values = [
                 float(value) for value in array.flat
                 if math.isfinite(float(value)) and (nodata is None or float(value) != nodata)
             ]
+            print(f"STAGE: collected {len(values)} finite slope cells", flush=True)
             assert values, "Slope output has no finite non-nodata cells"
-            assert min(values) >= 0.0, f"Slope has negative values: {min(values)}"
-            assert max(values) <= 90.0, f"Slope exceeds 90 degrees: {max(values)}"
-            assert max(values) > 0.1, "Synthetic elevation gradient did not produce non-zero slope"
+            minimum, maximum = min(values), max(values)
+            print(f"STAGE: slope range {minimum}..{maximum}", flush=True)
+            assert minimum >= 0.0, f"Slope has negative values: {minimum}"
+            assert maximum <= 90.0, f"Slope exceeds 90 degrees: {maximum}"
+            assert maximum > 0.1, "Synthetic elevation gradient did not produce non-zero slope"
+            print("STAGE: slope value assertions passed", flush=True)
+            band = None
             output = None
+            print("STAGE: GDAL slope dataset closed", flush=True)
 
             # Invalid physical parameters and angular horizontal units must fail early.
             try:
