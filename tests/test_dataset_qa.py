@@ -155,7 +155,7 @@ def test_cli_exit_code_and_reports_for_clean_dataset_run(tmp_path, monkeypatch, 
         return report
 
     monkeypatch.setattr(qa, "audit_paths", fake_audit_paths)
-    assert qa.main(["inputs", "--json", str(output_json), "--markdown", str(output_md)]) == 0
+    assert qa.main([str(tmp_path), "--json", str(output_json), "--markdown", str(output_md)]) == 0
     assert output_json.exists()
     assert output_md.exists()
     assert '"error": 0' in capsys.readouterr().out
@@ -173,7 +173,7 @@ def test_cli_fail_on_warning_returns_nonzero(tmp_path, monkeypatch):
         "unreadable_datasets": [],
     }
     monkeypatch.setattr(qa, "audit_paths", lambda paths, **kwargs: report)
-    assert qa.main(["inputs", "--json", str(tmp_path / "report.json"), "--fail-on-warning"]) == 1
+    assert qa.main([str(tmp_path), "--json", str(tmp_path / "report.json"), "--fail-on-warning"]) == 1
 
 
 def test_cli_returns_nonzero_when_errors_are_reported(tmp_path, monkeypatch):
@@ -187,7 +187,7 @@ def test_cli_returns_nonzero_when_errors_are_reported(tmp_path, monkeypatch):
         "unreadable_datasets": ["x.gpkg"],
     }
     monkeypatch.setattr(qa, "audit_paths", lambda paths, **kwargs: report)
-    assert qa.main(["inputs", "--json", str(tmp_path / "report.json")]) == 1
+    assert qa.main([str(tmp_path), "--json", str(tmp_path / "report.json")]) == 1
 
 
 
