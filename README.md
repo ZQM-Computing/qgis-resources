@@ -15,7 +15,7 @@
 
 [![Validate resources](https://github.com/ZQM-Computing/qgis-resources/actions/workflows/ci.yml/badge.svg)](https://github.com/ZQM-Computing/qgis-resources/actions)
 
-Reusable QGIS resources: documented expressions, PyQGIS utilities, Processing patterns, QML styles, QField field-collection guidance, and worked examples. Each resource should state runtime requirements, CRS assumptions, inputs, outputs, and limitations.
+QGIS and PyQGIS resources for GIS analysts and geospatial developers: expressions, Python utilities, Processing scripts, QML styles, QField field-collection guidance, and dataset QA tools. Examples document runtime requirements, coordinate reference system (CRS) assumptions, inputs, outputs, and limitations.
 
 ## Repository role and status
 
