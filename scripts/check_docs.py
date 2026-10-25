@@ -9,9 +9,9 @@ Validates that:
 4. Hugo-style absolute paths (e.g. /games/...) are web URLs, not file links
 """
 
-import os
 import re
 import sys
+from urllib.parse import unquote, urlsplit
 from pathlib import Path
 
 # Each entry maps a required README concept to the heading synonyms that
@@ -67,30 +67,48 @@ def check_links(repo_path):
             continue
         
         content = md_file.read_text(encoding="utf-8")
+        # Ignore fenced code and inline code: examples are not navigational links.
+        content = re.sub(r"```.*?```|~~~.*?~~~", "", content, flags=re.DOTALL)
+        content = re.sub(r"`[^`]*`", "", content)
         
         for match in LINK_PATTERN.finditer(content):
             link_text = match.group(1)
-            link_target = match.group(2)
-            
-            # Skip external links, anchors, mailto, and Hugo absolute paths
-            if link_target.startswith(("http://", "https://", "#", "mailto:", "/")):
+            link_target = match.group(2).strip()
+            parsed = urlsplit(link_target)
+            # Skip external links, pure anchors, mailto, and Hugo absolute paths.
+            if parsed.scheme or parsed.netloc or link_target.startswith(("#", "/")):
+                continue
+            # A local fragment/query points to the underlying file, not a literal filename.
+            relative_target = unquote(parsed.path)
+            if not relative_target:
                 continue
             
             # Skip already-checked links
-            cache_key = (str(md_file), link_target)
+            cache_key = (str(md_file), relative_target)
             if cache_key in checked_links:
                 continue
             checked_links.add(cache_key)
             
             # Resolve relative to the markdown file's directory
-            resolved = (md_file.parent / link_target).resolve()
+            resolved = (md_file.parent / relative_target).resolve()
             
             # Also check repo root (for links from docs/ to root files)
-            repo_root_resolved = (repo_path / link_target).resolve()
+            repo_root_resolved = (repo_path / relative_target).resolve()
             
-            if not resolved.exists() and not repo_root_resolved.exists():
+            root_resolved = repo_path.resolve()
+            candidates = (resolved, repo_root_resolved)
+            valid = False
+            for candidate in candidates:
+                try:
+                    candidate.relative_to(root_resolved)
+                except ValueError:
+                    continue
+                if candidate.exists():
+                    valid = True
+                    break
+            if not valid:
                 rel_path = md_file.relative_to(repo_path)
-                issues.append(f"{rel_path}: broken link [{link_text}]({link_target})")
+                issues.append(f"{rel_path}: broken or out-of-repository link [{link_text}]({link_target})")
     
     return issues
 

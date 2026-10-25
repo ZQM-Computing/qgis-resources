@@ -1,6 +1,7 @@
+# qgis-resources — QGIS & PyQGIS Resources for GIS Analysts and Geospatial Developers
+
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![GitHub](https://img.shields.io/github/stars/ZQM-Computing/qgis-resources?style=social)
-# qgis-resources — QGIS & PyQGIS Resources for GIS Analysts and Geospatial Developers
 
 <!-- ZQM-START -->
 <!-- markdownlint-disable MD033 -->
@@ -12,120 +13,74 @@
 <!-- markdownlint-enable MD033 -->
 <!-- ZQM-END -->
 
-[![Validate resources](https://github.com/ZQM-Computing/qgis-resources/actions/workflows/validate.yml/badge.svg)](https://github.com/ZQM-Computing/qgis-resources/actions)
+[![Validate resources](https://github.com/ZQM-Computing/qgis-resources/actions/workflows/ci.yml/badge.svg)](https://github.com/ZQM-Computing/qgis-resources/actions)
 
-Free, ready-to-use **QGIS resources**: documented **expression functions**, **PyQGIS code snippets**, **Processing workflow scripts**, **layer styles (.qml)**, and **QField field-data-collection templates** — the reusable pieces that speed up everyday desktop GIS work.
-
-Everything here is meant to be dropped into a real project and adapted. Each resource states what it does, which QGIS version it needs, and the assumptions it makes about your layers and fields.
+Reusable QGIS resources: documented expressions, PyQGIS utilities, Processing patterns, QML styles, QField field-collection guidance, and worked examples. Each resource should state runtime requirements, CRS assumptions, inputs, outputs, and limitations.
 
 ## Repository role and status
 
 **Status:** Active, public.
 
-**What this repository is:** QGIS resources for GIS analysts — documented expression functions, PyQGIS code snippets, Processing workflow scripts, layer styles (.qml), and QField field-data-collection templates, ready to drop into a real project.
+This repository is the QGIS-specific part of the ZQM Computing geospatial portfolio. Examples use synthetic data where practical. Scripts intended for the QGIS Python Console or a QGIS Python environment are labelled accordingly. Static CI checks do not substitute for executing algorithms inside QGIS.
 
-**What it contributes:** Part of the ZQM Computing public geospatial portfolio — production-grade pattern and reference repositories that document geospatial engineering practice across the stack. This repository is the reusable pattern library for its layer: working code and runbooks that practitioners can lift into their own pipelines, and portfolio evidence of the engineering practice behind ZQM Computing. The umbrella index for the series is [geospatial-patterns](https://github.com/ZQM-Computing/geospatial-patterns).
+## What we are building
 
-**Standing:** The portfolio program was completed and Tier-1 hardened on 2026-10-15, with prose CI enforced as required status checks. This repository is standalone — no other repository or deployment depends on it.
+The roadmap prioritizes trustworthy runtime validation, a read-only dataset inventory/QA report, a reproducible preparation workflow, focused Processing algorithms, and one end-to-end synthetic reference project. See the [product roadmap](docs/PRODUCT_ROADMAP.md) for priorities and exit criteria and the [workflow contracts](docs/WORKFLOW_CONTRACTS.md) for input/output safety, spatial semantics, and test expectations. These documents describe intended direction; they do not imply every planned capability is implemented.
 
 ## What's inside
 
 | Resource | What you get | Folder |
 |---|---|---|
-| Expression functions | Acreage in a projected CRS, attributes from intersecting or nearest features, label formatting, centroid coordinates — each explained line by line | [`expressions/`](expressions/) |
-| PyQGIS snippets | Batch-export a whole project to GeoPackage, add XYZ basemaps in one run, export a print layout to a 300-DPI PDF | [`pyqgis/`](pyqgis/) |
-| Processing workflows | A clip-and-reproject Processing script for analysis prep, plus a step-by-step Graphical Modeler recipe for zonal summaries | [`processing/`](processing/) |
-| Layer styles | Parcel-boundary and zone `.qml` styles, plus documented color palettes for land use and risk cartography | [`styles/`](styles/) |
-| QField templates | A field-data-collection setup guide: offline GeoPackage packaging, value maps, constraints, photo attachments, and a pre-flight checklist | [`qfield/`](qfield/) |
-| Walkthrough examples | Numbered worked examples — expression basics and a Processing script run — pairing the resources above with sample workflows | [`examples/`](examples/) |
-| Validation scripts | Documentation and link checks (`check_docs.py`) run by CI | [`scripts/`](scripts/) |
-| Tests | Validation tests for the expression resources (`test_expressions.py`) | [`tests/`](tests/) |
-
-## Who this is for
-
-GIS analysts and geospatial developers who work in QGIS daily and keep re-solving the same problems: calculating real-world areas without falling into the Web Mercator trap, pulling attributes across layers without a messy join, styling the same layer types for the hundredth time, or packaging a project for offline field collection with QField. If you are moving from ArcGIS Pro to QGIS, the expression and PyQGIS examples are written to map onto concepts you already know.
+| Expressions | Area, overlay, label, and coordinate expression guidance | [expressions/](expressions/) |
+| PyQGIS utilities | GeoPackage export, XYZ basemaps, PDF layout export | [pyqgis/](pyqgis/) |
+| Processing workflows | Clip/reproject algorithm and Graphical Modeler recipe | [patterns/](patterns/) and [processing/](processing/) |
+| Styles | QML starting styles and cartographic palettes | [styles/](styles/) |
+| Field collection | QField offline-collection and packaging guidance | [qfield/](qfield/) |
+| Worked examples | Expression basics, Processing, spatial join, CRS transform, buffering, plugin lifecycle | [examples/](examples/) |
+| Dataset QA | Read-only GDAL/OGR vector/raster inventory and JSON/Markdown findings | [dataset QA guide](docs/DATASET_QA.md) and [scripts/dataset_qa.py](scripts/dataset_qa.py) |
+| Validation | Documentation checks, static audits, unit/contract tests, and QGIS runtime tests | [scripts/](scripts/) and [tests/](tests/) |
+| Engineering plan | Prioritized product roadmap and geospatial workflow contracts | [docs/PRODUCT_ROADMAP.md](docs/PRODUCT_ROADMAP.md) and [docs/WORKFLOW_CONTRACTS.md](docs/WORKFLOW_CONTRACTS.md) |
+| QGIS plugin | Processing provider with batch-buffer tool | [zqm_geospatial_tools/](zqm_geospatial_tools/) |
 
 ## Quick start
 
-- **Expressions:** open a layer's Field Calculator or label settings, switch to the expression editor, and paste the expression from [`expressions/`](expressions/) — each one names the fields and layers it expects.
-- **PyQGIS snippets:** open Plugins → Python Console in QGIS, paste a script from [`pyqgis/`](pyqgis/), adjust the constants at the top, and run.
-- **Processing script:** in the Processing Toolbox, choose Scripts → Add Script from File and select [`processing/clip_and_reproject.py`](processing/clip_and_reproject.py).
-- **Styles:** Layer Properties → Symbology → Style (bottom-left menu) → Load Style, then pick a file from [`styles/`](styles/).
-- **QField:** follow the packaging checklist in [`qfield/`](qfield/) before your next field day.
-- **Examples:** work through the numbered walkthroughs in [`examples/`](examples/) — `01-expression-basics` and `02-processing-script`.
+- **Expressions:** use [expressions/README.md](expressions/README.md); verify layer CRS and field names before using measurement expressions.
+- **PyQGIS:** run scripts from the QGIS Python Console after reviewing configuration constants.
+- **Processing script:** add [patterns/clip_and_reproject.py](patterns/clip_and_reproject.py) through Processing Toolbox → Scripts → Add Script from File.
+- **Styles:** load .qml files through Layer Properties → Symbology → Style → Load Style. These are starting styles, not validated thematic classification schemes.
+- **Dataset inventory and QA:** see [docs/DATASET_QA.md](docs/DATASET_QA.md). The initial CLI reads supported datasets through GDAL/OGR and writes JSON plus optional Markdown reports; it does not modify inputs. A synthetic GeoPackage/GeoTIFF integration test and a separate synthetic DEM reprojection/clip/slope test are wired into the QGIS runtime workflow. Coverage now includes semantic CRS equivalence, safe repeat audits, invalid/empty mask rejection, and source immutability; both tests require an exact-head passing run before runtime validation can be claimed.
+- **Examples:** see [examples/](examples/). QGIS-dependent examples must run in a QGIS Python environment with Processing initialized.
+- **ZQM Geospatial Tools plugin:** see [zqm_geospatial_tools/README.md](zqm_geospatial_tools/README.md) for installation. The initial Processing tool buffers selected vector layers into separate GeoPackages.
+- **Notebooks:** notebooks require a Python kernel with QGIS bindings available; they will not run in a generic Python kernel without QGIS.
 
-## Design principles
+## Coordinate reference system policy
 
-1. **No mystery code.** Every snippet is commented at the decision points, not line by line — you should be able to defend each choice in a code review or a project meeting.
-2. **CRS honesty.** Area, distance, and buffer examples work in a projected CRS or say exactly why not. Nothing here silently measures in EPSG:3857.
-3. **Versions stated.** QGIS moves fast; each resource names the oldest version it is known to fit (most target QGIS 3.28 LTR and newer).
-4. **Adapt, don't worship.** Field names and layer names are placeholders — the value is the pattern, not the literal text.
+Coordinate transformations change coordinates; CRS assignment does not. Area, distance, and buffer values use the relevant geometry or algorithm units. Do not assume degrees are metres or that EPSG:3857 is suitable for measurement. Select a local or regional projected CRS appropriate to the study area and state the choice in analysis outputs. EPSG:4326 is used for interchange examples, not as a universal measurement CRS.
 
-## Repository layout
+## Validation levels
 
-```text
-.
-├── expressions/   # documented QGIS expression functions
-├── pyqgis/        # Python console / macro snippets
-├── processing/  # Processing toolbox scripts + modeler recipes
-├── styles/        # .qml layer styles + cartographic palettes
-├── qfield/        # QField offline field-collection guidance
-├── examples/      # numbered worked examples (expression basics, Processing script)
-├── scripts/       # documentation/link checks (check_docs.py)
-├── tests/         # validation tests for expressions (test_expressions.py)
-└── .github/       # CI that syntax-checks the Python and XML
-```
+Use [workflow contracts and test strategy](docs/WORKFLOW_CONTRACTS.md) when adding or changing a tool. Use [the product roadmap](docs/PRODUCT_ROADMAP.md) to prioritize work; do not add snippets solely to increase repository size.
+
+- **Static checks:** Python syntax, notebook structure and cell parsing, QML structure, empty/placeholder implementation checks, existing-script contracts, and internal Markdown links.
+- **Unit tests:** repository contracts and deterministic checks that do not require QGIS.
+- **QGIS runtime:** the QGIS-enabled workflow executes the expression and synthetic examples, checks file-backed vector/join/CRS/batch patterns, runs clip/reproject, loads existing QML styles, and exercises the packaged batch-buffer algorithm. Raster processing has strengthened output/CRS/dimension checks and a synthetic DEM integration test wired into QGIS CI; representative-data validation and a successful exact-head CI run remain outstanding. GUI-driven plugin interactions require manual checks. A green static workflow does not imply complete production validation.
 
 ## Contributing
 
-Issues and pull requests are welcome — especially resources you have used in production and can document honestly: what it does, the QGIS version, the layer/field assumptions, and any sharp edges. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md). Contributions should include tool versions, synthetic test data where possible, expected outputs, and documented CRS and boundary assumptions.
 
-## Maintainer
+## Related geospatial repositories
 
-Maintained by [ZQM Computing](https://github.com/ZQM-Computing). Resources distilled from production GIS analysis and environmental permitting work — and from running QGIS/QField as the open-source side of a working geospatial practice — by Alex Zelenski, GISP.
+- [geospatial-cookbooks](https://github.com/ZQM-Computing/geospatial-cookbooks) — umbrella index.
+- [postgis-cookbook](https://github.com/ZQM-Computing/postgis-cookbook) — spatial SQL and PostGIS.
+- [geopandas-cookbook](https://github.com/ZQM-Computing/geopandas-cookbook) — Python vector analysis.
+- [gdal-cookbook](https://github.com/ZQM-Computing/gdal-cookbook) — raster and vector conversion.
+- [geospatial-api-reference](https://github.com/ZQM-Computing/geospatial-api-reference) — OGC API Features reference implementation.
 
-## Related repositories
-
-- [postgis-patterns](https://github.com/ZQM-Computing/postgis-patterns) — Production PostGIS patterns: spatial indexing, joins & KNN, SRID management, vector tiles, data quality, partitioning
-- [duckdb-spatial-patterns](https://github.com/ZQM-Computing/duckdb-spatial-patterns) — DuckDB Spatial patterns for analytical geospatial SQL: GeoParquet, spatial joins, KNN, H3 aggregation — no server required
-- [pgrouting-patterns](https://github.com/ZQM-Computing/pgrouting-patterns) — pgRouting network analysis on PostGIS: shortest path, driving distance, isochrones, turn restrictions, traffic-aware routing
-- [geopandas-patterns](https://github.com/ZQM-Computing/geopandas-patterns) — GeoPandas/Shapely patterns for Python geospatial workflows: spatial joins, CRS handling, overlays, interpolation, performance
-- [gdal-patterns](https://github.com/ZQM-Computing/gdal-patterns) — GDAL/OGR command-line patterns: conversion, reprojection, clipping, mosaicking — production-tested, runnable examples
-- [stac-patterns](https://github.com/ZQM-Computing/stac-patterns) — STAC patterns for geospatial data discovery: catalogs, item validation, search API, bulk operations, cloud deployment
-- [maplibre-patterns](https://github.com/ZQM-Computing/maplibre-patterns) — MapLibre GL JS patterns for frontend vector tile rendering: custom layers, 3D terrain, performance tuning, interactive maps
-- [cog-patterns](https://github.com/ZQM-Computing/cog-patterns) — Cloud Optimized GeoTIFF patterns: creation, validation, TiTiler serving, xarray integration, performance benchmarking
-- [geoparquet-patterns](https://github.com/ZQM-Computing/geoparquet-patterns) — GeoParquet patterns for columnar geospatial analytics: partitioning, predicate pushdown, DuckDB/Spark integration
-- [h3-patterns](https://github.com/ZQM-Computing/h3-patterns) — H3 hexagonal grid patterns: indexing, aggregation, visualization, grid comparisons, performance benchmarks
-- [geospatial-api-reference](https://github.com/ZQM-Computing/geospatial-api-reference) — OGC API – Features reference implementation with FastAPI and PostGIS backends
-- [ollama-fleet-patterns](https://github.com/ZQM-Computing/ollama-fleet-patterns) — Ollama fleet operations: model management, health checks, load-spreading, VRAM budgeting, dependency-light RAG
-- [proxmox-ceph-operations](https://github.com/ZQM-Computing/proxmox-ceph-operations) — Proxmox VE + Ceph operations runbooks: health checks, backup discipline, OSD replacement, upgrade checklists
-- [geospatial-patterns](https://github.com/ZQM-Computing/geospatial-patterns) — Umbrella index for all ZQM geospatial pattern repos
-
-## Documentation and validation
-
-For setup instructions, reproducible examples, data provenance, CRS/SRID assumptions, security guidance, and dependency labels, follow the [ZQM geospatial repository documentation standard](https://github.com/ZQM-Computing/geospatial-patterns/blob/main/docs/repository-documentation-standard.md).
-
-The configured CI workflow is the source of truth for automated checks. A passing workflow establishes only that its checks passed for that commit; it does not certify production deployment or prove that every dependency and operating environment was covered.
-
-## Installation
-
-No installation — clone the repository and browse the resource collection.
+For shared documentation conventions, see the [geospatial-cookbooks documentation standard](https://github.com/ZQM-Computing/geospatial-cookbooks/blob/main/docs/repository-documentation-standard.md).
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT — see [LICENSE](LICENSE).
 
-*Part of [ZQM Computing](https://github.com/ZQM-Computing) — geospatial engineering, scientific computing, and infrastructure patterns; the geospatial arm of [ZQM Labs](https://zqmlabs.com), makers of Z's Quests & Mischief location games.*
-
-<!-- ZQM-FOOTER-START -->
-<!-- markdownlint-disable MD033 -->
----
-
-<p align="center">
-  <em>Play more. Plan less.</em><br>
-  <a href="https://zqmlabs.com">zqmlabs.com</a> •
-  <a href="https://github.com/ZQM-Labs">ZQM Labs</a> •
-  <a href="https://github.com/ZQM-Computing">ZQM Computing</a>
-</p>
-<!-- markdownlint-enable MD033 -->
-<!-- ZQM-FOOTER-END -->
+*Part of [ZQM Computing](https://github.com/ZQM-Computing) — geospatial engineering, scientific computing, and infrastructure patterns.*

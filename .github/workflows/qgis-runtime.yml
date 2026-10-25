@@ -1,0 +1,40 @@
+name: QGIS runtime tests
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qgis-runtime-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qgis-runtime:
+    name: Run plugin against installed QGIS
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v7.0.1
+      - name: Install QGIS and Python bindings
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y qgis python3-qgis
+      - name: Exercise plugin and batch buffer algorithm in real QGIS
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: /usr/bin/python3 scripts/validate_qgis_runtime.py
+      - name: Exercise dataset QA against synthetic vector and raster files
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: /usr/bin/python3 scripts/validate_dataset_qa_runtime.py
+      - name: Exercise reprojection, raster clipping, and slope against a synthetic DEM
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: /usr/bin/python3 scripts/validate_raster_processing_runtime.py
