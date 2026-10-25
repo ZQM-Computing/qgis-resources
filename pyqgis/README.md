@@ -7,6 +7,7 @@ Small, single-purpose Python scripts for the QGIS Python Console. Each file's he
 | [`batch_export_to_geopackage.py`](batch_export_to_geopackage.py) | Exports every vector layer in the current project into one GeoPackage — handy for archiving a project, handing data to a client, or packaging for QField. |
 | [`add_basemaps.py`](add_basemaps.py) | Adds OpenStreetMap, Esri World Imagery, and CartoDB Positron XYZ basemaps to the project in one run. |
 | [`export_layout_pdf.py`](export_layout_pdf.py) | Exports a named print layout to a 300-DPI PDF — the repetitive step in every map-production workflow. |
+| [`categorize_active_layer.py`](categorize_active_layer.py) | Applies a categorized renderer to the active vector layer, one colour per distinct value of a chosen field — the fastest way to turn a coded field into a readable map. |
 
 ## Running a snippet
 

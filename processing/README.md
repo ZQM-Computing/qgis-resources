@@ -1,5 +1,11 @@
 # Processing workflows
 
+## Script: buffer features
+
+The Processing script in this folder is [buffer_features.py](buffer_features.py). In QGIS, open the Processing Toolbox, choose Scripts → Add Script from File, and select that file.
+
+It buffers every feature in the input layer by one fixed distance and writes the result to a new layer. Distance units are the input layer's CRS units, so use a projected CRS for distances in metres. Features without a usable geometry are skipped and counted in the run log.
+
 ## Script: clip and reproject
 
 The Processing script is [patterns/clip_and_reproject.py](../patterns/clip_and_reproject.py). In QGIS, open the Processing Toolbox, choose Scripts → Add Script from File, and select that file.
