@@ -15,7 +15,7 @@
 
 [![Validate resources](https://github.com/ZQM-Computing/qgis-resources/actions/workflows/ci.yml/badge.svg)](https://github.com/ZQM-Computing/qgis-resources/actions)
 
-QGIS and PyQGIS resources for GIS analysts and geospatial developers: expressions, Python utilities, Processing scripts, QML styles, QField field-collection guidance, and dataset QA tools. Examples document runtime requirements, coordinate reference system (CRS) assumptions, inputs, outputs, and limitations.
+A practical **QGIS and PyQGIS resource library** for GIS analysts and geospatial developers: QGIS expressions, Python Console utilities, Processing scripts, QML map styles, QField field-collection workflows, raster/vector dataset QA, and reproducible GIS automation. Each resource should identify its runtime, coordinate reference system (CRS) assumptions, inputs, outputs, and limitations; static CI checks do not replace execution inside the supported QGIS runtime.
 
 ## Repository role and status
 
