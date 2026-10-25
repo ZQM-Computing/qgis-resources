@@ -8,8 +8,9 @@ Load via Layer Properties → Symbology → Style (bottom-left) → Load Style.
 |---|---|
 | [`parcels.qml`](parcels.qml) | Transparent fill, dark 0.46 mm outline — parcel boundaries that read over any basemap or aerial without hiding what's underneath. |
 | [`flood_zones.qml`](flood_zones.qml) | Semi-transparent blue fill (`31,120,180` at ~35% opacity) with a solid blue outline — flood hazard areas over imagery or parcels. |
+| [`flood_zones_categorized.qml`](flood_zones_categorized.qml) | Categorized renderer on the `ZONE` field using the FEMA-style palette below — the published-map version of `flood_zones.qml`. |
 
-Both are single-symbol starting points. For a published flood map, switch `flood_zones` to a categorized renderer on your zone field using the palette below.
+`parcels` and `flood_zones` are single-symbol starting points. For a published flood map, use `flood_zones_categorized`, which applies the palette below as a categorized renderer on the `ZONE` field.
 
 ## Palette: FEMA-style flood zones
 
