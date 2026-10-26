@@ -89,12 +89,12 @@ def test_markdown_report_escapes_untrusted_metadata_in_table_cells():
     }
     markdown = qa.markdown_report(report)
     inventory_row = next(line for line in markdown.splitlines() if "inputs/roads" in line)
-    assert r"inputs/roads\\|east.gpkg" in inventory_row
-    assert r"roads\\|east second-line" in inventory_row
-    assert r"EPSG:4326\\|candidate" in inventory_row
+    assert r"inputs/roads\|east.gpkg" in inventory_row
+    assert r"roads\|east second-line" in inventory_row
+    assert r"EPSG:4326\|candidate" in inventory_row
     finding_row = next(line for line in markdown.splitlines() if "VECTOR_FIELD_MISSING" in line)
-    assert r"Missing \\| field needs review" in finding_row
-    assert r"Check \\| source metadata." in finding_row
+    assert r"Missing \| field needs review" in finding_row
+    assert r"Check \| source metadata." in finding_row
 
 
 def test_dataset_qa_documents_real_gdal_inspection_and_read_only_open():
