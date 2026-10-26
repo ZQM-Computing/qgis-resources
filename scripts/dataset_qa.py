@@ -432,6 +432,11 @@ def audit_paths(paths: list[Path], *, root: Path, required_fields: list[str] | N
     }
 
 
+def _markdown_cell(value: Any) -> str:
+    """Escape untrusted dataset metadata so one value cannot corrupt a Markdown table."""
+    return str(value).replace("\\", "\\\\").replace("|", "\\|").replace("\r", " ").replace("\n", " ")
+
+
 def markdown_report(report: dict[str, Any]) -> str:
     summary = report["summary"]
     lines = [
@@ -449,7 +454,9 @@ def markdown_report(report: dict[str, Any]) -> str:
             detail = "; ".join(f"{layer['name']} ({layer['feature_count']} features, {layer['geometry_type']})" for layer in dataset["layers"]) or "No layers"
         else:
             detail = f"{dataset['width']} × {dataset['height']}, {dataset['band_count']} band(s)"
-        lines.append(f"| {dataset['path']} | {dataset['kind']} | {detail} | {dataset.get('crs') or 'MISSING'} |")
+        lines.append("| " + " | ".join(_markdown_cell(value) for value in (
+            dataset["path"], dataset["kind"], detail, dataset.get("crs") or "MISSING"
+        )) + " |")
     lines.extend(["", "## Findings", ""])
     if not report["findings"]:
         lines.append("No findings for the configured checks.")
@@ -457,7 +464,7 @@ def markdown_report(report: dict[str, Any]) -> str:
         lines.extend(["| Severity | Rule | Dataset / layer | Finding | Remediation |", "|---|---|---|---|---|"])
         for item in report["findings"]:
             location = item["dataset"] + (f" / {item['layer']}" if item.get("layer") else "")
-            lines.append("| " + " | ".join(str(value).replace("|", "\\|").replace("\n", " ") for value in (
+            lines.append("| " + " | ".join(_markdown_cell(value) for value in (
                 item["severity"].upper(), item["rule_id"], location, item["message"], item.get("remediation", "")
             )) + " |")
     lines.extend(["", "## Safety note", "",
