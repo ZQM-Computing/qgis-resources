@@ -66,6 +66,7 @@ def test_markdown_report_includes_inventory_findings_and_read_only_notice():
     assert "Check authoritative metadata." in markdown
     assert "does not assign CRSs" in markdown
 
+
 def test_markdown_report_escapes_untrusted_metadata_in_table_cells():
     report = {
         "dataset_count": 1,
