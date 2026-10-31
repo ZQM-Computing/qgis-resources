@@ -119,7 +119,10 @@ def _audit_vector(path: Path, display_path: str, gdal: Any, ogr: Any,
                    "type": definition.GetFieldDefn(i).GetTypeName()}
                   for i in range(definition.GetFieldCount())]
         field_names = {field["name"].casefold() for field in fields}
-        feature_count = layer.GetFeatureCount(force=1)
+        # Count features during the validation pass below. A forced OGR count
+        # can trigger a separate full provider scan immediately before we
+        # iterate the same layer for identifier and geometry checks.
+        feature_count = 0
         layer_info: dict[str, Any] = {
             "name": name, "geometry_type": ogr.GeometryTypeToName(layer.GetGeomType()),
             "feature_count": feature_count, "crs": crs, "fields": fields,
@@ -135,15 +138,6 @@ def _audit_vector(path: Path, display_path: str, gdal: Any, ogr: Any,
                 dataset=display_path, layer=name,
                 evidence={"actual": crs, "expected": expected_crs},
                 remediation="Confirm the intended analysis CRS and transform a copy if required."))
-        if feature_count < 0:
-            findings.append(finding("VECTOR_FEATURE_COUNT_UNKNOWN", "info",
-                "Provider did not return a reliable feature count; the audit still streams features for configured checks.",
-                dataset=display_path, layer=name,
-                remediation="If a count is required for acceptance, compute it with a provider-supported count operation and record the method."))
-        elif feature_count == 0:
-            findings.append(finding("VECTOR_LAYER_EMPTY", "warning",
-                "Vector layer contains no features.", dataset=display_path, layer=name,
-                remediation="Confirm that the source is expected to be empty and review upstream filters or exports."))
         for required in required_fields:
             if required.casefold() not in field_names:
                 findings.append(finding("VECTOR_REQUIRED_FIELD_MISSING", "error",
@@ -172,6 +166,7 @@ def _audit_vector(path: Path, display_path: str, gdal: Any, ogr: Any,
         unchecked_geometries = 0
         checked_geometries = 0
         for feature in layer:
+            feature_count += 1
             if selected_ids:
                 # Use the first configured candidate present on this layer.
                 id_name, id_index = selected_ids[0]
@@ -199,6 +194,11 @@ def _audit_vector(path: Path, display_path: str, gdal: Any, ogr: Any,
                         checked_geometries += 1
                         if not is_valid:
                             invalid_geometries += 1
+        layer_info["feature_count"] = feature_count
+        if feature_count == 0:
+            findings.append(finding("VECTOR_LAYER_EMPTY", "warning",
+                "Vector layer contains no features.", dataset=display_path, layer=name,
+                remediation="Confirm that the source is expected to be empty and review upstream filters or exports."))
         layer_info["geometry_checks"] = {
             "enabled": check_geometry,
             "status": "enabled" if check_geometry else "disabled_by_option",
