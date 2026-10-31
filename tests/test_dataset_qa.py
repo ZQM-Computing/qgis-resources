@@ -102,7 +102,6 @@ def test_dataset_qa_documents_real_gdal_inspection_and_read_only_open():
     for contract in (
         "ogr.Open(str(path), 0)",
         "gdal.GA_ReadOnly",
-        "GetFeatureCount",
         "GetSpatialRef",
         "GetRasterBand",
         "VECTOR_GEOMETRY_INVALID",
@@ -143,7 +142,8 @@ def test_geometry_check_metadata_distinguishes_skipped_from_clean():
     source = (ROOT / "scripts" / "dataset_qa.py").read_text(encoding="utf-8")
     assert '"enabled": check_geometry' in source
     assert '"unchecked_validity": unchecked_geometries' in source
-    assert "VECTOR_FEATURE_COUNT_UNKNOWN" in source
+    assert "feature_count += 1" in source
+    assert "GetFeatureCount(force=1)" not in source
     assert "field_index_by_name" in source
     assert "RASTER_GEOREFERENCE_NONFINITE" in source
 
@@ -411,7 +411,7 @@ def test_vector_report_states_identifier_coverage_and_skipped_geometry_checks(tm
             return LayerDefn()
 
         def GetFeatureCount(self, force=1):
-            return 3
+            raise AssertionError("QA should count features during its existing stream")
 
         def GetGeomType(self):
             return 1
@@ -467,6 +467,7 @@ def test_vector_report_states_identifier_coverage_and_skipped_geometry_checks(tm
         "null_or_blank_count": 1,
         "duplicate_occurrences": 1,
     }
+    assert layer["feature_count"] == 3
     assert layer["geometry_checks"]["enabled"] is False
     assert layer["geometry_checks"]["status"] == "disabled_by_option"
     assert layer["geometry_checks"]["checked_nonempty"] == 0
@@ -490,7 +491,7 @@ def test_vector_report_distinguishes_unconfigured_identifier_check(tmp_path):
             return Definition()
 
         def GetFeatureCount(self, force=1):
-            return 0
+            raise AssertionError("QA should count features during its existing stream")
 
         def GetGeomType(self):
             return 1
@@ -534,6 +535,8 @@ def test_vector_report_distinguishes_unconfigured_identifier_check(tmp_path):
     assert layer["identifier_check"]["status"] == "not_configured"
     assert layer["identifier_check"]["selected_field"] is None
     assert layer["geometry_checks"]["status"] == "enabled"
+    assert layer["feature_count"] == 0
+    assert any(item["rule_id"] == "VECTOR_LAYER_EMPTY" for item in result["findings"])
 
 
 def test_raster_inventory_preserves_rotated_extent_and_band_metadata(tmp_path):
