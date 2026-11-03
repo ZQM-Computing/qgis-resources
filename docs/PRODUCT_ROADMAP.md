@@ -34,9 +34,15 @@ This is a working assessment, not a claim that every existing resource is defect
 
 ### P0 — Establish a trustworthy baseline
 
-- [ ] Obtain CI results for the exact PR head before treating it as validated.
-- [ ] Run the QGIS runtime suite on a supported QGIS version and record the version in test output.
-- [x] Add a synthetic-raster integration test for reprojection, clipping, slope generation, CRS, dimensions, nodata handling, and expected numeric bounds; execution on the current PR head remains pending.
+- [x] Establish a passing baseline on `main` at commit
+  `4d1b5c72dc811d8c1a8325a544f888ad102b8242`; every new PR still needs
+  its own exact-head CI evidence.
+- [x] Run the QGIS/GDAL runtime suite. The [October 31, 2026 run](https://github.com/ZQM-Computing/qgis-resources/actions/runs/41242191186)
+  passed using QGIS 3.40.15 from the Linux runner's package repository.
+- [x] Add and execute the synthetic-raster integration test for
+  reprojection, clipping, slope, CRS, dimensions, nodata and expected numeric
+  bounds on the recorded baseline commit. Other platform/version coverage
+  remains outstanding.
 - [ ] Test invalid/missing CRS, empty intersection, malformed inputs, cancellation, unwritable destinations, and existing-output preservation.
 - [ ] Review output-type assumptions (paths versus live QGIS layers), Processing result validation, and resource cleanup.
 - [ ] Keep the PR in draft until these checks pass; a missing run is not a passing run.
@@ -45,7 +51,7 @@ This is a working assessment, not a claim that every existing resource is defect
 
 ### P1 — Build a read-only dataset inventory and QA report (initial CLI implemented; runtime validation outstanding)
 
-The first CLI increment exists at `scripts/dataset_qa.py`; its usage and current limits are documented in [DATASET_QA.md](DATASET_QA.md). It inventories supported vector and raster inputs through GDAL/OGR and emits JSON plus an optional Markdown report. Report-contract tests cover stable findings, sorting, summaries, Markdown rendering, non-finite metadata, and undefined CRS placeholders. A synthetic GeoPackage/GeoTIFF runtime test is wired into the QGIS workflow; the run has not yet been observed on the current PR head.
+The first CLI increment exists at `scripts/dataset_qa.py`; its usage and limits are documented in [DATASET_QA.md](DATASET_QA.md). It inventories supported vector and raster inputs through GDAL/OGR and emits JSON plus optional Markdown. Contract tests cover stable findings, sorting, summaries, Markdown rendering, non-finite metadata, and undefined CRS placeholders. The synthetic GeoPackage/GeoTIFF runtime test passed on the October 31, 2026 baseline (QGIS 3.40.15; exact commit above). Later changes require fresh runtime evidence.
 
 Initial checks:
 
@@ -57,7 +63,7 @@ Initial checks:
 
 The default audit must not modify source data or silently assign a CRS, repair geometries, delete features, or rewrite fields.
 
-**Remaining exit criteria:** obtain an exact-head passing QGIS/GDAL workflow run; extend malformed-input and provider-compatibility cases as issues are found; keep source immutability checks. The synthetic GeoPackage/GeoTIFF fixtures, deliberate CRS/schema/identifier/empty-geometry checks, repeated-report determinism assertion, and source immutability checks are implemented and wired into CI, but not yet runtime-verified.
+**Remaining exit criteria:** keep passing exact-head QGIS/GDAL runs for each new change; extend malformed-input and provider-compatibility cases; retain source immutability checks. The synthetic fixture, CRS/schema/identifier/empty-geometry findings, repeated-report determinism and source immutability checks were exercised on the recorded baseline. Atomic single-file report output and failure injection are proposed enhancements until their PR head passes.
 
 ### P2 — Integrate a reproducible preparation workflow
 

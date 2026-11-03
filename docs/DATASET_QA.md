@@ -4,7 +4,10 @@
 
 `scripts/dataset_qa.py` is the first implementation of the repository's read-only inventory and quality-report tool. It inspects supported vector and raster datasets through GDAL/OGR and writes a JSON report plus an optional Markdown summary. It does not repair or rewrite source data.
 
-**Status:** implemented; deterministic report-contract tests and a synthetic GeoPackage/GeoTIFF integration test are included. The QGIS/GDAL runtime workflow is required evidence for runtime-sensitive changes; check the current pull-request head's run before making a validation claim.
+**Status:** implemented and runtime-tested on the specific commit and environment
+recorded below. The QA CLI was exercised against synthetic GeoPackage/GeoTIFF
+fixtures; this does not establish production suitability or coverage of every
+GDAL provider. New changes require their own exact-head CI evidence.
 
 ## Requirements
 
@@ -75,9 +78,33 @@ Relative dataset paths are reported relative to `--root` when possible. For inpu
 
 ## Safety and limitations
 
-- Inputs are opened read-only. Reports are the only files this command writes; the CLI validates destinations before writing and refuses collisions with source datasets.
+- Inputs are opened read-only. Reports are the only files this command writes;
+  the CLI validates destinations before writing and refuses collisions with
+  source datasets. Each report is staged and atomically replaced on supported
+  filesystems; a failed individual write preserves its previous destination.
+  JSON and optional Markdown are **not a multi-file transaction**: if the
+  Markdown publication fails after successful JSON publication, the files can
+  reflect different runs. Do not treat both files as committed together.
 - A missing CRS is never guessed from coordinate values.
 - Findings are diagnostic signals, not automatic repair instructions. Review data provenance before changing a dataset.
 - Geometry validity checks can be expensive and depend on GDAL/OGR/GEOS provider behavior.
 - This is an inventory/QA first increment, not a replacement for QGIS project inspection or domain-specific validation.
-- Unit tests validate report schema, deterministic ordering, summary counts, report rendering, non-finite metadata serialization, and undefined-CRS handling without requiring GDAL. `scripts/validate_dataset_qa_runtime.py` creates synthetic GeoPackage and GeoTIFF inputs, asserts inventory values and deliberate CRS/schema/identifier/empty-geometry findings, checks JSON serialization, and verifies that the source files are unchanged. The QGIS runtime workflow invokes it after installing QGIS/GDAL. This test is implemented but remains unverified until the workflow completes successfully on the current PR head.
+- Unit tests validate report schema, deterministic ordering, summary counts, report rendering, non-finite metadata serialization, and undefined-CRS handling without requiring GDAL. `scripts/validate_dataset_qa_runtime.py` creates synthetic GeoPackage and GeoTIFF inputs, asserts inventory values and deliberate CRS/schema/identifier/empty-geometry findings, checks JSON serialization, and verifies that the source files are unchanged. The QGIS runtime workflow invokes it after installing QGIS/GDAL.
+
+## Verified runtime evidence
+
+- **Commit:** `4d1b5c72dc811d8c1a8325a544f888ad102b8242` on `main`.
+- **Workflow:** [QGIS runtime tests, October 31, 2026](https://github.com/ZQM-Computing/qgis-resources/actions/runs/41242191186).
+- **Environment:** GitHub-hosted Linux runner; Ubuntu package
+  `qgis` / `python3-qgis` 3.40.15.
+- **Result:** all three QGIS/GDAL runtime steps passed, covering plugin and
+  buffer examples, synthetic dataset QA, and synthetic DEM
+  reprojection/clipping/slope checks.
+- **Dataset QA observed output:** 2 datasets, 13 deliberate findings
+  (4 errors, 9 warnings), with source immutability assertions included.
+- **Limit:** this verifies the specified synthetic cases on the recorded
+  commit, not other QGIS/GDAL versions, Windows, production datasets,
+  provider-specific edge cases, or later commits.
+
+A new pull request must demonstrate its own exact-head runtime result;
+this historical run alone cannot validate the atomic-report changes.
