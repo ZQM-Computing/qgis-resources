@@ -48,10 +48,20 @@ The roadmap prioritizes trustworthy runtime validation, a read-only dataset inve
 - **PyQGIS:** run scripts from the QGIS Python Console after reviewing configuration constants.
 - **Processing script:** add [patterns/clip_and_reproject.py](patterns/clip_and_reproject.py) through Processing Toolbox → Scripts → Add Script from File.
 - **Styles:** load .qml files through Layer Properties → Symbology → Style → Load Style. These are starting styles, not validated thematic classification schemes.
-- **Dataset inventory and QA:** see [docs/DATASET_QA.md](docs/DATASET_QA.md). The initial CLI reads supported datasets through GDAL/OGR and writes JSON plus optional Markdown reports; it does not modify inputs. A synthetic GeoPackage/GeoTIFF integration test and a separate synthetic DEM reprojection/clip/slope test are wired into the QGIS runtime workflow. Coverage now includes semantic CRS equivalence, safe repeat audits, invalid/empty mask rejection, and source immutability; both tests require an exact-head passing run before runtime validation can be claimed.
+- **Dataset inventory and QA:** see [docs/DATASET_QA.md](docs/DATASET_QA.md). The initial CLI reads supported datasets through GDAL/OGR and writes JSON plus optional Markdown reports; it does not modify inputs. A synthetic GeoPackage/GeoTIFF integration test and a separate synthetic DEM reprojection/clip/slope test are wired into the QGIS runtime workflow. Coverage includes semantic CRS equivalence, safe repeat audits, invalid/empty mask rejection, and source immutability. These synthetic runtime tests passed on QGIS 3.40.15 at commit `4d1b5c7` on October 31, 2026; later changes require fresh exact-head results.
 - **Examples:** see [examples/](examples/). QGIS-dependent examples must run in a QGIS Python environment with Processing initialized.
 - **ZQM Geospatial Tools plugin:** see [zqm_geospatial_tools/README.md](zqm_geospatial_tools/README.md) for installation. The initial Processing tool buffers selected vector layers into separate GeoPackages.
 - **Notebooks:** notebooks require a Python kernel with QGIS bindings available; they will not run in a generic Python kernel without QGIS.
+
+## Verified runtime scope
+
+The [October 31, 2026 QGIS runtime run](https://github.com/ZQM-Computing/qgis-resources/actions/runs/41242191186)
+passed on commit `4d1b5c72dc811d8c1a8325a544f888ad102b8242`
+with QGIS 3.40.15 installed on a Linux runner. It exercised the plugin,
+read-only vector/raster QA, and synthetic DEM reprojection, clipping and slope
+outputs. This is version-specific test evidence, not a certification for
+Windows, other QGIS versions, or production client datasets. See the
+[dataset QA guide](docs/DATASET_QA.md) for tested output and report-write safety.
 
 ## Coordinate reference system policy
 
