@@ -670,8 +670,8 @@ def test_raster_nonfinite_geotransform_withholds_extent(tmp_path):
 def test_report_writer_replaces_complete_report(tmp_path):
     destination = tmp_path / "report.json"
     destination.write_text("last-good", encoding="utf-8")
-    qa._write_report(destination, '{"schema_version": 1}\\n')
-    assert destination.read_text(encoding="utf-8") == '{"schema_version": 1}\\n'
+    qa._write_report(destination, '{"schema_version": 1}\n')
+    assert destination.read_text(encoding="utf-8") == '{"schema_version": 1}\n'
     assert not list(tmp_path.glob(".report.json.*.tmp"))
 
 
@@ -679,18 +679,18 @@ def test_atomic_report_write_failure_keeps_prior_file(tmp_path, monkeypatch):
     import pytest
 
     destination = tmp_path / "report.json"
-    destination.write_text('{"last_good": true}\\n', encoding="utf-8")
+    destination.write_text('{"last_good": true}\n', encoding="utf-8")
     original_bytes = destination.read_bytes()
 
     def fail_replace(source, target):
         assert Path(source).parent == tmp_path
         assert Path(target) == destination
-        assert Path(source).read_text(encoding="utf-8") == '{"new": true}\\n'
+        assert Path(source).read_text(encoding="utf-8") == '{"new": true}\n'
         raise OSError("simulated atomic-replace failure")
 
     monkeypatch.setattr(qa.os, "replace", fail_replace)
     with pytest.raises(OSError, match="simulated atomic-replace failure"):
-        qa._write_report(destination, '{"new": true}\\n')
+        qa._write_report(destination, '{"new": true}\n')
     assert destination.read_bytes() == original_bytes
     assert not list(tmp_path.glob(".report.json.*.tmp"))
 
@@ -701,7 +701,7 @@ def test_failed_cli_publication_reports_error_without_truncating_json(tmp_path, 
     source = tmp_path / "source.gpkg"
     source.write_bytes(b"pretend dataset")
     destination = tmp_path / "report.json"
-    destination.write_text('{"previous": true}\\n', encoding="utf-8")
+    destination.write_text('{"previous": true}\n', encoding="utf-8")
     original_bytes = destination.read_bytes()
     report = {
         "schema_version": 1,
