@@ -10,7 +10,9 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -486,8 +488,27 @@ def json_safe(value: Any) -> Any:
 
 
 def _write_report(path: Path, content: str) -> None:
+    """Publish one complete report, preserving the prior file on write failure.
+
+    The temporary file lives on the destination filesystem, so os.replace
+    atomically swaps it into place on supported filesystems. JSON and Markdown
+    destinations are each atomic, but are NOT a transaction across both files.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
+    staged: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=path.parent,
+            prefix=f".{path.name}.", suffix=".tmp", delete=False,
+        ) as handle:
+            staged = Path(handle.name)
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(staged, path)
+    finally:
+        if staged is not None:
+            staged.unlink(missing_ok=True)
 
 
 def _validate_report_destinations(paths: list[Path], json_path: Path,
@@ -559,9 +580,12 @@ def main(argv: list[str] | None = None) -> int:
                              exclude_paths=[args.json_path, *([args.markdown] if args.markdown else [])])
     except (RuntimeError, OSError, ValueError) as exc:
         parser.error(str(exc))
-    _write_report(args.json_path, json.dumps(json_safe(report), indent=2, sort_keys=True, allow_nan=False) + "\n")
-    if args.markdown:
-        _write_report(args.markdown, markdown_report(report))
+    try:
+        _write_report(args.json_path, json.dumps(json_safe(report), indent=2, sort_keys=True, allow_nan=False) + "\n")
+        if args.markdown:
+            _write_report(args.markdown, markdown_report(report))
+    except OSError as exc:
+        parser.error(f"Could not publish QA report: {type(exc).__name__}")
     print(json.dumps(report["summary"], sort_keys=True))
     return 1 if report["summary"]["error"] or (args.fail_on_warning and report["summary"]["warning"]) else 0
 
