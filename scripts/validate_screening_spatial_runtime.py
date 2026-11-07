@@ -123,6 +123,12 @@ def main_test() -> None:
         assert archive.testzip() is None
         parsed = json.loads(archive.read("report.json"))
         assert parsed["status"] == "synthetic-review-only"
+        assert parsed["screening_triage"]["decision"] == "REVIEW"
+        assert parsed["screening_triage"]["priority"] == "mapped-constraint-and-gaps"
+        assert parsed["screening_triage"]["mapped_constraint_sources"] == ["synthetic-wetland-inventory"]
+        assert parsed["screening_triage"]["coverage_gap_sources"] == ["synthetic-flood-absent"]
+        assert parsed["screening_triage"]["financial_liability_estimate"] is None
+        assert parsed["screening_triage"]["human_review_required"] is True
         assert parsed["measurement"]["human_review"] == "pending"
         assert parsed["measurement"]["source_results"][0]["measured_intersection_percent"] == wetland["measured_intersection_percent"]
         assert parsed["constraint_matrix"][1]["intersected_area_m2"] is None
