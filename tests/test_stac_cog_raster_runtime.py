@@ -61,6 +61,35 @@ class LocalRasterWindowTests(unittest.TestCase):
         self.assertFalse(result["deforestation_determined"])
         self.assertFalse(result["asset_urls_logged"])
 
+    def test_polygon_mask_excludes_outside_pixels(self):
+        import json
+        polygon = json.loads((ROOT / "fixtures" / "stac-aoi-synthetic.geojson").read_text())
+        result = stac.calculate_window_ndvi(self.item, self.bbox, polygon)
+        self.assertTrue(result["aoi_polygon_mask_applied"])
+        self.assertEqual(result["read_window_pixel_count"], 64)
+        self.assertEqual(result["aoi_pixel_count"], 16)
+        self.assertEqual(result["valid_pixel_count"], 16)
+        self.assertEqual(result["valid_fraction_of_aoi"], 1.0)
+        self.assertAlmostEqual(result["mean_ndvi_dn_ratio"], 0.5, places=5)
+
+    def test_polygon_mask_cloud_and_empty_mask_fail_closed(self):
+        import json
+        polygon = json.loads((ROOT / "fixtures" / "stac-aoi-synthetic.geojson").read_text())
+        scl = np.full((10, 10), 4, dtype="uint16")
+        scl[2, 2] = 9
+        self._write("SCL", scl)
+        result = stac.calculate_window_ndvi(self.item, self.bbox, polygon)
+        self.assertEqual(result["aoi_pixel_count"], 16)
+        self.assertEqual(result["valid_pixel_count"], 15)
+        self.assertAlmostEqual(result["valid_fraction_of_aoi"], 15/16, places=5)
+        # A topologically valid micro-polygon can lie between pixel centers.
+        tiny = {"type": "Polygon", "coordinates": [[
+            [-46.6500, -23.5500], [-46.6499, -23.5500],
+            [-46.6499, -23.5499], [-46.6500, -23.5500],
+        ]]}
+        with self.assertRaises(stac.PreflightError):
+            stac.calculate_window_ndvi(self.item, self.bbox, tiny)
+
     def test_cloud_mask_reduces_valid_pixel_count(self):
         scl = np.full((10, 10), 4, dtype="uint16")
         scl[2, 2] = 9  # high-probability cloud class
