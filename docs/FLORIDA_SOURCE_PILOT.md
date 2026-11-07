@@ -24,11 +24,17 @@ Explicitly opt in to a small public read-only request:
 
 Sample coordinates define an arbitrary small test envelope and are **not a customer's parcel**. The adapter allows only official USFWS NWI layer 0 HTTPS endpoints, blocks HTTP redirects, bounds each response to 4 MiB, caps a Florida envelope at 0.02 degrees in each direction and limits returned features to 200. It first verifies layer capability/schema and obtains the server's count, then requests GeoJSON with stable `OBJECTID` pagination, reconciles counts and rejects truncated/invalid/duplicate records. If the server returns too many features or is inaccessible, the request **fails closed**; it does not declare no constraint.
 
-Source results carry `coverage_state=unverified`, `reuse_rights=unverified`, `human_review=pending`, and `regulatory_determination=false`, including when the query returns zero features. The adapter filters source attributes to an allowlist, records the provider URL, retrieval time, bounding box and requested CRS, and atomically creates one non-overwriting JSON snapshot. Its output **does not** feed the customer report or assert legal rights. The CLI produces no network request unless `--network` is explicitly supplied.
+Source results carry `coverage_state=unverified`, `reuse_rights=unverified`, `human_review=pending`, and `regulatory_determination=false`, including when the query returns zero features. The result also records a SHA-256 hash of the **normalized, filtered GeoJSON**, ordered unique-object-ID checks, and the total validated vertex count. This is an internal transformation fingerprint, **not** a signature or a hash of the unmodified agency response. Because layer data may change between a count request and the individual feature pages, count/ID reconciliation **does not prove point-in-time snapshot consistency**. If the agency metadata, geometry type, CRS, page count, identifiers, mandatory attributes, or source endpoint differ from the expected contract, ingestion fails instead of silently accepting an incomplete dataset. The adapter filters source attributes to an allowlist, records the provider URL, retrieval time, bounding box and requested CRS, and atomically creates one non-overwriting JSON snapshot. Its output **does not** feed the customer report or assert legal rights. The CLI produces no network request unless `--network` is explicitly supplied.
 
 Tests run with a mocked provider response, never a live public endpoint:
 
     python -m pytest -q tests/test_nwi_source_inspector.py
+
+## Live-query status (November 7, 2026)
+
+A direct read-only request for a deliberately small non-client Florida test envelope was attempted from the execution environment. DNS resolution to the USFWS service failed; an external web retrieval of the dynamic query endpoint also did not return a usable response. **No feature response, count result, or agency query success is claimed; no live spatial output was produced.** Separately, publicly accessible ArcGIS layer metadata confirmed query support, the polygon layer identity, fields, feature paging, and GeoJSON formats.
+
+Reproduction from an approved network egress host requires an explicit `--network` flag, the same tiny test envelope, and review of the returned data status before any use. Do **not** schedule bulk queries or infer missing wetlands from empty output. The CLI's default remains offline.
 
 ## Release gates not yet met
 
