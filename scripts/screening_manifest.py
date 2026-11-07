@@ -99,9 +99,9 @@ def validate_manifest(payload: Any) -> list[str]:
             errors.append("study_area.reference: expected fixtures/ path for synthetic pilot")
         if not _nonempty(study.get("crs")):
             errors.append("study_area.crs: required; never infer a CRS")
-        if study.get("boundary_basis") not in BOUNDARY_BASES:
+        if not isinstance(study.get("boundary_basis"), str) or study["boundary_basis"] not in BOUNDARY_BASES:
             errors.append("study_area.boundary_basis: invalid")
-    if payload.get("service_tier") not in TIERS:
+    if not isinstance(payload.get("service_tier"), str) or payload["service_tier"] not in TIERS:
         errors.append("service_tier: invalid")
     if payload.get("delivery_status") != "draft":
         errors.append("delivery_status: contract pilot must remain draft")
@@ -126,19 +126,19 @@ def validate_manifest(payload: Any) -> list[str]:
         origin = source.get("origin")
         state = source.get("coverage_state")
         rights = source.get("reuse_rights")
-        if origin not in ORIGINS:
+        if not isinstance(origin, str) or origin not in ORIGINS:
             errors.append(f"{label}.origin: invalid")
-        if state not in COVERAGE_STATES:
+        if not isinstance(state, str) or state not in COVERAGE_STATES:
             errors.append(f"{label}.coverage_state: invalid")
-        if rights not in RIGHTS_STATES:
+        if not isinstance(rights, str) or rights not in RIGHTS_STATES:
             errors.append(f"{label}.reuse_rights: invalid")
         for field in ("title", "authority", "limitations"):
             if not _nonempty(source.get(field)):
                 errors.append(f"{label}.{field}: required")
-        available = state in {"verified", "partial"}
+        available = isinstance(state, str) and state in {"verified", "partial"}
         reference = source.get("source_ref")
         if available:
-            if origin not in ORIGINS or not _source_reference(origin, reference):
+            if not isinstance(origin, str) or origin not in ORIGINS or not _source_reference(origin, reference):
                 errors.append(f"{label}.source_ref: required valid origin-specific reference")
             if rights != "approved":
                 errors.append(f"{label}.reuse_rights: usable coverage requires approved reuse rights")
