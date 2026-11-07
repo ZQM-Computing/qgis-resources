@@ -112,6 +112,15 @@ class PreflightTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     preflight.load(p)
 
+    def test_wrong_commodity_and_schema_types_are_reported(self):
+        d = sample()
+        d["commodity"] = ["coffee"]
+        d["schema_version"] = True
+        result = preflight.assess(d)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertIn("unsupported-or-unverified-commodity", result["exceptions"])
+        self.assertIn("unsupported-schema-version", result["exceptions"])
+
     def test_oversized_input_refused(self):
         with tempfile.TemporaryDirectory() as directory:
             p = Path(directory) / "big.json"
