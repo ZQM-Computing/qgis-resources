@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Level-2A_User_Product>
+  <General_Info>
+    <Product_Info>
+      <PROCESSING_BASELINE>05.10</PROCESSING_BASELINE>
+    </Product_Info>
+    <Product_Image_Characteristics>
+      <BOA_QUANTIFICATION_VALUE>10000</BOA_QUANTIFICATION_VALUE>
+      <BOA_ADD_OFFSET_VALUES_LIST>
+        <BOA_ADD_OFFSET band_id="3">-1000</BOA_ADD_OFFSET>
+        <BOA_ADD_OFFSET band_id="7">-1000</BOA_ADD_OFFSET>
+      </BOA_ADD_OFFSET_VALUES_LIST>
+    </Product_Image_Characteristics>
+  </General_Info>
+</Level-2A_User_Product>

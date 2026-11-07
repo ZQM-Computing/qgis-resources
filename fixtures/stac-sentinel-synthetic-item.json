@@ -1,0 +1,54 @@
+{
+  "type": "Feature",
+  "stac_version": "1.0.0",
+  "id": "synthetic-sentinel-scene-01",
+  "collection": "sentinel-2-l2a",
+  "properties": {
+    "datetime": "2026-10-15T10:30:00Z",
+    "eo:cloud_cover": 8
+  },
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          -46.7,
+          -23.6
+        ],
+        [
+          -46.58,
+          -23.6
+        ],
+        [
+          -46.58,
+          -23.5
+        ],
+        [
+          -46.7,
+          -23.5
+        ],
+        [
+          -46.7,
+          -23.6
+        ]
+      ]
+    ]
+  },
+  "bbox": [
+    -46.7,
+    -23.6,
+    -46.58,
+    -23.5
+  ],
+  "assets": {
+    "B04": {
+      "href": "https://sentinel2l2a01.blob.core.windows.net/sentinel2-l2/fictional-test/B04.tif"
+    },
+    "B08": {
+      "href": "https://sentinel2l2a01.blob.core.windows.net/sentinel2-l2/fictional-test/B08.tif"
+    },
+    "SCL": {
+      "href": "https://sentinel2l2a01.blob.core.windows.net/sentinel2-l2/fictional-test/SCL.tif"
+    }
+  }
+}
