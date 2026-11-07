@@ -109,6 +109,54 @@ class PreflightTests(unittest.TestCase):
                 self.assertIn("invalid-geojson-geometry-structure", result["exceptions"])
                 self.assertFalse(result["compliance_determined"])
 
+    def test_unsafe_source_urls_are_structurally_blocked(self):
+        invalid = (
+            "https://",
+            "https://localhost/polygon.json",
+            "https://example.local/file",
+            "https://example.org:wrong/file",
+            "https://example.org:8443/file",
+            "https://user:secret@example.org/file",
+            "https://example.org/data#fragment",
+            "https://example.org/path with spaces",
+            "https://example.org/\\npath",
+            "http://example.org/data",
+        )
+        for reference in invalid:
+            with self.subTest(reference=reference):
+                d = sample()
+                d["plots"][0]["source"]["reference"] = reference
+                result = preflight.assess(d)
+                self.assertIn("unverified-or-unsafe-source-reference", result["exceptions"])
+                self.assertFalse(result["compliance_determined"])
+
+    def test_source_urls_not_fetched_or_authenticated(self):
+        d = sample()
+        d["plots"][0]["source"]["reference"] = "https://example.org/synthetic.json"
+        result = preflight.assess(d)
+        self.assertNotIn("unverified-or-unsafe-source-reference", result["exceptions"])
+        self.assertFalse(result["deforestation_assessed"])
+
+    def test_total_vertex_budget_applies_across_all_polygon_rings(self):
+        # Two rings each under the per-ring cap but over the aggregate cap.
+        ring = [[-52.0, -12.0], [-51.9, -12.0], [-51.9, -11.9]]
+        long_ring = (ring * 2000) + [ring[0]]
+        d = sample()
+        d["plots"][0]["geometry"]["coordinates"] = [long_ring, long_ring]
+        result = preflight.assess(d)
+        self.assertIn("invalid-geojson-geometry-structure", result["exceptions"])
+
+    def test_total_vertex_budget_applies_across_multipolygon_members(self):
+        ring = [[-52.0, -12.0], [-51.9, -12.0], [-51.9, -11.9]]
+        polygon = [(ring * 2000) + [ring[0]]]
+        d = sample()
+        d["plots"][0]["geometry"] = {
+            "type": "MultiPolygon",
+            "coordinates": [polygon, polygon],
+        }
+        result = preflight.assess(d)
+        self.assertIn("invalid-geojson-geometry-structure", result["exceptions"])
+
     def test_deterministic_nonmutating_and_redacted(self):
         d = sample()
         copy = deepcopy(d)
