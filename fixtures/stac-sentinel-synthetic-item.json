@@ -42,13 +42,13 @@
   ],
   "assets": {
     "B04": {
-      "href": "https://example.blob.core.windows.net/synthetic/B04.tif"
+      "href": "https://sentinel2l2a01.blob.core.windows.net/sentinel2-l2/fictional-test/B04.tif"
     },
     "B08": {
-      "href": "https://example.blob.core.windows.net/synthetic/B08.tif"
+      "href": "https://sentinel2l2a01.blob.core.windows.net/sentinel2-l2/fictional-test/B08.tif"
     },
     "SCL": {
-      "href": "https://example.blob.core.windows.net/synthetic/SCL.tif"
+      "href": "https://sentinel2l2a01.blob.core.windows.net/sentinel2-l2/fictional-test/SCL.tif"
     }
   }
 }
