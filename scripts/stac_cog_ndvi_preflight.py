@@ -162,6 +162,21 @@ def search_scene(bbox, period, cloud_limit):
     return [item.to_dict() for item in search.items()]
 
 
+def _window_edge(value, *, upper):
+    """Snap near-integer grid edges before conservative floor/ceil.
+
+    Affine inverse transforms can return 9.00000000000034 for an exact
+    pixel boundary. Without a tolerance, ceil expands the window one pixel.
+    Nonaligned bounds are still conservatively expanded to cover the AOI.
+    """
+    if not math.isfinite(value):
+        raise PreflightError("nonfinite raster window coordinate")
+    nearest = round(value)
+    if math.isclose(value, nearest, rel_tol=0.0, abs_tol=1e-7):
+        return int(nearest)
+    return math.ceil(value) if upper else math.floor(value)
+
+
 def calculate_window_ndvi(item, bbox):
     """Read only one bounded Sentinel scene window via Rasterio/GDAL HTTP range I/O.
 
@@ -191,8 +206,8 @@ def calculate_window_ndvi(item, bbox):
                 raise PreflightError("missing CRS or unexpected raster bands")
             left, bottom, right, top = transform_bounds("EPSG:4326", nir.crs, *bbox, densify_pts=21)
             raw = from_bounds(left, bottom, right, top, transform=nir.transform)
-            col0, row0 = max(0, math.floor(raw.col_off)), max(0, math.floor(raw.row_off))
-            col1, row1 = min(nir.width, math.ceil(raw.col_off + raw.width)), min(nir.height, math.ceil(raw.row_off + raw.height))
+            col0, row0 = max(0, _window_edge(raw.col_off, upper=False)), max(0, _window_edge(raw.row_off, upper=False))
+            col1, row1 = min(nir.width, _window_edge(raw.col_off + raw.width, upper=True)), min(nir.height, _window_edge(raw.row_off + raw.height, upper=True))
             width, height = col1 - col0, row1 - row0
             if width <= 0 or height <= 0 or width * height > MAX_PIXELS:
                 raise PreflightError("empty or oversized raster window")
