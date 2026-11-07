@@ -44,3 +44,14 @@ def test_2026_parcel_polygon_candidate_is_metadata_only_and_private_fields_exclu
     assert parcel["licensing_review"] == "pending"
     assert parcel["actual_feature_coverage"] == "unverified"
     assert "owner names/addresses" in parcel["caveat"]
+
+
+def test_nwi_project_metadata_dates_required_for_real_screening():
+    candidates = json.loads(REGISTRY.read_text(encoding="utf-8"))["candidates"]
+    wetland = next(item for item in candidates if item["id"] == "usfws-nwi-wetlands")
+    assert wetland["state_download_reference"].startswith("https://www.fws.gov/")
+    assert "October 2026" in wetland["state_download_published_window"]
+    assert wetland["project_metadata_required"] is True
+    assert wetland["project_mapping_date_verified"] is False
+    assert wetland["current_effective_edition"] == "unverified"
+    assert wetland["commercial_use_approved"] is False
