@@ -105,6 +105,29 @@ class LocalRasterWindowTests(unittest.TestCase):
         self.assertFalse(corrected["customer_ready_ndvi"])
         self.assertFalse(candidate["radiometric_offset_and_scale_verified"])
 
+    def test_prescaled_raster_metadata_blocks_double_radiometric_adjustment(self):
+        import json
+        record = json.loads((ROOT / "fixtures" / "stac-radiometry-synthetic.json").read_text())
+        self.item["id"] = record["scene_id"]
+        for band in ("B04", "B08"):
+            for metadata_type, value in (("scales", 0.0001), ("offsets", -0.1)):
+                with self.subTest(band=band, metadata_type=metadata_type):
+                    path = self.root / (band + ".tif")
+                    with rasterio.open(path, "r+") as src:
+                        setattr(src, metadata_type, (value,))
+                    with self.assertRaises(stac.PreflightError, msg="pre-scaled raster must not be corrected"):
+                        stac.calculate_window_ndvi(self.item, self.bbox, radiometry=record)
+                    with rasterio.open(path, "r+") as src:
+                        setattr(src, metadata_type, (1.0 if metadata_type == "scales" else 0.0,))
+
+    def test_wrong_scene_radiometry_is_rejected_before_any_raster_open(self):
+        import json
+        record = json.loads((ROOT / "fixtures" / "stac-radiometry-synthetic.json").read_text())
+        self.item["id"] = "wrong-scene-identifier"
+        with patch.object(rasterio, "open", side_effect=AssertionError("opened raster before metadata validation")):
+            with self.assertRaises(ValueError):
+                stac.calculate_window_ndvi(self.item, self.bbox, radiometry=record)
+
     def test_negative_reflectance_candidate_is_not_silently_used(self):
         import json
         record = json.loads((ROOT / "fixtures" / "stac-radiometry-synthetic.json").read_text())
