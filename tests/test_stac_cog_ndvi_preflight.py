@@ -54,6 +54,8 @@ class StacCogTests(unittest.TestCase):
     def test_url_security_blocks_non_blob_hosts_and_embedded_credentials(self):
         for href in (
             "https://localhost/B08.tif",
+            "https://attacker.blob.core.windows.net/sentinel2-l2/B08.tif",
+            "https://sentinel2l2a01.blob.core.windows.net/unrelated/B08.tif",
             "https://example.org/B08.tif",
             "https://blob.core.windows.net/B08.tif",
             "http://example.blob.core.windows.net/B08.tif",
@@ -67,7 +69,7 @@ class StacCogTests(unittest.TestCase):
             with self.subTest(href=href):
                 self.assertFalse(preflight._safe_href(href))
         self.assertTrue(preflight._safe_href(
-            "https://test.blob.core.windows.net/container/B08.tif?sig=redacted"
+            "https://sentinel2l2a01.blob.core.windows.net/sentinel2-l2/test/B08.tif?sig=redacted"
         ))
 
     def test_raster_grid_edges_snap_only_very_near_integer(self):
