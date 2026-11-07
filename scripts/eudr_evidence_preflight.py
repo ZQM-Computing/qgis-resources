@@ -132,7 +132,6 @@ def _validate_geometry(geometry):
             if total_vertices > MAX_VERTICES:
                 return False
     return True
-    return False
 
 
 def assess(record):
