@@ -307,9 +307,12 @@ def publish_bundle(path: Path, bundle: bytes, *, overwrite: bool = False) -> str
         raise ScreeningError("Output already exists; overwrite not authorized")
     if not isinstance(bundle, bytes) or len(bundle) > 32 * 1024 * 1024:
         raise ScreeningError("Invalid report bundle size")
-    with zipfile.ZipFile(BytesIO(bundle)) as reader:
-        if tuple(sorted(reader.namelist())) != ARCHIVE_FILES or reader.testzip() is not None:
-            raise ScreeningError("Bundle integrity validation failed")
+    try:
+        with zipfile.ZipFile(BytesIO(bundle)) as reader:
+            if tuple(sorted(reader.namelist())) != ARCHIVE_FILES or reader.testzip() is not None:
+                raise ScreeningError("Bundle integrity validation failed")
+    except (zipfile.BadZipFile, EOFError, OSError) as exc:
+        raise ScreeningError("Bundle integrity validation failed") from exc
     fd, candidate = tempfile.mkstemp(prefix=".zqm-screening-", suffix=".tmp", dir=path.parent)
     try:
         with os.fdopen(fd, "wb") as handle:
