@@ -17,6 +17,7 @@ import screening_report as report  # noqa: E402
 
 
 def bundle_bytes(marker: str = "original") -> bytes:
+    """Create a small valid archive for publication tests without a spatial runtime."""
     buffer = BytesIO()
     with zipfile.ZipFile(buffer, "w") as handle:
         for name in report.ARCHIVE_FILES:
@@ -25,6 +26,7 @@ def bundle_bytes(marker: str = "original") -> bytes:
 
 
 def test_publish_atomic_create_rejects_duplicate_and_protects_existing(tmp_path):
+    """Verify publish atomic create rejects duplicate and protects existing."""
     destination = tmp_path / "screening.zip"
     original = bundle_bytes()
     digest = report.publish_bundle(destination, original)
@@ -40,9 +42,11 @@ def test_publish_atomic_create_rejects_duplicate_and_protects_existing(tmp_path)
 
 
 def test_failed_publication_leaves_no_partial_or_temp_file(tmp_path, monkeypatch):
+    """Verify failed publication leaves no partial or temp file."""
     destination = tmp_path / "screening.zip"
 
     def reject_link(*args, **kwargs):
+        """Simulate a filesystem publication failure before the destination is created."""
         raise OSError("simulated atomic link failure")
 
     monkeypatch.setattr(report.os, "link", reject_link)
@@ -53,6 +57,7 @@ def test_failed_publication_leaves_no_partial_or_temp_file(tmp_path, monkeypatch
 
 
 def test_invalid_archive_or_destination_rejected_without_writes(tmp_path):
+    """Verify invalid archive or destination rejected without writes."""
     with pytest.raises(report.ScreeningError, match="integrity"):
         report.publish_bundle(tmp_path / "bad.zip", b"not-a-zip")
     with pytest.raises(report.ScreeningError, match="must be"):
@@ -63,6 +68,7 @@ def test_invalid_archive_or_destination_rejected_without_writes(tmp_path):
 
 
 def test_refuses_symlink_output_even_with_overwrite(tmp_path):
+    """Verify refuses symlink output even with overwrite."""
     target = tmp_path / "protected.txt"
     target.write_text("untouched")
     symlink = tmp_path / "screening.zip"
@@ -76,6 +82,7 @@ def test_refuses_symlink_output_even_with_overwrite(tmp_path):
 
 
 def test_report_markdown_is_explicit_about_missing_data_and_source_limitations():
+    """Verify report markdown is explicit about missing data and source limitations."""
     manifest = {
         "project_id": "demo",
         "jurisdiction": {"country_code": "US", "region": "synthetic"},
@@ -116,6 +123,7 @@ def test_report_markdown_is_explicit_about_missing_data_and_source_limitations()
 
 
 def test_archive_file_list_is_stable_and_reproducible():
+    """Verify archive file list is stable and reproducible."""
     original = bundle_bytes()
     with zipfile.ZipFile(BytesIO(original)) as handle:
         assert tuple(sorted(handle.namelist())) == report.ARCHIVE_FILES
@@ -124,6 +132,7 @@ def test_archive_file_list_is_stable_and_reproducible():
 
 
 def test_optional_source_register_fields_are_null_when_unavailable_source_omits_them():
+    """Verify optional source register fields are null when unavailable source omits them."""
     import copy
     import json
     manifest = json.loads((ROOT / "fixtures" / "screening-manifest.json").read_text(encoding="utf-8"))

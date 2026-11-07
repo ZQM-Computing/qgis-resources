@@ -24,10 +24,12 @@ ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 
 
 def _nonempty(value: Any) -> bool:
+    """Return whether a metadata value is a nonblank string."""
     return isinstance(value, str) and bool(value.strip())
 
 
 def _date(value: Any) -> bool:
+    """Accept only canonical ISO calendar dates without time components."""
     if not isinstance(value, str) or len(value) != 10:
         return False
     try:
@@ -37,6 +39,7 @@ def _date(value: Any) -> bool:
 
 
 def _utc_time(value: Any) -> bool:
+    """Require an ISO timestamp with an explicit zero UTC offset."""
     if not _nonempty(value) or "T" not in value:
         return False
     try:
@@ -47,6 +50,7 @@ def _utc_time(value: Any) -> bool:
 
 
 def _source_reference(origin: str, value: Any) -> bool:
+    """Check fixture confinement syntax or credential-free HTTPS source syntax."""
     if not _nonempty(value):
         return False
     if origin == "synthetic":
@@ -162,6 +166,7 @@ def validate_manifest(payload: Any) -> list[str]:
 
 
 def _reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Build a JSON object while rejecting duplicate keys at every nesting level."""
     result: dict[str, Any] = {}
     for key, value in pairs:
         if key in result:
@@ -184,6 +189,7 @@ def load_manifest(path: Path) -> Any:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Validate local metadata and return documented load or validation exit codes."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("manifest", type=Path, help="Local manifest JSON (read-only)")
     args = parser.parse_args(argv)
