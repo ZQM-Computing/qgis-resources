@@ -23,14 +23,18 @@
       "id": "florida-dor-parcels-2026",
       "provider": "Florida Geographic Information Office / Florida Department of Revenue",
       "official_reference": "https://geodata.floridagio.gov/",
-      "service_url": null,
-      "source_maturity": "portal-discovery-only",
+      "service_url": "https://services9.arcgis.com/Gh9awoU677aKree0/ArcGIS/rest/services/Florida_Statewide_Cadastral/FeatureServer/0",
+      "source_maturity": "published-2026-polygon-metadata-identified-2026-11-07",
       "licensing_review": "pending",
       "actual_feature_coverage": "unverified",
       "current_effective_edition": "unverified",
       "commercial_use_approved": false,
       "screening_use": "discovery-only",
-      "caveat": "Portal advertises 2026 statewide parcel data, but no particular parcel service or authoritative surveyed boundary was validated for this pilot"
+      "caveat": "Official metadata now describes 2026 polygon export, while older cached layer descriptions identified 2025; independently verify exact live edition and relevant county features. Do not fetch owner names/addresses for pilot analysis, assume surveyed boundaries, or approve commercial redistribution without review.",
+      "geometry_type": "esriGeometryPolygon",
+      "layer_id": 0,
+      "source_metadata_url": "https://www.arcgis.com/sharing/rest/content/items/efa909d6b1c841d298b0a649e7f71cf2/info/metadata/metadata.xml?format=default&output=html",
+      "published_edition_claim": "August 2026 (official linked metadata), live feature query not tested"
     },
     {
       "id": "florida-dep-open-data",
