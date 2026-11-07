@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "scope": "preflight-no-purchase",
+  "request_count": 10,
+  "estimated_range_bytes": 1000000000,
+  "estimated_compute_seconds": 3600,
+  "estimated_review_minutes": 60,
+  "rates": {
+    "per_request_usd": "0.01",
+    "per_gb_egress_usd": "0.10",
+    "per_compute_hour_usd": "1.00",
+    "per_review_hour_usd": "20.00"
+  },
+  "approved_spend_ceiling_usd": "21.20",
+  "paid_imagery_requested": false
+}
