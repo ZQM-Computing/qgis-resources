@@ -17,6 +17,7 @@ import sys
 MAX_BYTES = 1024 * 1024
 MAX_SEGMENTS = 100
 MAX_SAMPLES = 2000
+MAX_POSITION_ERROR_M = 100.0  # synthetic pilot bound; not a surveyed accuracy limit
 ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$")
 DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -93,7 +94,7 @@ def analyze(data):
     if (data.get("scope") != "synthetic-only" or data.get("horizontal_crs") != "EPSG:32617"
             or data.get("vertical_reference") != "SYNTHETIC_SHARED_LOCAL_METRES"):
         raise ValueError("unsupported coordinate reference or source scope")
-    if data.get("human_review") != "pending" or data.get("work_order_authorized") is True:
+    if data.get("human_review") != "pending" or data.get("work_order_authorized", False) is not False:
         raise ValueError("unsupported approval")
     _day(data.get("observation_date"))
     threshold = _distance(data.get("review_threshold_m"), allow_zero=False)
@@ -111,6 +112,8 @@ def analyze(data):
         ident = _id(record, seen)
         start, end = _point(record.get("start")), _point(record.get("end"))
         uncertainty = _distance(record.get("absolute_position_uncertainty_m"))
+        if uncertainty > MAX_POSITION_ERROR_M:
+            raise ValueError("segment position error exceeds pilot bound")
         if start == end:
             raise ValueError("conductor segment zero-length")
         parsed_lines.append((ident, start, end, uncertainty))
@@ -120,6 +123,8 @@ def analyze(data):
         ident = _id(record, seen)
         position = _point(record.get("position"))
         uncertainty = _distance(record.get("absolute_position_uncertainty_m"))
+        if uncertainty > MAX_POSITION_ERROR_M:
+            raise ValueError("sample position error exceeds pilot bound")
         parsed_points.append((ident, position, uncertainty))
     results = []
     for ident, start, end, line_uncertainty in parsed_lines:
@@ -131,6 +136,7 @@ def analyze(data):
             upper = measured + conservative_error
             if lower <= threshold:
                 matches.append({
+                    "flag_basis": "nominal-proximity" if measured <= threshold else "uncertainty-overlap",
                     "sample_id": sample_id,
                     "nominal_separation_m": round(measured, 4),
                     "conservative_lower_bound_m": round(lower, 4),
@@ -148,6 +154,8 @@ def analyze(data):
         "status": "REVIEW" if any(r["candidates"] for r in results) else "INSUFFICIENT_EVIDENCE",
         "measurement": "synthetic 3D point-to-straight-segment Euclidean distance in assumed metres",
         "review_threshold_m": threshold,
+        "position_error_assumptions_verified": False,
+        "candidate_flag_semantics": "nominal proximity or conditional uncertainty overlap, never verified clearance",
         "segments": results,
         "sample_coverage_verified": False,
         "conductor_sag_and_motion_modeled": False,
