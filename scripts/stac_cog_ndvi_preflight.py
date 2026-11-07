@@ -355,6 +355,7 @@ def main(argv=None):
     parser.add_argument("--stream-window", action="store_true", help="Only when --allow-network, max 250k pixels")
     parser.add_argument("--aoi-geojson", type=Path, help="Optional local Polygon/MultiPolygon; validated even in metadata mode")
     parser.add_argument("--radiometry-json", type=Path, help="Optional local, unverified scene-specific offset/quantification record")
+    parser.add_argument("--product-metadata-xml", type=Path, help="Required with --radiometry-json; local bounded source consistency check")
     args = parser.parse_args(argv)
     try:
         bbox = check_bbox(args.bbox)
@@ -365,6 +366,8 @@ def main(argv=None):
             raise PreflightError("live requests require explicit local budget plan")
         if args.stream_window and not args.allow_network:
             raise PreflightError("streaming requires explicit network opt-in")
+        if (args.radiometry_json is None) != (args.product_metadata_xml is None):
+            raise PreflightError("radiometry JSON and product XML must be supplied together")
         aoi_geometry = None
         if args.aoi_geojson is not None:
             from stac_aoi import load_aoi
@@ -392,9 +395,14 @@ def main(argv=None):
             raise PreflightError("network disabled by default; provide --fixture")
         selected, metadata = select_item(items, args.cloud_limit, bbox=bbox, period=period)
         radiometry = None
+        product_metadata_check = None
         if args.radiometry_json is not None:
             from stac_radiometry import load_radiometry
+            from stac_product_xml import verify_local_product_xml
             radiometry = load_radiometry(args.radiometry_json, metadata["scene_id"])
+            product_metadata_check = verify_local_product_xml(
+                args.product_metadata_xml, radiometry, metadata["scene_id"]
+            )
         output = {
             "status": "METADATA_PREFLIGHT_ONLY",
             "source": STAC_URL,
@@ -408,6 +416,7 @@ def main(argv=None):
             "aoi_polygon_supplied": aoi_geometry is not None,
             "aoi_boundary_accuracy_verified": False,
             "radiometry_metadata_supplied": radiometry is not None,
+            "local_product_metadata_consistency": product_metadata_check,
         }
         if args.allow_network:
             output["declared_budget_review"] = budget
