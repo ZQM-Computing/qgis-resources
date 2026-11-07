@@ -24,7 +24,15 @@ OPAQUE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$")
 ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
+def _finite_number(value):
+    """Accept finite ints/floats without converting unbounded integers to float."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    return isinstance(value, int) or math.isfinite(value)
+
+
 def _valid_date(value):
+    """Check strict ISO dates against the calendar."""
     if not isinstance(value, str) or not ISO_DATE.fullmatch(value):
         return False
     try:
@@ -35,6 +43,7 @@ def _valid_date(value):
 
 
 def _valid_production_period(value):
+    """Accept one calendar date or an ordered pair separated by a slash."""
     if not isinstance(value, str):
         return False
     parts = value.split("/")
@@ -43,6 +52,7 @@ def _valid_production_period(value):
 
 
 def _pairs_unique(items):
+    """Build a JSON object while rejecting duplicate keys."""
     out = {}
     for key, value in items:
         if key in out:
@@ -52,6 +62,7 @@ def _pairs_unique(items):
 
 
 def _reject_nonfinite(value):
+    """Reject JSON nonfinite constants instead of accepting parser extensions."""
     raise ValueError("nonfinite JSON constant")
 
 
@@ -63,8 +74,7 @@ def _coordinates(coords, *, close=False):
         if not isinstance(pos, list) or len(pos) != 2:
             return False
         x, y = pos
-        if any(isinstance(v, bool) or not isinstance(v, (int, float))
-               or not math.isfinite(v) for v in (x, y)):
+        if not (_finite_number(x) and _finite_number(y)):
             return False
         if not (-180 <= x <= 180 and -90 <= y <= 90):
             return False
@@ -108,6 +118,7 @@ def _safe_source_reference(value):
 
 
 def _validate_geometry(geometry):
+    """Validate supported GeoJSON structure with a cumulative vertex budget."""
     if not isinstance(geometry, dict) or set(geometry) != {"type", "coordinates"}:
         return False
     kind, coords = geometry["type"], geometry["coordinates"]
@@ -140,6 +151,7 @@ def assess(record):
         raise ValueError("expected JSON object")
     issues = []
     def issue(code):
+        """Append a batch exception once, retaining insertion order."""
         if code not in issues:
             issues.append(code)
 
@@ -171,6 +183,7 @@ def assess(record):
     for index, plot in enumerate(plots):
         flags = []
         def add(code):
+            """Append a plot exception once, retaining insertion order."""
             if code not in flags:
                 flags.append(code)
         if not isinstance(plot, dict):
@@ -185,9 +198,7 @@ def assess(record):
         if not _validate_geometry(geom):
             add("invalid-geojson-geometry-structure")
         area_ha = plot.get("declared_area_ha")
-        valid_area = (area_ha is not None and not isinstance(area_ha, bool)
-                      and isinstance(area_ha, (int, float))
-                      and math.isfinite(area_ha) and area_ha > 0)
+        valid_area = _finite_number(area_ha) and area_ha > 0
         if not valid_area:
             add("unverified-plot-area")
         # Above four hectares, non-cattle EUDR plot geometry generally requires polygons.
@@ -240,6 +251,7 @@ def assess(record):
 
 
 def load(path: Path):
+    """Decode bounded UTF-8 JSON, rejecting duplicate keys and nonfinite constants."""
     data = path.read_bytes()
     if len(data) > MAX_INPUT_BYTES:
         raise ValueError("input exceeds limit")
@@ -248,6 +260,7 @@ def load(path: Path):
 
 
 def main(argv=None):
+    """Print a redacted packet; return 1 for blocked evidence or 2 for invalid input."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", type=Path)
     args = parser.parse_args(argv)
@@ -256,7 +269,7 @@ def main(argv=None):
         result = assess(record)
         print(json.dumps(result, sort_keys=True, indent=2, allow_nan=False))
         return 0 if result["status"] == "REVIEW_REQUIRED" else 1
-    except (OSError, UnicodeError, ValueError, TypeError):
+    except (OSError, UnicodeError, ValueError, TypeError, RecursionError):
         print("eudr-preflight-failed: invalid input", file=sys.stderr)
         return 2
 
