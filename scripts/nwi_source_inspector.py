@@ -131,6 +131,8 @@ def _query_filters(box: tuple[float, ...]) -> dict[str, str]:
 
 
 def _verify_layer(layer: dict[str, Any]) -> None:
+    if not isinstance(layer, dict):
+        raise SourceInspectionError("Invalid NWI layer metadata")
     if type(layer.get("id")) is not int or layer["id"] != 0 or layer.get("geometryType") != "esriGeometryPolygon":
         raise SourceInspectionError("NWI layer identity or geometry changed")
     if layer.get("name") != "Wetlands":
@@ -204,6 +206,8 @@ def collect(
     _verify_layer(fetch(_url({"f": "json"}, metadata=True)))
     common = _query_filters(box)
     count_payload = fetch(_url({**common, "returnCountOnly": "true", "f": "json"}))
+    if not isinstance(count_payload, dict):
+        raise SourceInspectionError("Invalid NWI count response")
     count = count_payload.get("count")
     if type(count) is not int or count < 0 or count > MAX_FEATURES:
         raise SourceInspectionError("Unconfirmed or oversized NWI result count")
@@ -231,6 +235,8 @@ def collect(
             "resultOffset": str(offset), "resultRecordCount": str(requested),
         }
         page = fetch(_url(query))
+        if not isinstance(page, dict):
+            raise SourceInspectionError("Invalid NWI feature page response")
         page_features = page.get("features")
         if (
             page.get("type") != "FeatureCollection"
@@ -306,12 +312,17 @@ def collect(
     }
 
 
-def publish_snapshot(out: Path, snapshot: dict[str, Any]) -> str:
-    """Write one JSON snapshot atomically without replacing existing outputs."""
+def validate_output_destination(out: Path) -> None:
+    """Fail before network access when publication cannot be safely attempted."""
     if out.suffix.casefold() != ".json" or out.is_symlink():
         raise SourceInspectionError("Output must be a non-symlink JSON file")
     if not out.parent.is_dir() or out.parent.is_symlink() or out.exists():
         raise SourceInspectionError("Output parent invalid or destination exists")
+
+
+def publish_snapshot(out: Path, snapshot: dict[str, Any]) -> str:
+    """Write one JSON snapshot atomically without replacing existing outputs."""
+    validate_output_destination(out)
     raw = (json.dumps(snapshot, sort_keys=True, separators=(",", ":"), allow_nan=False)
            + "\n").encode("utf-8")
     if len(raw) > MAX_OUTPUT_BYTES:
@@ -342,6 +353,8 @@ def main(argv: list[str] | None = None) -> int:
         print("No network request made. This command requires explicit --network.")
         return 2
     try:
+        _bbox(args.bbox)
+        validate_output_destination(args.out)
         snapshot = collect(args.bbox, _http_json)
         digest = publish_snapshot(args.out, snapshot)
     except (ValueError, OSError, RuntimeError):
