@@ -29,6 +29,7 @@ Both the map and measurements use EPSG:6933 equal-area projected coordinates. Th
 
 - Input geometry must pass the existing fail-closed, local-only, bounded, nonempty and explicit-CRS OGR validation.
 - The package is built entirely in memory before publication; one archive is staged and atomically published. The source manifest and GeoJSON fixtures are opened read-only and never rewritten.
+- Before publishing any ZIP, the validator checks exact member names, disallows encrypted/unsupported entries, caps each uncompressed member at 16 MiB and the total at 32 MiB, and streams member data to verify decompression/CRC without materializing expanded content in memory. A potentially compressed ZIP bomb is rejected before destination creation.
 - Existing output is preserved if analysis, rendering, ZIP validation or staging fails. Default publication refuses an existing output. `--overwrite` is an explicit separate opt-in and replaces only a regular file.
 - Reports carry only manifest-provided synthetic metadata and fixture-relative paths, not local absolute dataset paths or credentials. A source hash is included for reproducibility, but hash provenance alone does not establish source credibility.
 - SVG is constructed from bounded projected polygon paths with escaped text; it does not embed scripts, remote images, interactive controls, downloaded assets or external links.
