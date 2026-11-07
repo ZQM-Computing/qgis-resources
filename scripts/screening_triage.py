@@ -45,7 +45,9 @@ def build_triage(measurements: dict) -> dict:
         seen.add(source_id)
         finding = result.get("finding")
         coverage = result.get("declared_coverage")
-        if finding not in KNOWN_FINDINGS or coverage not in {"verified", "partial", "missing", "unavailable", "unverified"}:
+        if (not isinstance(finding, str) or finding not in KNOWN_FINDINGS
+                or not isinstance(coverage, str)
+                or coverage not in {"verified", "partial", "missing", "unavailable", "unverified"}):
             raise ValueError("unsupported finding or coverage")
         measured = finding in MEASURED_FINDINGS
         percent = result.get("measured_intersection_percent")
@@ -57,6 +59,13 @@ def build_triage(measurements: dict) -> dict:
                 raise ValueError("measured finding requires finite values")
             if not 0 <= percent <= 100 or not 0 <= intersected <= area * (1 + 1e-9):
                 raise ValueError("intersection exceeds study area")
+            # Intersected area is rounded to 0.001 m2, AOI to 0.001 m2,
+            # and percent to six places by the synthetic runtime. Reject
+            # contradictory measurements instead of trusting a supplied label.
+            expected_percent = 100.0 * intersected / area
+            rounding_tolerance = max(0.001, 0.2 / area)
+            if abs(percent - expected_percent) > rounding_tolerance:
+                raise ValueError("intersection percentage conflicts with measured area")
             if finding == "synthetic-mapped-overlap" and (percent <= 0 or intersected <= 0):
                 raise ValueError("mapped overlap must be positive")
             if finding == "synthetic-no-mapped-overlap-not-a-clearance" and (percent != 0 or intersected != 0):
