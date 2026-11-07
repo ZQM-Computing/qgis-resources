@@ -7,7 +7,7 @@ substitute for an independent risk assessment under the applicable regulation.
 from __future__ import annotations
 
 import argparse
-from hashlib import sha256
+from datetime import date
 import json
 import math
 from pathlib import Path
@@ -21,6 +21,24 @@ COMMODITIES = frozenset({"cattle", "cocoa", "coffee", "oil_palm", "rubber", "soy
 HEX_SHA256 = re.compile(r"^[a-f0-9]{64}$")
 OPAQUE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$")
 ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _valid_date(value):
+    if not isinstance(value, str) or not ISO_DATE.fullmatch(value):
+        return False
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        return False
+    return True
+
+
+def _valid_production_period(value):
+    if not isinstance(value, str):
+        return False
+    parts = value.split("/")
+    return (1 <= len(parts) <= 2 and all(_valid_date(p) for p in parts)
+            and (len(parts) == 1 or parts[0] <= parts[1]))
 
 
 def _pairs_unique(items):
@@ -90,7 +108,7 @@ def assess(record):
     if product_scope != "human-review-pending":
         issue("product-scope-not-reviewed")
     production = record.get("production_date_or_range")
-    if not isinstance(production, str) or not production.strip() or len(production) > 80:
+    if not _valid_production_period(production):
         issue("missing-production-period")
     country = record.get("country_of_production")
     if not isinstance(country, str) or not re.fullmatch(r"[A-Z]{2}", country):
@@ -145,7 +163,7 @@ def assess(record):
                 add("missing-immutable-source-digest")
             if not isinstance(ref, str) or not ref.startswith("https://") or len(ref) > 500 or "@" in ref:
                 add("unverified-or-unsafe-source-reference")
-            if not isinstance(acquired, str) or not ISO_DATE.fullmatch(acquired):
+            if not _valid_date(acquired):
                 add("missing-source-acquisition-date")
             if source.get("rights_status") != "independently-reviewed":
                 add("source-rights-review-required")
