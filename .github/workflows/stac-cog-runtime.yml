@@ -8,6 +8,9 @@ on:
       - 'tests/test_stac_cog_ndvi_preflight.py'
       - 'tests/test_stac_cog_raster_runtime.py'
       - 'scripts/stac_aoi.py'
+      - 'scripts/stac_radiometry.py'
+      - 'tests/test_stac_radiometry.py'
+      - 'fixtures/stac-radiometry-synthetic.json'
       - 'tests/test_stac_aoi.py'
       - 'fixtures/stac-aoi-synthetic.geojson'
       - 'scripts/stac_cost_budget.py'
@@ -22,6 +25,9 @@ on:
       - 'tests/test_stac_cog_ndvi_preflight.py'
       - 'tests/test_stac_cog_raster_runtime.py'
       - 'scripts/stac_aoi.py'
+      - 'scripts/stac_radiometry.py'
+      - 'tests/test_stac_radiometry.py'
+      - 'fixtures/stac-radiometry-synthetic.json'
       - 'tests/test_stac_aoi.py'
       - 'fixtures/stac-aoi-synthetic.geojson'
       - 'scripts/stac_cost_budget.py'
@@ -55,6 +61,8 @@ jobs:
         run: /usr/bin/python3 -m unittest discover -s tests -p 'test_stac_cog_raster_runtime.py' -v
       - name: Run strict AOI topology and offline gating tests
         run: /usr/bin/python3 -m unittest discover -s tests -p 'test_stac_aoi.py' -v
+      - name: Validate scene-bound radiometric metadata and corrected arithmetic
+        run: /usr/bin/python3 -m unittest discover -s tests -p 'test_stac_radiometry.py' -v
       - name: Run offline metadata tests
         run: /usr/bin/python3 -m unittest discover -s tests -p 'test_stac_cog_ndvi_preflight.py' -v
       - name: Run hypothetical no-purchase cost budget tests
