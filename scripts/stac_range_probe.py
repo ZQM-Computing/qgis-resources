@@ -1,6 +1,6 @@
 """Bounded COG HTTP range diagnostic; *not* a GDAL egress limiter.
 
-A single explicit read checks strict HTTP 206 partial-content semantics.
+Each explicitly requested read checks strict HTTP 206 partial-content semantics.
 It never follows redirects, authenticates source identity, or measures
 subsequent Rasterio/GDAL requests. Signed URLs are never included in output.
 """
@@ -70,8 +70,8 @@ def probe_range(url, *, transport=None):
     except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError) as exc:
         # Exceptions from signed URLs may include credentials; don't repeat.
         raise RangeProbeError("remote range probe failed") from None
-    if data[:2] not in (b"II", b"MM"):
-        raise RangeProbeError("unexpected TIFF header marker")
+    if data[:4] not in (b"II*\\x00", b"MM\\x00*", b"II+\\x00", b"MM\\x00+"):
+        raise RangeProbeError("unexpected TIFF/BigTIFF header signature")
     return {
         "status": "BOUNDED_RANGE_DIAGNOSTIC_ONLY",
         "request_count_observed_by_probe": 1,
@@ -81,5 +81,37 @@ def probe_range(url, *, transport=None):
         "asset_url_in_output": False,
         "full_gdal_request_and_egress_metering_established": False,
         "origin_authenticity_verified": False,
+        "commercial_delivery_authorized": False,
+    }
+
+
+def probe_scene_assets(item, *, transport=None):
+    """Probe all three Sentinel-2 bands, failing closed on partial success.
+
+    The returned byte count covers these probes only, never STAC discovery
+    or GDAL requests. Do not return per-asset URL or signed token data.
+    """
+    if not isinstance(item, dict) or not isinstance(item.get("assets"), dict):
+        raise RangeProbeError("scene missing required COG assets")
+    outcomes = {}
+    for band in ("B04", "B08", "SCL"):
+        asset = item["assets"].get(band)
+        if not isinstance(asset, dict):
+            raise RangeProbeError("scene missing COG band")
+        outcome = probe_range(asset.get("href"), transport=transport)
+        outcomes[band] = {
+            "range_supported": outcome["range_supported_on_tested_asset"],
+            "payload_bytes": outcome["payload_bytes_observed_by_probe"],
+        }
+    return {
+        "status": "THREE_BAND_BOUNDED_RANGE_DIAGNOSTIC_ONLY",
+        "band_order": ["B04", "B08", "SCL"],
+        "bands": outcomes,
+        "probe_request_count": 3,
+        "probe_payload_bytes": sum(x["payload_bytes"] for x in outcomes.values()),
+        "redirects_accepted": False,
+        "asset_urls_logged": False,
+        "full_stac_and_gdal_request_metering_established": False,
+        "total_cloud_egress_or_cost_measured": False,
         "commercial_delivery_authorized": False,
     }
