@@ -38,8 +38,14 @@ def metadata(**overrides):
         "id": 0, "name": "Wetlands", "geometryType": "esriGeometryPolygon",
         "capabilities": "Map,Query,Data", "supportedQueryFormats": "JSON, geoJSON, PBF",
         "maxRecordCount": 500,
-        "fields": [{"name": x} for x in ("OBJECTID", "ATTRIBUTE", "WETLAND_TYPE")],
-        "advancedQueryCapabilities": {"supportsPagination": True},
+        "fields": [
+            {"name": "OBJECTID", "type": "esriFieldTypeOID"},
+            {"name": "ATTRIBUTE", "type": "esriFieldTypeString"},
+            {"name": "WETLAND_TYPE", "type": "esriFieldTypeString"},
+        ],
+        "advancedQueryCapabilities": {
+            "supportsPagination": True, "supportsOrderBy": True,
+        },
     }
     return {**result, **overrides}
 
@@ -525,3 +531,38 @@ def test_handoff_cli_rejects_malformed_snapshot(tmp_path, payload):
     path = tmp_path / "invalid.json"
     path.write_text(payload)
     assert main([str(path)]) == 2
+
+
+@pytest.mark.parametrize("replacement", [
+    {"fields": [
+        {"name": "OBJECTID", "type": "esriFieldTypeString"},
+        {"name": "ATTRIBUTE", "type": "esriFieldTypeString"},
+        {"name": "WETLAND_TYPE", "type": "esriFieldTypeString"},
+    ]},
+    {"fields": [
+        {"name": "OBJECTID", "type": "esriFieldTypeOID"},
+        {"name": "ATTRIBUTE", "type": "esriFieldTypeInteger"},
+        {"name": "WETLAND_TYPE", "type": "esriFieldTypeString"},
+    ]},
+    {"fields": [
+        {"name": "OBJECTID", "type": "esriFieldTypeOID"},
+        {"name": "ATTRIBUTE", "type": "esriFieldTypeString"},
+        {"name": "WETLAND_TYPE", "type": "esriFieldTypeString"},
+        {"name": "OBJECTID", "type": "esriFieldTypeOID"},
+    ]},
+    {"fields": [{"name": "OBJECTID", "type": "esriFieldTypeOID"}, None]},
+    {"fields": [{"name": "OBJECTID"}, {"name": "ATTRIBUTE"}, {"name": "WETLAND_TYPE"}]},
+    {"fields": "not-a-list"},
+    {"advancedQueryCapabilities": {"supportsPagination": True}},
+    {"advancedQueryCapabilities": {"supportsPagination": True, "supportsOrderBy": False}},
+    {"advancedQueryCapabilities": {"supportsPagination": True, "supportsOrderBy": "true"}},
+])
+def test_arcgis_metadata_types_and_ordering_fail_closed_before_feature_query(replacement):
+    calls = []
+    def fetch(url):
+        calls.append(url)
+        return metadata(**replacement)
+    with pytest.raises(nwi.SourceInspectionError):
+        nwi.collect(BBOX, fetch)
+    assert len(calls) == 1
+    assert calls[0] == nwi.LAYER_URL + "?f=json"
