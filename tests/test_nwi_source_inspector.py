@@ -451,3 +451,77 @@ def test_offline_replay_rejects_recomputed_hash_when_vertices_invalid():
     snap["source"]["normalized_geojson_sha256"] = sha256(blob).hexdigest()
     with pytest.raises(nwi.SourceInspectionError):
         replay(snap)
+
+
+def test_analyst_handoff_remains_blocked_with_valid_snapshot():
+    from nwi_analyst_handoff import candidate_handoff
+    snapshot = nwi.collect(BBOX, fake_source(2)[0], obtained_at="2026-11-07T20:00:00Z")
+    handoff = candidate_handoff(snapshot)
+    assert handoff["kind"] == "source-candidate-review-handoff"
+    assert handoff["status"] == "BLOCKED_PENDING_INDEPENDENT_SOURCE_REVIEW"
+    assert handoff["integrity_replayed"] is True
+    assert handoff["source_authenticity_verified"] is False
+    assert handoff["aoi_coverage_verified"] is False
+    assert handoff["reuse_rights_verified"] is False
+    assert handoff["commercial_delivery_authorized"] is False
+    assert handoff["human_review_required"] is True
+    assert handoff["requested_bbox_epsg4326"] == list(BBOX)
+    assert handoff["normalized_feature_collection_sha256"] == snapshot["source"]["normalized_geojson_sha256"]
+    assert "feature_collection" not in handoff
+    assert len(handoff["review_gates"]) == 6
+
+
+def test_handoff_cannot_claim_absence_when_source_has_zero_features():
+    from nwi_analyst_handoff import candidate_handoff
+    snapshot = nwi.collect(BBOX, fake_source(0)[0], obtained_at="2026-11-07T20:00:00Z")
+    handoff = candidate_handoff(snapshot)
+    assert handoff["normalized_feature_count"] == 0
+    assert handoff["status"] == "BLOCKED_PENDING_INDEPENDENT_SOURCE_REVIEW"
+    assert handoff["aoi_coverage_verified"] is False
+    assert handoff["regulatory_determination"] is False
+
+
+@pytest.mark.parametrize("change", ["approval", "geometry", "checksum", "source", "count"])
+def test_handoff_refuses_internally_inconsistent_or_approved_source(change):
+    from nwi_analyst_handoff import candidate_handoff
+    snapshot = nwi.collect(BBOX, fake_source(2)[0], obtained_at="2026-11-07T20:00:00Z")
+    if change == "approval":
+        snapshot["reuse_rights"] = "approved"
+    elif change == "geometry":
+        snapshot["feature_collection"]["features"][0]["geometry"]["coordinates"][0][0] = [-80.0, 30.0]
+    elif change == "checksum":
+        snapshot["source"]["normalized_geojson_sha256"] = "0" * 64
+    elif change == "source":
+        snapshot["source"]["service"] = "https://example.org/fake"
+    else:
+        snapshot["source"]["features_reconciled"] += 1
+    with pytest.raises(nwi.SourceInspectionError):
+        candidate_handoff(snapshot)
+
+
+def test_handoff_cli_no_network_no_writes_and_no_approval(tmp_path, capsys, monkeypatch):
+    from nwi_analyst_handoff import main
+    snap = nwi.collect(BBOX, fake_source(1)[0], obtained_at="2026-11-07T20:00:00Z")
+    path = tmp_path / "snapshot.json"
+    path.write_text(json.dumps(snap), encoding="utf-8")
+    baseline = path.read_bytes()
+    monkeypatch.setattr(nwi, "_http_json", lambda _: (_ for _ in ()).throw(
+        AssertionError("unexpected network")))
+    assert main([str(path)]) == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output["commercial_delivery_authorized"] is False
+    assert output["status"].startswith("BLOCKED")
+    assert path.read_bytes() == baseline
+    assert list(tmp_path.iterdir()) == [path]
+
+
+@pytest.mark.parametrize("payload", [
+    '{"source": {}, "source": {}}',
+    '{"x": NaN}',
+    "[]",
+])
+def test_handoff_cli_rejects_malformed_snapshot(tmp_path, payload):
+    from nwi_analyst_handoff import main
+    path = tmp_path / "invalid.json"
+    path.write_text(payload)
+    assert main([str(path)]) == 2
