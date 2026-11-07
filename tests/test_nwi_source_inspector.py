@@ -292,3 +292,50 @@ def test_layer_metadata_accepts_whitespace_variations_but_rejects_boolean_id():
 def test_rejects_malformed_provenance_timestamp(timestamp):
     with pytest.raises(nwi.SourceInspectionError):
         nwi.collect(BBOX, fake_source(2)[0], obtained_at=timestamp)
+
+
+
+def test_malformed_provider_container_responses_fail_closed():
+    for invalid in ([], "not json", None):
+        with pytest.raises(nwi.SourceInspectionError, match="layer metadata"):
+            nwi.collect(BBOX, lambda _url, value=invalid: value)
+
+        def bad_count(url, value=invalid):
+            if urlsplit(url).path == urlsplit(nwi.LAYER_URL).path:
+                return metadata()
+            return value
+
+        with pytest.raises(nwi.SourceInspectionError, match="count response"):
+            nwi.collect(BBOX, bad_count)
+
+        def bad_page(url, value=invalid):
+            p = parse_qs(urlsplit(url).query)
+            if urlsplit(url).path == urlsplit(nwi.LAYER_URL).path:
+                return metadata()
+            if p.get("returnCountOnly") == ["true"]:
+                return {"count": 1}
+            return value
+
+        with pytest.raises(nwi.SourceInspectionError, match="feature page"):
+            nwi.collect(BBOX, bad_page)
+
+
+def test_existing_or_invalid_output_is_rejected_before_any_network(tmp_path, monkeypatch):
+    output = tmp_path / "existing.json"
+    output.write_text('{"previous":true}')
+    called = []
+
+    def untrusted_network(url):
+        called.append(url)
+        raise AssertionError("Network should never run after a bad output preflight")
+
+    monkeypatch.setattr(nwi, "_http_json", untrusted_network)
+    for destination in (output, tmp_path / "bad.txt", tmp_path / "missing" / "out.json"):
+        result = nwi.main([
+            "--bbox", "-81.01", "29.01", "-81.0", "29.02",
+            "--out", str(destination), "--network",
+        ])
+        assert result == 1
+    assert called == []
+    assert output.read_text() == '{"previous":true}'
+    assert not list(tmp_path.glob(".nwi-inspect-*"))
