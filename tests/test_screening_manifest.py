@@ -180,6 +180,19 @@ def test_missing_source_file_returns_error_without_writing(tmp_path):
     assert not absent.exists()
 
 
+def test_deeply_nested_json_returns_sanitized_load_error(tmp_path, capsys):
+    """Nested input must return the load-error code without exposing its path."""
+    nested = tmp_path / "private-client-manifest.json"
+    content = "[" * 200_000
+    nested.write_text(content, encoding="utf-8")
+    assert nested.stat().st_size < manifest_module.MAX_MANIFEST_BYTES
+    assert manifest_module.main([str(nested)]) == 2
+    captured = capsys.readouterr()
+    assert captured.out == "manifest-load-error: RecursionError\n"
+    assert captured.err == ""
+    assert nested.read_text(encoding="utf-8") == content
+
+
 def test_dot_or_empty_relative_synthetic_source_path_is_rejected_not_crashed():
     """Verify dot or empty relative synthetic source path is rejected not crashed."""
     for ref in (".", "./", "fixtures", "fixtures/.", "fixtures/../fixture.geojson"):

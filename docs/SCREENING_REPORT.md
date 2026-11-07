@@ -31,7 +31,13 @@ Both the map and measurements use EPSG:6933 equal-area projected coordinates. Th
 - The package is built entirely in memory before publication; one archive is staged and atomically published. The source manifest and GeoJSON fixtures are opened read-only and never rewritten.
 - Before publishing any ZIP, the validator checks exact member names, disallows encrypted/unsupported entries, caps each uncompressed member at 16 MiB and the total at 32 MiB, and streams member data to verify decompression/CRC without materializing expanded content in memory. A potentially compressed ZIP bomb is rejected before destination creation.
 - Existing output is preserved if analysis, rendering, ZIP validation or staging fails. Default publication refuses an existing output. `--overwrite` is an explicit separate opt-in and replaces only a regular file.
-- Reports carry only manifest-provided synthetic metadata and fixture-relative paths, not local absolute dataset paths or credentials. A source hash is included for reproducibility, but hash provenance alone does not establish source credibility.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:e99222947cd378b62946807a193ba32df227cae18f88b6b66c67879bf4473e72 -->
+
+- Reports include manifest-provided metadata and source references verbatim. URL validation rejects embedded username/password fields, but query parameters are accepted and are not redacted during packaging. Before generating or sharing a ZIP, operators must remove secrets from all manifest metadata, including tokens in external source references. Inspect the bundle before sharing; outputs are not guaranteed to be credential-free. A source hash is included for reproducibility, but hash provenance alone does not establish source credibility.
+
+<!-- /coderabbit-ai-generated:v1 -->
 - SVG is constructed from bounded projected polygon paths with escaped text; it does not embed scripts, remote images, interactive controls, downloaded assets or external links.
 - Exact-head GitHub Actions must run Python unit tests and the actual GDAL/OGR runtime assertions, including reruns, archive checks, rendered SVG parsing, no-overwrite and failed-input preservation.
 

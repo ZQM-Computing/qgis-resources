@@ -50,7 +50,7 @@ def _utc_time(value: Any) -> bool:
 
 
 def _source_reference(origin: str, value: Any) -> bool:
-    """Check fixture confinement syntax or credential-free HTTPS source syntax."""
+    """Check fixture confinement or HTTPS syntax without URL userinfo."""
     if not _nonempty(value):
         return False
     if origin == "synthetic":
@@ -206,7 +206,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         payload = load_manifest(args.manifest)
-    except (OSError, UnicodeError, ValueError) as exc:
+    except (OSError, UnicodeError, ValueError, RecursionError) as exc:
         # Do not print raw exception messages; file paths can identify clients.
         print("manifest-load-error: " + type(exc).__name__)
         return 2
