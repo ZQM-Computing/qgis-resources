@@ -1,0 +1,51 @@
+name: EUDR evidence preflight tests
+
+on:
+  pull_request:
+    branches:
+      - main
+      - feat/screening-manifest-contract-20261107
+    paths:
+      - 'scripts/eudr_evidence_preflight.py'
+      - 'tests/test_eudr_evidence_preflight.py'
+      - 'fixtures/eudr-synthetic-evidence.json'
+      - '.github/workflows/eudr-preflight.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/eudr_evidence_preflight.py'
+      - 'tests/test_eudr_evidence_preflight.py'
+      - 'fixtures/eudr-synthetic-evidence.json'
+      - '.github/workflows/eudr-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Run dependency-free synthetic EUDR tests
+        run: python -m unittest discover -s tests -p 'test_eudr_evidence_preflight.py' -v
+      - name: Verify expected fail-closed command behavior
+        run: |
+          set +e
+          python scripts/eudr_evidence_preflight.py fixtures/eudr-synthetic-evidence.json > "$RUNNER_TEMP/eudr-result.json"
+          code=$?
+          set -e
+          test "$code" -eq 1
+          python - "$RUNNER_TEMP/eudr-result.json" <<'PY'
+          import json, sys
+          from pathlib import Path
+          report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          assert report["status"] == "BLOCKED"
+          assert report["compliance_determined"] is False
+          assert report["dds_generated"] is False
+          assert report["traces_submitted"] is False
+          PY
