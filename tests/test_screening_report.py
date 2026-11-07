@@ -153,3 +153,36 @@ def test_optional_source_register_fields_are_null_when_unavailable_source_omits_
         assert sources[1][field] is None
     parsed = json.loads(report._json_bytes(sources))
     assert parsed[1]["source_reference"] is None
+
+
+def test_archive_rejects_decompression_bomb_without_publication(tmp_path):
+    """A tiny compressed ZIP must not expand to a massive report file."""
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as handle:
+        for name in report.ARCHIVE_FILES:
+            payload = b"x" * (17 * 1024 * 1024) if name == "map.svg" else b"safe"
+            handle.writestr(name, payload)
+    assert len(buffer.getvalue()) < 1024 * 1024
+    destination = tmp_path / "bomb.zip"
+    with pytest.raises(report.ScreeningError, match="bounded archive policy"):
+        report.publish_bundle(destination, buffer.getvalue())
+    assert not destination.exists()
+
+
+def test_archive_rejects_encrypted_or_unsupported_member_attributes(tmp_path):
+    """Only ordinary stored/deflated named members can be published."""
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, "w") as handle:
+        for name in report.ARCHIVE_FILES:
+            handle.writestr(name, b"normal")
+        handle.writestr("extra.txt", b"unexpected")
+    with pytest.raises(report.ScreeningError, match="integrity"):
+        report.publish_bundle(tmp_path / "extra.zip", buffer.getvalue())
+    assert not (tmp_path / "extra.zip").exists()
+
+
+def test_archive_accepted_valid_small_contents_preserve_exact_bytes(tmp_path):
+    archive = bundle_bytes("valid")
+    output = tmp_path / "review.zip"
+    assert report.publish_bundle(output, archive) == sha256(archive).hexdigest()
+    assert output.read_bytes() == archive
