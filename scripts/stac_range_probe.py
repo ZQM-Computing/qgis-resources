@@ -70,7 +70,7 @@ def probe_range(url, *, transport=None):
     except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError) as exc:
         # Exceptions from signed URLs may include credentials; don't repeat.
         raise RangeProbeError("remote range probe failed") from None
-    if data[:4] not in (b"II*\\x00", b"MM\\x00*", b"II+\\x00", b"MM\\x00+"):
+    if data[:4] not in (b"II*\x00", b"MM\x00*", b"II+\x00", b"MM\x00+"):
         raise RangeProbeError("unexpected TIFF/BigTIFF header signature")
     return {
         "status": "BOUNDED_RANGE_DIAGNOSTIC_ONLY",
