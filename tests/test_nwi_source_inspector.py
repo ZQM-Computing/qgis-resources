@@ -164,6 +164,9 @@ def test_reject_non_polygon_or_malformed_coordinates():
 
 
 @pytest.mark.parametrize("bbox", [
+    None,  # missing source envelope
+    "not-a-bbox",  # malformed envelope type
+    {"west": -81, "south": 29},  # object instead of four coordinates
     (-81, 29, -80.9, 29.01),  # too wide
     (-100, 29, -99.99, 29.01),  # outside Florida
     (-81, 29, -81, 29.01),  # empty
