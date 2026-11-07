@@ -373,3 +373,36 @@ def test_reject_source_when_ordered_pagination_is_not_supported():
         nwi._verify_layer(metadata(
             advancedQueryCapabilities={"supportsPagination": True, "supportsOrderBy": False}
         ))
+
+
+
+@pytest.mark.parametrize("ring", [
+    [[-81.0, 29.0], [-81.0, 29.0], [-80.99, 29.0], [-81.0, 29.0]],
+    [[-81.0, 29.0], [-80.999, 29.0], [-80.998, 29.0], [-81.0, 29.0]],
+    [[-81.0, 29.0], [-80.999, 29.0], [-81.0, 29.0], [-81.0, 29.0]],
+    [5, [-80.99, 29.0], [-80.99, 29.01], 5],
+    [[], [-80.99, 29.0], [-80.99, 29.01], []],
+])
+def test_degenerate_or_malformed_polygon_rings_fail_closed(ring):
+    """An incoming polygon must have at least a nonzero bounded ring."""
+    def unsafe_geometry(page, _offset):
+        page["features"][0]["geometry"]["coordinates"] = [ring]
+        return page
+
+    with pytest.raises(nwi.SourceInspectionError):
+        nwi.collect(BBOX, fake_source(2, unsafe_geometry)[0])
+
+
+def test_valid_triangle_and_multipolygon_remain_accepted():
+    """Ring sanity checks must preserve supported polygon geometry shapes."""
+    def valid_multipolygon(page, _offset):
+        geo = page["features"][0]["geometry"]
+        geo["type"] = "MultiPolygon"
+        geo["coordinates"] = [geo["coordinates"]]
+        return page
+
+    snapshot = nwi.collect(BBOX, fake_source(2, valid_multipolygon)[0],
+                           obtained_at="2026-11-07T20:00:00Z")
+    assert snapshot["source"]["features_reconciled"] == 2
+    assert snapshot["feature_collection"]["features"][0]["geometry"]["type"] == "MultiPolygon"
+    assert snapshot["coverage_state"] == "unverified"
