@@ -65,6 +65,26 @@ python scripts/stac_cog_ndvi_preflight.py \
 
 The fixture geometry is **fictional**, and this command is provided only as an opt-in engineering example; live provider reads, licensing and costs have not been independently validated. The local synthetic runtime tests generate their own GeoTIFFs and do not connect to the provider.
 
+## Optional bounded COG HTTP Range diagnostic (not a GDAL traffic cap)
+
+The optional `--probe-range` flag performs **one explicit read-only GET request** against the selected Sentinel-2 B08 COG asset, using `Range: bytes=0-4095`, `Accept-Encoding: identity`, an eight-second timeout and strict provider-host allowlisting. It refuses HTTP redirects, full-body `200` responses, missing/malformed `Content-Range`, unexpected `Content-Length`, compressed replies, oversized/short responses and non-TIFF byte-order markers. Its report contains **only** the observed diagnostic request count and received payload bytes, never the signed asset URL or its credential-bearing query string.
+
+This step is independently opt-in and requires **both** `--allow-network` and a local `--budget-plan` declaring at least two requests and at least 4,096 estimated range bytes. A request without the minimum budget is blocked before STAC discovery. The probe is a *diagnostic only*: Rasterio/GDAL may subsequently perform additional HEAD, GET, overview, range, retry, proxy or auxiliary requests, and no actual egress-billing counter or global HTTP traffic limiter has been implemented. Running the probe **does not grant permission** for a hosted production worker or any imagery purchase.
+
+The dedicated workflow tests HTTP status, exact ranges, length validation, truncated or oversized responses, redirect refusal, URL secret redaction, and opt-in budget enforcement using mocked responses. It does not contact the provider or certify live HTTP behavior.
+
+The command for an explicitly authorized engineering test is:
+
+```bash
+python scripts/stac_cog_ndvi_preflight.py \
+  --bbox -46.63 -23.55 -46.60 -23.53 \
+  --start 2026-10-01 --end 2026-10-31 \
+  --budget-plan fixtures/stac-cost-budget-synthetic.json \
+  --allow-network --probe-range
+```
+
+A trusted live provider source, legal rights, redirect-enforced GDAL configuration, complete transfer metering, request accounting and externally enforced spending limits are **still required** before production.
+
 ## Local original-product XML integrity gate
 
 Optional corrected candidate calculations now require **both** `--radiometry-json` and `--product-metadata-xml`. The XML is a bounded local file (2 MiB maximum). The parser refuses DTD/entity declarations and extraneous processing instructions, limits element count and requires exactly one processing baseline and BOA quantification value; B04 (band ID 3) and B08 (band ID 7) offset entries must each occur exactly once. The file's actual SHA-256 must match the pinned digest in the radiometry JSON, and processing baseline, quantification and the two offsets must match the declared arithmetic parameters. Missing, inconsistent or malformed records are blocked **before corrected COG pixel reads**.
