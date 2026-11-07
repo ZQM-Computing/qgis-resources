@@ -140,3 +140,14 @@ def test_missing_source_file_returns_error_without_writing(tmp_path):
     absent = tmp_path / "absent.json"
     assert manifest_module.main([str(absent)]) == 2
     assert not absent.exists()
+
+
+def test_dot_or_empty_relative_synthetic_source_path_is_rejected_not_crashed():
+    for ref in (".", "./", "fixtures", "fixtures/.", "fixtures/../fixture.geojson"):
+        assert not manifest_module._source_reference("synthetic", ref)
+        manifest = sample()
+        manifest["study_area"]["reference"] = ref
+        assert any("study_area.reference" in err for err in manifest_module.validate_manifest(manifest))
+        manifest = sample()
+        manifest["sources"][0]["source_ref"] = ref
+        assert any("sources[0].source_ref" in err for err in manifest_module.validate_manifest(manifest))
