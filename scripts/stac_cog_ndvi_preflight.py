@@ -8,7 +8,7 @@ Signed asset URLs and credentials are never printed or persisted.
 from __future__ import annotations
 
 import argparse
-from datetime import date
+from datetime import date, datetime, timezone
 import json
 import math
 from pathlib import Path
@@ -94,6 +94,21 @@ def validate_item(item):
     dt = properties.get("datetime")
     if not isinstance(dt, str) or len(dt) > 40 or not dt.endswith("Z"):
         raise PreflightError("missing canonical UTC observation timestamp")
+    try:
+        timestamp = datetime.fromisoformat(dt.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise PreflightError("invalid scene timestamp") from exc
+    if timestamp.tzinfo is None or timestamp.utcoffset().total_seconds() != 0:
+        raise PreflightError("scene timestamp lacks UTC reference")
+    bounds = item.get("bbox")
+    if not isinstance(bounds, list) or len(bounds) != 4 or any(
+        isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v)
+        for v in bounds
+    ):
+        raise PreflightError("missing or invalid scene geographic bounds")
+    w, south, e, north = bounds
+    if not (-180 <= w < e <= 180 and -90 <= south < north <= 90):
+        raise PreflightError("unsupported scene geographic envelope")
     for band in SUPPORTED_ASSETS:
         asset = assets.get(band)
         if not isinstance(asset, dict) or not _safe_href(asset.get("href")):
@@ -110,7 +125,7 @@ def validate_item(item):
     }
 
 
-def select_item(items, maximum_cloud_percent=20):
+def select_item(items, maximum_cloud_percent=20, *, bbox=None, period=None):
     if not isinstance(items, list) or not 0 < len(items) <= MAX_ITEMS:
         raise PreflightError("no bounded search results")
     if isinstance(maximum_cloud_percent, bool) or not isinstance(maximum_cloud_percent, (int, float)) or not 0 <= maximum_cloud_percent <= 100:
@@ -118,6 +133,15 @@ def select_item(items, maximum_cloud_percent=20):
     candidates = []
     for item in items:
         metadata = validate_item(item)
+        if bbox is not None:
+            west, south, east, north = check_bbox(bbox)
+            iw, isouth, ie, inorth = item["bbox"]
+            if ie <= west or iw >= east or inorth <= south or isouth >= north:
+                continue
+        if period is not None:
+            start, end = period.split("/")
+            if not start <= metadata["scene_datetime_utc"][:10] <= end:
+                continue
         if metadata["scene_cloud_cover_percent"] <= maximum_cloud_percent:
             candidates.append((metadata["scene_cloud_cover_percent"], metadata["scene_datetime_utc"], metadata["scene_id"], item, metadata))
     if not candidates:
@@ -250,7 +274,7 @@ def main(argv=None):
             items = search_scene(bbox, period, args.cloud_limit)
         else:
             raise PreflightError("network disabled by default; provide --fixture")
-        selected, metadata = select_item(items, args.cloud_limit)
+        selected, metadata = select_item(items, args.cloud_limit, bbox=bbox, period=period)
         output = {
             "status": "METADATA_PREFLIGHT_ONLY",
             "source": STAC_URL,
