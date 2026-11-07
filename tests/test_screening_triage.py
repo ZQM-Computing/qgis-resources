@@ -86,3 +86,46 @@ def test_pure_determinism():
     saved = deepcopy(data)
     assert build_triage(data) == build_triage(data)
     assert data == saved
+
+
+
+@pytest.mark.parametrize("field,value", [
+    ("finding", ["synthetic-mapped-overlap"]),
+    ("declared_coverage", ["verified"]),
+    ("finding", {"synthetic-mapped-overlap": True}),
+    ("declared_coverage", {"verified": True}),
+    ("finding", None),
+    ("declared_coverage", None),
+])
+def test_unhashable_or_wrong_type_categories_are_rejected_as_value_errors(field, value):
+    data = fixture()
+    data["source_results"][0][field] = value
+    with pytest.raises(ValueError, match="unsupported finding or coverage"):
+        build_triage(data)
+
+
+@pytest.mark.parametrize("intersected,percent", [
+    (25.0, 26.0),
+    (25.0, 90.0),
+    (0.0, 50.0),
+    (75.0, 1.0),
+])
+def test_contradictory_area_percentage_never_passes_review(intersected, percent):
+    data = fixture()
+    item = data["source_results"][0]
+    item["measured_intersection_area_m2"] = intersected
+    item["measured_intersection_percent"] = percent
+    with pytest.raises(ValueError):
+        build_triage(data)
+
+
+def test_accepts_expected_metric_rounding_without_changing_inputs():
+    data = fixture()
+    data["study_area_m2"] = 49226557688.123
+    data["source_results"][0]["measured_intersection_area_m2"] = 12304814950.123
+    data["source_results"][0]["measured_intersection_percent"] = round(
+        100 * 12304814950.123 / 49226557688.123, 6
+    )
+    before = deepcopy(data)
+    assert build_triage(data)["decision"] == "REVIEW"
+    assert data == before
