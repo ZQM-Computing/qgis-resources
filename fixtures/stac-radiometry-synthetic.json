@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "scope": "metadata-unverified-synthetic-or-review",
+  "scene_id": "synthetic-sentinel-scene-01",
+  "product_metadata_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "product_metadata_acquired_on": "2026-11-07",
+  "processing_baseline": "05.10",
+  "boa_quantification_value": 10000,
+  "boa_add_offset_b04": -1000,
+  "boa_add_offset_b08": -1000,
+  "provider_metadata_authenticity_verified": false
+}
