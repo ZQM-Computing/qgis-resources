@@ -67,7 +67,19 @@ def _coordinates(coords, *, close=False):
             return False
         if not (-180 <= x <= 180 and -90 <= y <= 90):
             return False
-    return (not close) or (len(coords) >= 4 and coords[0] == coords[-1])
+    if not close:
+        return True
+    if len(coords) < 4 or coords[0] != coords[-1]:
+        return False
+    # A closed line with only one/two distinct vertices cannot be a plot polygon.
+    if len({(float(x), float(y)) for x, y in coords[:-1]}) < 3:
+        return False
+    # Dateline-crossing rings require a dedicated geodesic/longitude wrapping
+    # adapter. Never silently interpret them in naive planar coordinates.
+    if any(abs(float(b[0]) - float(a[0])) > 180
+           for a, b in zip(coords, coords[1:])):
+        return False
+    return True
 
 
 def _validate_geometry(geometry):
