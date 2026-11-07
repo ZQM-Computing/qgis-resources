@@ -43,6 +43,20 @@ A successful command returns `INTERNAL_INTEGRITY_REPLAYED_NOT_APPROVED`, with `s
 
 The replay result must never be wired directly to a paid screening report or permission to use restricted data. To reach a client deliverable, independently verify original source acquisition and metadata, wetland-project mapping dates, actual local coverage, source rights and appropriate professional review. Tests use fabricated provider responses and do not demonstrate a live agency download.
 
+## Analyst source-candidate handoff (non-approving)
+
+After local integrity replay, a separate offline handoff can generate a **metadata-only, blocked analyst intake**:
+
+    python scripts/nwi_analyst_handoff.py /path/to/nwi-inspection.json
+
+The handoff replays the full normalized snapshot and emits the source identity, requested bounding envelope, normalized feature digest/count, a stable `source-candidate-review-handoff` type, and six explicitly unresolved review gates. **It does not output source polygons, a screening manifest, a parcel analysis, a regulatory finding or a customer deliverable.** This keeps its data contract separate from the synthetic Site Feasibility Passport in PR #40.
+
+The result always has `status=BLOCKED_PENDING_INDEPENDENT_SOURCE_REVIEW`, `commercial_delivery_authorized=false`, `source_authenticity_verified=false`, `aoi_coverage_verified=false` and `human_review_required=true`. A zero-feature snapshot cannot be interpreted as absence of wetlands. Successful CLI exit means only that a blocked intake could be assembled from internally consistent data.
+
+Independent approval requires authenticating the original agency acquisition, associating NWI project mapping dates and imagery vintages with the AOI, confirming coverage and known omissions, documenting reuse and redistribution rights, verifying parcel/study boundaries and coordinate references, and obtaining qualified analyst acceptance. **None of these checks is automated or asserted complete here.** Fingerprints are not cryptographic signatures from the issuing agency.
+
+The handoff is local, read-only and has no network flag, outbound submission, report-publishing action or commercial approval control.
+
 ## Live-query status (November 7, 2026)
 
 A direct read-only request for a deliberately small non-client Florida test envelope was attempted from the execution environment. DNS resolution to the USFWS service failed; an external web retrieval of the dynamic query endpoint also did not return a usable response. **No feature response, count result, or agency query success is claimed; no live spatial output was produced.** Separately, publicly accessible ArcGIS layer metadata confirmed query support, the polygon layer identity, fields, feature paging, and GeoJSON formats.
