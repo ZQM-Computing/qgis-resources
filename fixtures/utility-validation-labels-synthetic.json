@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "scope": "synthetic-only",
+  "reference_status": "unverified-fixture",
+  "label_origin": "independent-synthetic-labels",
+  "label_set_id": "synthetic-labels-01",
+  "source_fixture_sha256": "99e62c08be98b9e73aca39c06ea1c39b04d6cac08eee3e6614b8084ecf305100",
+  "segment_labels": [
+    {
+      "segment_id": "line-1",
+      "inspection_needed": true
+    },
+    {
+      "segment_id": "line-2",
+      "inspection_needed": false
+    }
+  ]
+}
