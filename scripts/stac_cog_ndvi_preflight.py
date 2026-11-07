@@ -25,7 +25,8 @@ MAX_SEARCH_DAYS = 31
 MAX_FIXTURE_BYTES = 512 * 1024
 SUPPORTED_ASSETS = ("B04", "B08", "SCL")
 # Planetary Computer Sentinel assets are served from Microsoft Azure Blob.
-BLOB_HOST_SUFFIX = ".blob.core.windows.net"
+ASSET_HOST = "sentinel2l2a01.blob.core.windows.net"
+ASSET_CONTAINER_PATH = "/sentinel2-l2/"
 ISO_DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -72,7 +73,7 @@ def _safe_href(href):
     except ValueError:
         return False
     return (u.scheme == "https" and isinstance(host, str)
-            and host.endswith(BLOB_HOST_SUFFIX) and len(host) > len(BLOB_HOST_SUFFIX)
+            and host == ASSET_HOST and u.path.startswith(ASSET_CONTAINER_PATH)
             and u.username is None and u.password is None
             and port in (None, 443) and not u.fragment)
 
