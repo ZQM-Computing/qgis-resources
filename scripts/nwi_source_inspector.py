@@ -99,7 +99,7 @@ def _http_json(url: str) -> dict[str, Any]:
 
 
 def _bbox(values: list[float] | tuple[float, ...]) -> tuple[float, float, float, float]:
-    if len(values) != 4 or any(
+    if not isinstance(values, (list, tuple)) or len(values) != 4 or any(
         isinstance(x, bool) or not isinstance(x, (float, int)) or not math.isfinite(x)
         for x in values
     ):
