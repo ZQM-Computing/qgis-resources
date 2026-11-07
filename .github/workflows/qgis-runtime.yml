@@ -34,6 +34,10 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: /usr/bin/python3 scripts/validate_dataset_qa_runtime.py
+      - name: Validate source-gated synthetic polygon overlap using actual GDAL/OGR
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: /usr/bin/python3 scripts/validate_screening_spatial_runtime.py
       - name: Exercise reprojection, raster clipping, and slope against a synthetic DEM
         env:
           QT_QPA_PLATFORM: offscreen
