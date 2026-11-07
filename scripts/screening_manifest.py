@@ -58,7 +58,7 @@ def _source_reference(origin: str, value: Any) -> bool:
             return False
         path = PurePosixPath(value)
         return len(path.parts) > 1 and path.parts[0] == "fixtures" and ".." not in path.parts
-    if any(ch.isspace() or ch == "\\\\" or ord(ch) < 32 or ord(ch) == 127 for ch in value):
+    if any(ch.isspace() or ch == "\\" or ord(ch) < 32 or ord(ch) == 127 for ch in value):
         return False
     try:
         parts = urlsplit(value)
