@@ -39,6 +39,7 @@ def reference_ellipsoid_rectangle_area(
     eccentricity = math.sqrt(eccentricity_sq)
 
     def integral(latitude_degrees: float) -> float:
+        """Evaluate the WGS84 ellipsoid area antiderivative at a latitude in degrees."""
         sine = math.sin(math.radians(latitude_degrees))
         return (
             sine / (2 * (1 - eccentricity_sq * sine**2))
@@ -52,6 +53,7 @@ def reference_ellipsoid_rectangle_area(
 
 
 def must_fail(manifest: dict, root: Path) -> None:
+    """Assert that invalid screening evidence raises the expected domain error."""
     try:
         analyze(manifest, root)
     except ScreeningError:
@@ -60,6 +62,7 @@ def must_fail(manifest: dict, root: Path) -> None:
 
 
 def main_test() -> None:
+    """Exercise spatial oracles, rejected inputs, reproducibility, and atomic report output."""
     manifest = load_manifest(SAMPLE)
     before = {
         path.name: path.read_bytes()

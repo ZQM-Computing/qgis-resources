@@ -42,6 +42,7 @@ def _fixture_path(root: Path, ref: str) -> Path:
 
 
 def _spatial_reference(osr: Any, text: str) -> Any:
+    """Parse a declared CRS and use traditional GIS coordinate axis order."""
     srs = osr.SpatialReference()
     if srs.SetFromUserInput(text) != 0:
         raise ScreeningError("Unparseable coordinate reference system")
@@ -52,6 +53,7 @@ def _spatial_reference(osr: Any, text: str) -> Any:
 def _collect_polygons(
     path: Path, declared_srs: Any, target_srs: Any, ogr: Any, osr: Any,
 ) -> Any:
+    """Validate bounded local polygons, project them, and union overlapping footprints."""
     if path.stat().st_size > 8 * 1024 * 1024:
         raise ScreeningError("Synthetic GeoJSON exceeds bounded input size")
     # The GeoJSON driver may default to WGS84 for files without a CRS;
@@ -183,6 +185,7 @@ def analyze(manifest: dict[str, Any], root: Path) -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Print synthetic measurements or a sanitized input/environment failure."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("manifest", type=Path)
     args = parser.parse_args(argv)

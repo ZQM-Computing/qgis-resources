@@ -30,6 +30,7 @@ MAX_SVG_VERTICES = 50000
 
 
 def _json_bytes(value: object) -> bytes:
+    """Serialize finite JSON deterministically as newline-terminated UTF-8 bytes."""
     return (json.dumps(value, indent=2, sort_keys=True, allow_nan=False, ensure_ascii=True) + "\n").encode("utf-8")
 
 
@@ -46,6 +47,7 @@ def _geometry_path(geometry: object, ogr: object, project: object) -> str:
     count = 0
 
     def emit(geom: object) -> None:
+        """Append polygon rings recursively while enforcing the map vertex budget."""
         nonlocal count
         kind = ogr.GT_Flatten(geom.GetGeometryType())
         if kind in (ogr.wkbMultiPolygon, ogr.wkbGeometryCollection):
@@ -99,6 +101,7 @@ def _map_svg(manifest: dict, root: Path, measurements: dict) -> str:
     offsety = 112 + (460 - (maxy - miny) * scale) / 2
 
     def project(x: float, y: float) -> tuple[float, float]:
+        """Fit projected coordinates into the SVG viewport with a uniform scale."""
         return offsetx + (x - minx) * scale, offsety + (maxy - y) * scale
 
     outline = _geometry_path(aoi, ogr, project)
@@ -166,6 +169,7 @@ def _map_svg(manifest: dict, root: Path, measurements: dict) -> str:
 
 
 def _source_register(manifest: dict, root: Path, measurements: dict) -> list[dict]:
+    """Pair source claims with findings and hashes of measured synthetic fixtures."""
     records = []
     for src, result in zip(manifest["sources"], measurements["source_results"]):
         local_hash = None
@@ -191,6 +195,7 @@ def _source_register(manifest: dict, root: Path, measurements: dict) -> list[dic
 
 
 def _markdown(manifest: dict, measurements: dict, records: list[dict]) -> str:
+    """Render measurements and source limitations as a synthetic review report."""
     lines = [
         "# Preliminary synthetic GIS screening - review copy",
         "",
@@ -336,6 +341,7 @@ def publish_bundle(path: Path, bundle: bytes, *, overwrite: bool = False) -> str
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Build and publish a synthetic ZIP or report a sanitized failure."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("manifest", type=Path, help="Synthetic manifest JSON")
     parser.add_argument("--out", type=Path, required=True, help="ZIP output destination")
