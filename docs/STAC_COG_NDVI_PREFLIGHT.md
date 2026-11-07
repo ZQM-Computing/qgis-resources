@@ -65,6 +65,23 @@ python scripts/stac_cog_ndvi_preflight.py \
 
 The fixture geometry is **fictional**, and this command is provided only as an opt-in engineering example; live provider reads, licensing and costs have not been independently validated. The local synthetic runtime tests generate their own GeoTIFFs and do not connect to the provider.
 
+## Local original-product XML integrity gate
+
+Optional corrected candidate calculations now require **both** `--radiometry-json` and `--product-metadata-xml`. The XML is a bounded local file (2 MiB maximum). The parser refuses DTD/entity declarations and extraneous processing instructions, limits element count and requires exactly one processing baseline and BOA quantification value; B04 (band ID 3) and B08 (band ID 7) offset entries must each occur exactly once. The file's actual SHA-256 must match the pinned digest in the radiometry JSON, and processing baseline, quantification and the two offsets must match the declared arithmetic parameters. Missing, inconsistent or malformed records are blocked **before corrected COG pixel reads**.
+
+Example using **fictional, unauthenticated** metadata (fixture mode never reads remote pixels):
+
+```bash
+python scripts/stac_cog_ndvi_preflight.py \
+  --bbox -46.63 -23.55 -46.60 -23.53 \
+  --start 2026-10-01 --end 2026-10-31 \
+  --fixture fixtures/stac-sentinel-synthetic-item.json \
+  --radiometry-json fixtures/stac-radiometry-synthetic.json \
+  --product-metadata-xml fixtures/stac-product-metadata-synthetic.xml
+```
+
+The output records local fingerprint and parameter consistency but **does not authenticate original Copernicus/Planetary Computer provenance**, establish that the XML is linked to the same tile's cloud assets, or approve any scientific/regulatory claim. A matching file hash only establishes that a referenced local file has the expected bytes; anyone controlling both the file and digest can manufacture a matching pair. Independently verified provider origin, per-item lineage and source-use rights are still release blockers.
+
 ## Optional Sentinel-2 BOA reflectance correction — review-only
 
 Copernicus Sentinel-2 L2A documentation specifies the post-processing-baseline 04.00 conversion: `L2A_SR = (DN + BOA_ADD_OFFSET) / QUANTIFICATION_VALUE`, with `DN=0` reserved as nodata. The `BOA_ADD_OFFSET` is declared in original product/datastrip metadata; Sentinel-2 product processing history must be checked per scene. See the [Copernicus L2A quality report](https://sentiwiki.copernicus.eu/__attachments/1692737/OMPC.CS.DQR.002.12-2025-Sentinel-2-MSI-L2A-DQR-January2026.pdf).
