@@ -7,8 +7,8 @@ metrics are descriptive test-fixture results, never validated field accuracy.
 from __future__ import annotations
 
 import argparse
+from hashlib import sha256
 import json
-import math
 from pathlib import Path
 import re
 import sys
@@ -44,6 +44,9 @@ def evaluate(screening: dict, reference: dict) -> dict:
     digest = reference.get("source_fixture_sha256")
     if not isinstance(digest, str) or not DIGEST.fullmatch(digest):
         raise ValueError("missing source fixture digest assertion")
+    canonical = json.dumps(screening, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False).encode("utf-8")
+    if sha256(canonical).hexdigest() != digest:
+        raise ValueError("reference label set does not match screened input")
     predicted = analyze(screening)
     entries = predicted["segments"]
     if not isinstance(entries, list) or not entries or len(entries) > 100:
@@ -89,7 +92,7 @@ def evaluate(screening: dict, reference: dict) -> dict:
         "schema_version": 1,
         "evaluation_scope": "synthetic-only",
         "label_set_id": reviewer,
-        "source_fixture_digest_claimed": digest,
+        "source_fixture_canonical_sha256_verified": digest,
         "reference_authenticity_verified": False,
         "independent_field_truth_verified": False,
         "model_validated_for_operations": False,
