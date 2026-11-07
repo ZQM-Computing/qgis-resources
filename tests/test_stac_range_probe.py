@@ -19,7 +19,7 @@ URL = "https://sentinel2l2a01.blob.core.windows.net/sentinel2-l2/fictional-test/
 
 class FakeResponse:
     def __init__(self, *, status=206, content_range="bytes 0-4095/20000",
-                 content_length="4096", data=b"II" + b"\0" * 4094,
+                 content_length="4096", data=b"II*\x00" + b"\0" * 4092,
                  encoding=None):
         self.status = status
         self.headers = Message()
@@ -70,8 +70,8 @@ class RangeTests(unittest.TestCase):
             {"content_length": None},
             {"content_length": "5000"},
             {"content_length": "oops"},
-            {"data": b"II" + b"x" * 4095},
-            {"data": b"II"},
+            {"data": b"II*\x00" + b"x" * 4093},
+            {"data": b"II*\x00"},
             {"data": b"NOT_TIFF" + b"x" * 4088},
             {"encoding": "gzip"},
         )
@@ -88,6 +88,43 @@ class RangeTests(unittest.TestCase):
         with self.assertRaises(probe.RangeProbeError):
             probe._DenyRedirects().redirect_request(None, None, 302, "Found", {}, "https://other.example.org")
 
+    def test_three_required_bands_must_all_succeed_before_summary(self):
+        scene = json.loads((ROOT / "fixtures/stac-sentinel-synthetic-item.json").read_text())
+        observed = []
+        def transport(request, *, timeout):
+            observed.append(request.full_url)
+            return FakeResponse()
+        result = probe.probe_scene_assets(scene, transport=transport)
+        self.assertEqual(result["probe_request_count"], 3)
+        self.assertEqual(result["probe_payload_bytes"], 3 * 4096)
+        self.assertEqual(result["band_order"], ["B04", "B08", "SCL"])
+        self.assertEqual(list(result["bands"]), ["B04", "B08", "SCL"])
+        self.assertFalse(result["total_cloud_egress_or_cost_measured"])
+        self.assertNotIn("fictional-test", json.dumps(result))
+        self.assertEqual(len(observed), 3)
+
+    def test_missing_or_bad_second_band_blocks_all_band_summary(self):
+        scene = json.loads((ROOT / "fixtures/stac-sentinel-synthetic-item.json").read_text())
+        del scene["assets"]["SCL"]
+        with self.assertRaises(probe.RangeProbeError):
+            probe.probe_scene_assets(scene, transport=lambda *a, **kw: FakeResponse())
+        scene = json.loads((ROOT / "fixtures/stac-sentinel-synthetic-item.json").read_text())
+        called = []
+        def transport(request, *, timeout):
+            called.append(request.full_url)
+            return FakeResponse(status=200 if len(called) == 2 else 206)
+        with self.assertRaises(probe.RangeProbeError):
+            probe.probe_scene_assets(scene, transport=transport)
+        self.assertEqual(len(called), 2)
+
+    def test_rejects_fake_tiff_marker_with_only_byte_order(self):
+        with self.assertRaises(probe.RangeProbeError):
+            probe.probe_range(
+                URL, transport=lambda *_a, **_kw: FakeResponse(
+                    data=b"II" + b"\x00" * 4094,
+                )
+            )
+
     def test_cli_does_not_probe_without_opt_in_and_budget(self):
         args = ["--bbox", "-46.63", "-23.55", "-46.60", "-23.53",
                 "--start", "2026-10-01", "--end", "2026-10-31"]
@@ -99,7 +136,7 @@ class RangeTests(unittest.TestCase):
             fixture = json.loads((ROOT / "fixtures/stac-cost-budget-synthetic.json").read_text())
             path = Path(td) / "budget.json"
             scene = json.loads((ROOT / "fixtures/stac-sentinel-synthetic-item.json").read_text())
-            for requests, nbytes in ((1, 4096), (2, 4095)):
+            for requests, nbytes in ((3, 12288), (4, 12287)):
                 fixture["request_count"] = requests
                 fixture["estimated_range_bytes"] = nbytes
                 path.write_text(json.dumps(fixture))
@@ -107,11 +144,11 @@ class RangeTests(unittest.TestCase):
                     self.assertEqual(stac.main(args + [
                         "--allow-network", "--probe-range", "--budget-plan", str(path)
                     ]), 2)
-            fixture["request_count"] = 2
-            fixture["estimated_range_bytes"] = 4096
+            fixture["request_count"] = 4
+            fixture["estimated_range_bytes"] = 12288
             path.write_text(json.dumps(fixture))
             with patch.object(stac, "search_scene", return_value=[scene]) as discover:
-                with patch.object(probe, "probe_range", return_value={"status": "synthetic"} ) as mock:
+                with patch.object(probe, "probe_scene_assets", return_value={"status": "synthetic"} ) as mock:
                     self.assertEqual(stac.main(args + [
                         "--allow-network", "--probe-range", "--budget-plan", str(path)
                     ]), 0)
