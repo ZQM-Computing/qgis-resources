@@ -32,6 +32,8 @@ def _fixture_path(root: Path, ref: str) -> Path:
         candidate = (root / ref).resolve(strict=True)
     except OSError as exc:
         raise ScreeningError("Missing or inaccessible synthetic fixture") from exc
+    if not fixture_root.is_relative_to(root.resolve(strict=True)):
+        raise ScreeningError("Fixture directory escapes repository")
     if not candidate.is_relative_to(fixture_root) or candidate == fixture_root:
         raise ScreeningError("Fixture path escapes allowed directory")
     if not candidate.is_file() or candidate.suffix.casefold() != ".geojson":
@@ -50,6 +52,8 @@ def _spatial_reference(osr: Any, text: str) -> Any:
 def _collect_polygons(
     path: Path, declared_srs: Any, target_srs: Any, ogr: Any, osr: Any,
 ) -> Any:
+    if path.stat().st_size > 8 * 1024 * 1024:
+        raise ScreeningError("Synthetic GeoJSON exceeds bounded input size")
     # The GeoJSON driver may default to WGS84 for files without a CRS;
     # this strict synthetic pilot does not silently accept that default.
     try:
