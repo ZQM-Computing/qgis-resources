@@ -619,3 +619,47 @@ def test_valid_triangle_and_multipolygon_remain_accepted():
     assert snapshot["source"]["features_reconciled"] == 2
     assert snapshot["feature_collection"]["features"][0]["geometry"]["type"] == "MultiPolygon"
     assert snapshot["coverage_state"] == "unverified"
+
+
+@pytest.mark.parametrize("kind", ["Polygon", "MultiPolygon"])
+@pytest.mark.parametrize("dimensions", [2, 3])
+def test_geometry_foreign_members_are_removed_before_hashing_and_handoff(kind, dimensions):
+    """Normalize geometry without retaining unreviewed members or changing coordinates."""
+    from nwi_analyst_handoff import candidate_handoff
+    from nwi_snapshot_replay import replay
+
+    provider_pages = []
+
+    def response(page, _offset, *, extras=False):
+        """Return equivalent synthetic geometry with optional unreviewed members."""
+        for feature in page["features"]:
+            geometry = feature["geometry"]
+            if dimensions == 3:
+                geometry["coordinates"] = [
+                    [point + [5.0] for point in ring]
+                    for ring in geometry["coordinates"]
+                ]
+            if kind == "MultiPolygon":
+                geometry["type"] = kind
+                geometry["coordinates"] = [geometry["coordinates"]]
+            if extras:
+                geometry.update({
+                    "PRIVATE": {"owner": "synthetic-unreviewed"},
+                    "crs": {"properties": {"name": "EPSG:3857"}},
+                    "bbox": [0, 0, 1, 1],
+                })
+        provider_pages.append(deepcopy(page))
+        return page
+
+    clean = nwi.collect(BBOX, fake_source(1, response)[0])
+    with_extras = nwi.collect(
+        BBOX, fake_source(1, lambda page, offset: response(page, offset, extras=True))[0]
+    )
+    expected = clean["feature_collection"]
+    actual = with_extras["feature_collection"]
+    assert actual == expected
+    assert set(actual["features"][0]["geometry"]) == {"type", "coordinates"}
+    assert "PRIVATE" in provider_pages[-1]["features"][0]["geometry"]
+    assert with_extras["source"]["normalized_geojson_sha256"] == clean["source"]["normalized_geojson_sha256"]
+    assert replay(with_extras)["commercial_delivery_authorized"] is False
+    assert candidate_handoff(with_extras)["commercial_delivery_authorized"] is False

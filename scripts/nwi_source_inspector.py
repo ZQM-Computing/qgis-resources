@@ -347,7 +347,11 @@ def collect(
                     "ATTRIBUTE": props.get("ATTRIBUTE"),
                     "WETLAND_TYPE": props.get("WETLAND_TYPE"),
                 },
-                "geometry": feature["geometry"],
+                # Persist only members whose semantics were validated above.
+                "geometry": {
+                    "type": feature["geometry"]["type"],
+                    "coordinates": feature["geometry"]["coordinates"],
+                },
             })
     if len(rows) != count:
         raise SourceInspectionError("NWI pagination reconciliation failed")
