@@ -121,3 +121,26 @@ def test_archive_file_list_is_stable_and_reproducible():
         assert tuple(sorted(handle.namelist())) == report.ARCHIVE_FILES
     assert original == bundle_bytes()
     assert report._json_bytes({"b": 2, "a": 1}) == b'{\n  "a": 1,\n  "b": 2\n}\n'
+
+
+def test_optional_source_register_fields_are_null_when_unavailable_source_omits_them():
+    import copy
+    import json
+    manifest = json.loads((ROOT / "fixtures" / "screening-manifest.json").read_text(encoding="utf-8"))
+    unknown = copy.deepcopy(manifest["sources"][1])
+    for field in ("source_ref", "license", "retrieved_at_utc", "effective_date", "crs"):
+        unknown.pop(field, None)
+    manifest["sources"][1] = unknown
+    from screening_manifest import validate_manifest
+    assert validate_manifest(manifest) == []
+    measurements = {
+        "source_results": [
+            {"finding": "synthetic-mapped-overlap"},
+            {"finding": "coverage-unavailable-no-absence-inference"},
+        ],
+    }
+    sources = report._source_register(manifest, ROOT, measurements)
+    for field in ("source_reference", "license_claimed", "retrieved_at_utc_claimed", "effective_date_claimed", "declared_crs"):
+        assert sources[1][field] is None
+    parsed = json.loads(report._json_bytes(sources))
+    assert parsed[1]["source_reference"] is None
