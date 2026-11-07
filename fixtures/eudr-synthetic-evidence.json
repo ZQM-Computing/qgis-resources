@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "batch_id": "synthetic-coffee-001",
+  "commodity": "coffee",
+  "product_scope": "human-review-pending",
+  "country_of_production": "BR",
+  "production_date_or_range": "2026-03-01/2026-04-01",
+  "crs": "EPSG:4326",
+  "plots": [
+    {
+      "plot_id": "synthetic-plot-1",
+      "declared_area_ha": 5,
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -52.1,
+              -12.1
+            ],
+            [
+              -52,
+              -12.1
+            ],
+            [
+              -52,
+              -12
+            ],
+            [
+              -52.1,
+              -12.1
+            ]
+          ]
+        ]
+      },
+      "source": {
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "reference": "https://example.org/synthetic-plot.geojson",
+        "acquired_date": "2026-11-01",
+        "rights_status": "independently-reviewed"
+      },
+      "producer_plot_linkage_verified": true
+    }
+  ]
+}
