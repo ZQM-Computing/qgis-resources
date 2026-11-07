@@ -31,7 +31,6 @@ Tests run with a mocked provider response, never a live public endpoint:
 
     python -m pytest -q tests/test_nwi_source_inspector.py
 
-
 ## Offline integrity replay — not authenticity or approval
 
 An inspected NWI snapshot can be checked again without network access using:
