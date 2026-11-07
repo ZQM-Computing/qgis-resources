@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "project_id": "synthetic-screening-pilot",
+  "jurisdiction": {
+    "country_code": "US",
+    "region": "Synthetic demo only",
+    "authority": "Not an actual jurisdictional assessment"
+  },
+  "study_area": {
+    "reference": "fixtures/screening-aoi.geojson",
+    "crs": "EPSG:4326",
+    "boundary_basis": "synthetic-not-surveyed"
+  },
+  "service_tier": "preliminary",
+  "delivery_status": "draft",
+  "human_review": "pending",
+  "sources": [
+    {
+      "id": "synthetic-wetland-inventory",
+      "origin": "synthetic",
+      "coverage_state": "verified",
+      "title": "Synthetic polygons for contract test only",
+      "authority": "ZQM Computing synthetic fixture",
+      "source_ref": "fixtures/synthetic-wetlands.geojson",
+      "reuse_rights": "approved",
+      "license": "Synthetic test fixture created for this repository",
+      "retrieved_at_utc": "2026-11-07T00:00:00Z",
+      "effective_date": null,
+      "crs": "EPSG:4326",
+      "limitations": "Coverage verified only within the deliberately constructed test fixture; no real-world wetlands, rights, or regulatory assertions."
+    },
+    {
+      "id": "synthetic-flood-absent",
+      "origin": "external",
+      "coverage_state": "unavailable",
+      "title": "Illustrative unavailable flood layer",
+      "authority": "No authoritative source retrieved",
+      "source_ref": null,
+      "reuse_rights": "unverified",
+      "license": null,
+      "retrieved_at_utc": null,
+      "effective_date": null,
+      "crs": null,
+      "limitations": "Data was not acquired. No inference about flood hazard or absence is permitted."
+    }
+  ]
+}
