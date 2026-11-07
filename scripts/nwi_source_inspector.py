@@ -211,6 +211,12 @@ def collect(
         obtained_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     if not isinstance(obtained_at, str) or not obtained_at.endswith("Z"):
         raise SourceInspectionError("Expected explicit UTC retrieval time")
+    try:
+        instant = datetime.fromisoformat(obtained_at[:-1] + "+00:00")
+    except ValueError as exc:
+        raise SourceInspectionError("Malformed UTC retrieval time") from exc
+    if instant.tzinfo is None or instant.utcoffset().total_seconds() != 0:
+        raise SourceInspectionError("UTC retrieval time has invalid offset")
     seen: set[int] = set()
     last_oid: int | None = None
     vertices_seen = 0
