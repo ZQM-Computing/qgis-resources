@@ -65,6 +65,18 @@ python scripts/stac_cog_ndvi_preflight.py \
 
 The fixture geometry is **fictional**, and this command is provided only as an opt-in engineering example; live provider reads, licensing and costs have not been independently validated. The local synthetic runtime tests generate their own GeoTIFFs and do not connect to the provider.
 
+## Optional Sentinel-2 BOA reflectance correction — review-only
+
+Copernicus Sentinel-2 L2A documentation specifies the post-processing-baseline 04.00 conversion: `L2A_SR = (DN + BOA_ADD_OFFSET) / QUANTIFICATION_VALUE`, with `DN=0` reserved as nodata. The `BOA_ADD_OFFSET` is declared in original product/datastrip metadata; Sentinel-2 product processing history must be checked per scene. See the [Copernicus L2A quality report](https://sentiwiki.copernicus.eu/__attachments/1692737/OMPC.CS.DQR.002.12-2025-Sentinel-2-MSI-L2A-DQR-January2026.pdf).
+
+The optional `--radiometry-json` argument accepts a bounded local record declaring the exact scene ID, original product metadata SHA-256, acquisition date, post-04.00 processing baseline, band-specific B04/B08 offsets and reflectance quantification value. The example `fixtures/stac-radiometry-synthetic.json` is **fabricated and unauthenticated**. It cannot certify the correctness of actual cloud asset pixels or original product metadata.
+
+The exploratory output preserves `mean_ndvi_dn_ratio` and, when metadata are supplied, adds a separate `radiometric_candidate` with `mean_ndvi_reflectance_candidate`. Negative or zero corrected reflectance inputs are conservatively excluded from this candidate, and the count is disclosed. When all candidate pixels are excluded, the candidate mean is `null`. The result always sets `product_metadata_authenticity_verified=false`, `processing_baseline_crosschecked_to_original_product=false` and `customer_ready_ndvi=false`. It never asserts calibrated operational NDVI.
+
+The metadata fixture demonstrates that a synthetic DN pair B08=6000 and B04=2000 produces a raw ratio 0.5 but a corrected reflectance-ratio candidate about 0.666667 with each offset at -1000 and quantification 10000. These are **synthetic arithmetic expectations**, not real-scene accuracy metrics.
+
+Before publishing actual corrected NDVI, independently acquire and authenticate the source product metadata, bind it to the actual scene COGs, check per-band offsets and rescaling already applied by the imagery host (to prevent double-correction), and validate raster nodata/masks, scene consistency, SCL classification and scientific uncertainties. Until then, corrected values remain **review-only**, never underwriting evidence.
+
 ## Backlog hardening: AOI coverage, radiometry and budget preflight
 
 The preflight now **requires the scene bounding envelope to fully cover the requested AOI bounding box**, and separately refuses partial raster-window coverage before computing a summary. This is a *necessary* spatial coverage condition, not a guarantee of cloud-free or gap-free pixels. Multi-scene mosaicking and antimeridian handling remain explicitly unsupported.
