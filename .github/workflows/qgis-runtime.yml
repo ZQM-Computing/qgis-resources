@@ -42,6 +42,10 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: /usr/bin/python3 scripts/validate_screening_spatial_runtime.py
+      - name: Validate quarantined NWI feature topology using GDAL/OGR
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: /usr/bin/python3 scripts/validate_nwi_topology_runtime.py
       - name: Exercise reprojection, raster clipping, and slope against a synthetic DEM
         env:
           QT_QPA_PLATFORM: offscreen
