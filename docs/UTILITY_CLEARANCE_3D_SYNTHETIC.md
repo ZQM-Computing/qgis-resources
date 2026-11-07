@@ -16,6 +16,8 @@ No real vertical datum transformation or surveyed source authenticity is impleme
 
 For a vegetation point `p` and a finite segment `[a,b]`, the code projects `p` onto the segment, clamps the parameter to [0,1], and computes the Euclidean 3D distance to the closest point. It then forms a **conditional** lower/upper range by subtracting/adding the sum of the two separately asserted absolute position errors. A sample is flagged if the lower distance bound falls within the fictional review threshold.
 
+The prototype also caps each declared positional error at **100 m** to reject nonsensical or unbounded sensitivity inputs. Candidates are labeled `nominal-proximity` when their nominal separation is within the test threshold, or `uncertainty-overlap` when only the conditional lower distance bound crosses that threshold. These labels describe mathematical flag origins, not distinct field safety classes.
+
 **This range is not statistically calibrated or a guaranteed confidence interval.** It is only a geometric sensitivity bound *if* the absolute error assertions are trustworthy and all relevant errors are included. It excludes data capture age, conductor sag, temperature, wind, pole deformation, vegetation motion and unsampled canopy surfaces. A clear distance from a sampled point cannot establish clearance of a tree canopy or the line corridor.
 
 If one or more samples are flagged, status is `REVIEW`; if no sample is flagged, status is `INSUFFICIENT_EVIDENCE`. The output always sets field clearance, wildfire probability, work-order authorization, customer savings and human approval to false/required. It never creates a maintenance order.
