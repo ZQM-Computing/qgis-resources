@@ -268,6 +268,43 @@ def test_rejects_nonfinite_z_values_and_missing_required_wetland_type():
             nwi.collect(BBOX, fake_source(2, transform)[0])
 
 
+def test_rejects_provider_feature_wholly_outside_requested_envelope():
+    def misplaced(payload, offset):
+        for feature in payload["features"]:
+            feature["geometry"]["coordinates"] = [[
+                [-80.5, 29.50], [-80.49, 29.50],
+                [-80.49, 29.51], [-80.5, 29.50],
+            ]]
+        return payload
+
+    with pytest.raises(nwi.SourceInspectionError, match="outside requested area"):
+        nwi.collect(BBOX, fake_source(2, misplaced)[0])
+
+
+def test_rejects_mismatched_envelope_on_later_page():
+    def misplaced_page(payload, offset):
+        if offset == 100:
+            payload["features"][0]["geometry"]["coordinates"] = [[
+                [-82.0, 29.5], [-81.99, 29.5],
+                [-81.99, 29.51], [-82.0, 29.5],
+            ]]
+        return payload
+
+    with pytest.raises(nwi.SourceInspectionError, match="outside requested area"):
+        nwi.collect(BBOX, fake_source(123, misplaced_page)[0])
+
+
+def test_envelope_touch_is_not_claimed_as_verified_polygon_intersection():
+    feature = {
+        "type": "Polygon",
+        "coordinates": [[
+            [-81.01, 29.01], [-81.009, 29.01],
+            [-81.009, 29.011], [-81.01, 29.01],
+        ]],
+    }
+    assert nwi._validate_coords(feature, requested_bbox=BBOX) == 4
+
+
 def test_source_hash_and_pagination_disclaimers_are_stable():
     first = nwi.collect(BBOX, fake_source(2)[0], obtained_at="2026-11-07T20:00:00Z")
     second = nwi.collect(BBOX, fake_source(2)[0], obtained_at="2026-11-07T20:00:00Z")
