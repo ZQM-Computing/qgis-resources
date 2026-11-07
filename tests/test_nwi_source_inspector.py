@@ -285,3 +285,10 @@ def test_layer_metadata_accepts_whitespace_variations_but_rejects_boolean_id():
     nwi._verify_layer(layer)
     with pytest.raises(nwi.SourceInspectionError):
         nwi._verify_layer(metadata(id=False))
+
+
+
+@pytest.mark.parametrize("timestamp", ["fakeZ", "2026-11-07Z", "2026-15-07T20:00:00Z", "+00:00"])
+def test_rejects_malformed_provenance_timestamp(timestamp):
+    with pytest.raises(nwi.SourceInspectionError):
+        nwi.collect(BBOX, fake_source(2)[0], obtained_at=timestamp)
