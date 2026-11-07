@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "scope": "synthetic-only",
+  "crs": "EPSG:32617",
+  "human_review": "pending",
+  "observed_date": "2026-11-07",
+  "screening_distance_m": 25,
+  "assets": [
+    {
+      "id": "line-a",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            500000,
+            3200000
+          ],
+          [
+            500000,
+            3201000
+          ]
+        ]
+      }
+    },
+    {
+      "id": "line-b",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            500500,
+            3200000
+          ],
+          [
+            500500,
+            3201000
+          ]
+        ]
+      }
+    }
+  ],
+  "vegetation": [
+    {
+      "id": "near-polygon",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              500010,
+              3200400
+            ],
+            [
+              500030,
+              3200400
+            ],
+            [
+              500030,
+              3200500
+            ],
+            [
+              500010,
+              3200500
+            ],
+            [
+              500010,
+              3200400
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "distant-polygon",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              500200,
+              3200400
+            ],
+            [
+              500220,
+              3200400
+            ],
+            [
+              500220,
+              3200500
+            ],
+            [
+              500200,
+              3200500
+            ],
+            [
+              500200,
+              3200400
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}
