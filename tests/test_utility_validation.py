@@ -13,12 +13,15 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from utility_validation import evaluate, main
 
 def screening():
+    """Load a fresh copy of the fictional screening geometry fixture."""
     return json.loads((ROOT / "fixtures" / "utility-clearance-3d-synthetic.json").read_text(encoding="utf-8"))
 
 def labels():
+    """Load a fresh copy of the separately declared synthetic label fixture."""
     return json.loads((ROOT / "fixtures" / "utility-validation-labels-synthetic.json").read_text(encoding="utf-8"))
 
 def bind(data, reference):
+    """Update reference metadata with the canonical screening digest for a test."""
     reference["source_fixture_sha256"] = sha256(
         json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
     ).hexdigest()
@@ -26,6 +29,7 @@ def bind(data, reference):
 
 class ValidationHarnessTests(unittest.TestCase):
     def test_fixture_digest_binds_and_comparison_not_field_validated(self):
+        """Check fixture binding and expected counts without asserting field validity."""
         data, reference = screening(), labels()
         self.assertEqual(reference["source_fixture_sha256"], bind(data, deepcopy(reference))["source_fixture_sha256"])
         report = evaluate(data, reference)
@@ -40,6 +44,7 @@ class ValidationHarnessTests(unittest.TestCase):
         self.assertFalse(report["model_validated_for_operations"])
 
     def test_all_four_confusion_cells_and_rates(self):
+        """Invert toy labels to check error counts and the corresponding rates."""
         data = screening()
         # Synthetic label inversion deliberately demonstrates both error modes.
         reference = labels()
@@ -55,6 +60,7 @@ class ValidationHarnessTests(unittest.TestCase):
         self.assertEqual(len(result["disagreements"]), 2)
 
     def test_undefined_denominators_return_null(self):
+        """Check undefined rates for all-negative and all-positive label sets."""
         reference = labels()
         for label in reference["segment_labels"]:
             label["inspection_needed"] = False
@@ -71,12 +77,14 @@ class ValidationHarnessTests(unittest.TestCase):
         self.assertIsNone(all_positive["metrics"]["false_positive_rate"])
 
     def test_stale_input_digest_rejected(self):
+        """Reject reference labels bound to different screening inputs."""
         data = screening()
         data["review_threshold_m"] = 5
         with self.assertRaises(ValueError):
             evaluate(data, labels())
 
     def test_duplicate_missing_and_incorrect_identifiers_rejected(self):
+        """Reject duplicate, missing, and unknown reference segment identifiers."""
         for modification in ("duplicate", "missing", "unknown"):
             ref = labels()
             if modification == "duplicate":
@@ -89,6 +97,7 @@ class ValidationHarnessTests(unittest.TestCase):
                 evaluate(screening(), ref)
 
     def test_unverified_source_cannot_pretend_field_truth(self):
+        """Reject unsupported scope, field-verification, and label-origin assertions."""
         for key, value in (("scope", "customer-data"),
                            ("reference_status", "field-verified"),
                            ("label_origin", "model-self-labels")):
@@ -98,6 +107,7 @@ class ValidationHarnessTests(unittest.TestCase):
                 evaluate(screening(), ref)
 
     def test_nonboolean_truth_and_unknown_fields_rejected(self):
+        """Reject nonboolean labels and extra fields within a label row."""
         ref = labels()
         ref["segment_labels"][0]["inspection_needed"] = "true"
         with self.assertRaises(ValueError):
@@ -108,12 +118,14 @@ class ValidationHarnessTests(unittest.TestCase):
             evaluate(screening(), ref)
 
     def test_malformed_screening_rejected(self):
+        """Reject empty conductor geometry even with a matching reference digest."""
         d = screening()
         d["conductor_segments"] = []
         with self.assertRaises(ValueError):
             evaluate(d, bind(d, labels()))
 
     def test_deterministic_no_mutation(self):
+        """Ensure evaluation is repeatable and preserves both input objects."""
         d, r = screening(), labels()
         before_d, before_r = deepcopy(d), deepcopy(r)
         self.assertEqual(evaluate(d,r), evaluate(d,r))
@@ -121,6 +133,7 @@ class ValidationHarnessTests(unittest.TestCase):
         self.assertEqual(r, before_r)
 
     def test_cli_on_synthetic_fixtures(self):
+        """Check that the synthetic comparison completes with CLI exit code 0."""
         self.assertEqual(main([
             str(ROOT / "fixtures" / "utility-clearance-3d-synthetic.json"),
             str(ROOT / "fixtures" / "utility-validation-labels-synthetic.json")

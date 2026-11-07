@@ -23,6 +23,7 @@ DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _object_no_duplicates(pairs):
+    """Build a JSON object from key/value pairs, rejecting duplicate keys."""
     out = {}
     for key, value in pairs:
         if key in out:
@@ -32,10 +33,12 @@ def _object_no_duplicates(pairs):
 
 
 def _reject_constant(value):
+    """Reject nonfinite JSON constants during decoding."""
     raise ValueError("nonfinite JSON value")
 
 
 def _day(value):
+    """Parse a required ISO observation date or raise ValueError."""
     if not isinstance(value, str) or not DATE.fullmatch(value):
         raise ValueError("missing ISO observation date")
     try:
@@ -45,6 +48,7 @@ def _day(value):
 
 
 def _distance(value, *, allow_zero=True):
+    """Return a finite nonnegative measurement, optionally rejecting zero."""
     if (isinstance(value, bool) or not isinstance(value, (int, float))
             or not math.isfinite(value) or value < 0
             or (not allow_zero and value == 0)):
@@ -53,6 +57,7 @@ def _distance(value, *, allow_zero=True):
 
 
 def _point(value):
+    """Return three finite coordinates within the synthetic metre bounds."""
     if not isinstance(value, list) or len(value) != 3:
         raise ValueError("expected three-dimensional position")
     x, y, z = value
@@ -65,6 +70,7 @@ def _point(value):
 
 
 def _id(record, seen):
+    """Validate a record identifier and add it to the supplied uniqueness set."""
     if not isinstance(record, dict):
         raise ValueError("invalid record")
     ident = record.get("id")
@@ -89,6 +95,11 @@ def _point_to_segment(point, start, end):
 
 
 def analyze(data):
+    """Validate synthetic inputs and report conditional proximity candidates.
+
+    Position errors are asserted additive bounds, not verified accuracy.
+    Results never establish field clearance or authorize work orders.
+    Invalid inputs raise ValueError; the input object is not modified."""
     if not isinstance(data, dict) or type(data.get("schema_version")) is not int or data["schema_version"] != 1:
         raise ValueError("unsupported schema")
     if (data.get("scope") != "synthetic-only" or data.get("horizontal_crs") != "EPSG:32617"
@@ -170,6 +181,7 @@ def analyze(data):
 
 
 def main(argv=None):
+    """Print a synthetic report; return 0 on completion or 1 on invalid input."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("fixture", type=Path)
     args = parser.parse_args(argv)

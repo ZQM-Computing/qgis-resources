@@ -21,10 +21,12 @@ DIGEST = re.compile(r"^[0-9a-f]{64}$")
 
 
 def _ratio(numerator: int, denominator: int):
+    """Return a rate rounded to six places, or None for a zero denominator."""
     return round(numerator / denominator, 6) if denominator else None
 
 
 def _strict_id(value):
+    """Return a valid segment identifier or raise ValueError."""
     if not isinstance(value, str) or not ID.fullmatch(value):
         raise ValueError("invalid segment identifier")
     return value
@@ -114,6 +116,7 @@ def evaluate(screening: dict, reference: dict) -> dict:
 
 
 def _read(path: Path):
+    """Decode size-limited UTF-8 JSON, rejecting duplicates and nonfinite values."""
     raw = path.read_bytes()
     if len(raw) > MAX_BYTES:
         raise ValueError("input too large")
@@ -122,6 +125,9 @@ def _read(path: Path):
 
 
 def main(argv=None):
+    """Print synthetic metrics; return 0 on completion or 1 on invalid input.
+
+    Completion does not establish field validity or approve operational use."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("screening", type=Path)
     parser.add_argument("reference_labels", type=Path)

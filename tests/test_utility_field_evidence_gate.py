@@ -14,10 +14,12 @@ from utility_field_evidence_gate import assess, main, FIELDS
 
 
 def sample():
+    """Load a fresh copy of the incomplete fictional evidence packet."""
     return json.loads((ROOT / "fixtures/utility-field-evidence-packet-synthetic.json").read_text(encoding="utf-8"))
 
 
 def fake_review(name):
+    """Create fictional review metadata without authenticating any evidence."""
     return {
         "document_id": "fictional-" + name,
         "sha256": "a" * 64,
@@ -27,6 +29,7 @@ def fake_review(name):
 
 
 def complete_structure():
+    """Populate fictional metadata to exercise structural completeness only."""
     data = sample()
     data["evidence"] = {name: fake_review(name) for name in FIELDS}
     data["evaluation"].update({
@@ -46,6 +49,7 @@ def complete_structure():
 
 class PacketTests(unittest.TestCase):
     def test_incomplete_fixture_blocks_and_no_approval(self):
+        """Ensure missing evidence blocks the packet without granting approval."""
         result = assess(sample())
         self.assertEqual(result["status"], "BLOCKED")
         self.assertFalse(result["operational_use_approved"])
@@ -53,6 +57,7 @@ class PacketTests(unittest.TestCase):
         self.assertIn("evidence-required:vertical_datum", result["blockers"])
 
     def test_complete_assertions_still_cannot_establish_truth_or_operational_approval(self):
+        """Ensure complete metadata neither authenticates evidence nor authorizes work."""
         result = assess(complete_structure())
         self.assertEqual(result["status"], "PACKET_COMPLETE_REQUIRES_INDEPENDENT_VERIFICATION")
         self.assertEqual(result["blockers"], [])
@@ -60,6 +65,7 @@ class PacketTests(unittest.TestCase):
         self.assertFalse(result["work_order_authorized"])
 
     def test_missing_each_source_check_fails(self):
+        """Check that each required evidence category produces a blocker if absent."""
         for name in FIELDS:
             data = complete_structure()
             del data["evidence"][name]
@@ -67,6 +73,7 @@ class PacketTests(unittest.TestCase):
                 self.assertIn("evidence-required:" + name, assess(data)["blockers"])
 
     def test_forged_or_missing_release_approval_rejected(self):
+        """Reject asserted, malformed, or omitted release approval."""
         for value in (True, None, "false", 0):
             data = complete_structure()
             data["release_approved"] = value
@@ -78,11 +85,13 @@ class PacketTests(unittest.TestCase):
             assess(data)
 
     def test_overlapping_holdout_is_blocked(self):
+        """Ensure development and holdout segment inventories must be disjoint."""
         data = complete_structure()
         data["evaluation"]["holdout_segment_ids"] = ["synthetic-line-1"]
         self.assertIn("development-holdout-overlap", assess(data)["blockers"])
 
     def test_duplicate_and_malformed_segment_ids_blocked(self):
+        """Block duplicate, empty, and incorrectly typed holdout inventories."""
         for ids in (["a", "a"], ["a", 12], [], [None]):
             data = complete_structure()
             data["evaluation"]["holdout_segment_ids"] = ids
@@ -90,12 +99,14 @@ class PacketTests(unittest.TestCase):
                 self.assertTrue(assess(data)["blockers"])
 
     def test_missing_frozen_model_or_label_digest_blocks(self):
+        """Reject mutable references in model and label digest fields."""
         for key in ("model_commit_sha", "label_dataset_sha256"):
             data = complete_structure()
             data["evaluation"][key] = "latest"
             self.assertIn("immutable-reference-required:" + key, assess(data)["blockers"])
 
     def test_impossible_dates_and_missing_review_rejected(self):
+        """Block invalid calendar dates and unreviewed reference evidence."""
         data = complete_structure()
         data["evidence"]["horizontal_datum"]["reviewed_on"] = "2026-02-30"
         data["evaluation"]["independent_reference_review"]["reviewed"] = False
@@ -104,6 +115,7 @@ class PacketTests(unittest.TestCase):
         self.assertIn("independent-reference-review-required", result["blockers"])
 
     def test_safety_threshold_and_false_negative_review_block_if_unverified(self):
+        """Require both safety-threshold and missed-hazard review assertions."""
         data = complete_structure()
         data["evaluation"]["prespecified_safety_thresholds_reviewed"] = False
         data["evaluation"]["false_negative_review_completed"] = False
@@ -111,15 +123,18 @@ class PacketTests(unittest.TestCase):
         self.assertIn("missed-hazard-review-required", assess(data)["blockers"])
 
     def test_deterministic_and_does_not_modify_input(self):
+        """Ensure repeated assessment is identical and preserves its input."""
         data = complete_structure()
         original = deepcopy(data)
         self.assertEqual(assess(data), assess(data))
         self.assertEqual(data, original)
 
     def test_cli_returns_blocking_status(self):
+        """Check that the incomplete fixture returns CLI exit code 1."""
         self.assertEqual(main([str(ROOT / "fixtures/utility-field-evidence-packet-synthetic.json")]), 1)
 
     def test_cli_duplicate_key_and_nonfinite_refused(self):
+        """Check that duplicate keys and nonfinite JSON return invalid-input code 2."""
         for content in ('{"x":1,"x":2}', '{"x":NaN}'):
             with tempfile.TemporaryDirectory() as directory:
                 path = Path(directory) / "packet.json"

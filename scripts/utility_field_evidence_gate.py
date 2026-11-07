@@ -26,6 +26,7 @@ FIELDS = (
 
 
 def _pairs_unique(pairs):
+    """Build a JSON object from key/value pairs, rejecting duplicate keys."""
     result = {}
     for key, value in pairs:
         if key in result:
@@ -35,10 +36,12 @@ def _pairs_unique(pairs):
 
 
 def _no_nonfinite(value):
+    """Reject nonfinite JSON constants during packet decoding."""
     raise ValueError("nonfinite numeric constant")
 
 
 def _date(value):
+    """Return whether a value is a valid ISO calendar date string."""
     if not isinstance(value, str) or not ISO_DATE.fullmatch(value):
         return False
     try:
@@ -74,6 +77,7 @@ def assess(packet):
         raise ValueError("approval cannot be asserted or omitted")
     blockers = []
     def block(code):
+        """Add a blocker code once to the enclosing assessment checklist."""
         if code not in blockers:
             blockers.append(code)
     project = packet.get("project_id")
@@ -140,6 +144,9 @@ def assess(packet):
 
 
 def main(argv=None):
+    """Print packet status: return 0 if complete, 1 if blocked, 2 if invalid.
+
+    Structural completeness never verifies evidence or authorizes operations."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("packet", type=Path)
     args = parser.parse_args(argv)
