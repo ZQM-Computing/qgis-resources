@@ -95,6 +95,20 @@ class PreflightTests(unittest.TestCase):
                 d["plots"][0]["geometry"] = geom
                 self.assertIn("invalid-geojson-geometry-structure", preflight.assess(d)["exceptions"])
 
+    def test_degenerate_and_antimeridian_polygons_are_not_silently_accepted(self):
+        invalid_rings = (
+            [[-52.0, -12.0], [-52.0, -12.0], [-52.0, -12.0], [-52.0, -12.0]],
+            [[179.8, 10], [-179.8, 10], [-179.8, 11], [179.8, 10]],
+            [[-52, -12], [-51, -12], [-52, -12], [-52, -12]],
+        )
+        for ring in invalid_rings:
+            with self.subTest(ring=ring):
+                d = sample()
+                d["plots"][0]["geometry"]["coordinates"] = [ring]
+                result = preflight.assess(d)
+                self.assertIn("invalid-geojson-geometry-structure", result["exceptions"])
+                self.assertFalse(result["compliance_determined"])
+
     def test_deterministic_nonmutating_and_redacted(self):
         d = sample()
         copy = deepcopy(d)
