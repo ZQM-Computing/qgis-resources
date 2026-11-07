@@ -8,7 +8,7 @@ Signed asset URLs and credentials are never printed or persisted.
 from __future__ import annotations
 
 import argparse
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 import json
 import math
 from pathlib import Path
@@ -136,7 +136,9 @@ def select_item(items, maximum_cloud_percent=20, *, bbox=None, period=None):
         if bbox is not None:
             west, south, east, north = check_bbox(bbox)
             iw, isouth, ie, inorth = item["bbox"]
-            if ie <= west or iw >= east or inorth <= south or isouth >= north:
+            # A rectangular summary requires full scene-envelope coverage;
+            # an overlap-only search result would misstate AOI completeness.
+            if iw > west or ie < east or isouth > south or inorth < north:
                 continue
         if period is not None:
             start, end = period.split("/")
@@ -211,6 +213,10 @@ def calculate_window_ndvi(item, bbox):
             width, height = col1 - col0, row1 - row0
             if width <= 0 or height <= 0 or width * height > MAX_PIXELS:
                 raise PreflightError("empty or oversized raster window")
+            if (raw.col_off < -1e-7 or raw.row_off < -1e-7
+                    or raw.col_off + raw.width > nir.width + 1e-7
+                    or raw.row_off + raw.height > nir.height + 1e-7):
+                raise PreflightError("scene raster lacks full requested AOI coverage")
             window = Window(col0, row0, width, height)
             with WarpedVRT(red, crs=nir.crs, transform=nir.transform,
                            width=nir.width, height=nir.height,
@@ -244,6 +250,8 @@ def calculate_window_ndvi(item, bbox):
                 "radiometric_offset_and_scale_verified": False,
                 "imagery_reuse_rights_verified": False,
                 "cloud_free_aoi_verified": False,
+                "raster_full_bbox_coverage_checked": True,
+                "radiometric_correction_required": True,
                 "deforestation_determined": False,
                 "underwriting_liability_estimated": False,
                 "human_review_required": True,
