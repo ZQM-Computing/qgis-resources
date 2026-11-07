@@ -25,6 +25,32 @@ REPO = Path(__file__).resolve().parents[1]
 SAMPLE = REPO / "fixtures" / "screening-manifest.json"
 
 
+def reference_ellipsoid_rectangle_area(
+    west: float, south: float, east: float, north: float
+) -> float:
+    """Independent analytic area of an axis-aligned WGS84 lon/lat rectangle.
+
+    This is a runtime fixture oracle, NOT an arbitrary-polygon area algorithm.
+    It uses the ellipsoid surface-area integral rather than EPSG:6933 or OGR.
+    """
+    semi_major = 6378137.0
+    flattening = 1 / 298.257223563
+    eccentricity_sq = flattening * (2 - flattening)
+    eccentricity = math.sqrt(eccentricity_sq)
+
+    def integral(latitude_degrees: float) -> float:
+        sine = math.sin(math.radians(latitude_degrees))
+        return (
+            sine / (2 * (1 - eccentricity_sq * sine**2))
+            + math.atanh(eccentricity * sine) / (2 * eccentricity)
+        )
+
+    return (
+        semi_major**2 * (1 - eccentricity_sq) * math.radians(east - west)
+        * (integral(north) - integral(south))
+    )
+
+
 def must_fail(manifest: dict, root: Path) -> None:
     try:
         analyze(manifest, root)
@@ -45,6 +71,11 @@ def main_test() -> None:
     assert output["input_geometry"] == "synthetic-only"
     assert output["regulatory_determination"] is False
     assert 4.9e10 < output["study_area_m2"] < 5.0e10, output
+    # Independent WGS84 ellipsoid reference avoids testing projected area
+    # solely against hard-coded values derived from that same projection.
+    expected_aoi = reference_ellipsoid_rectangle_area(0, 0, 2, 2)
+    expected_overlap = reference_ellipsoid_rectangle_area(1, 1, 2, 2)
+    assert math.isclose(output["study_area_m2"], expected_aoi, rel_tol=1e-8), output
     wetland, unavailable = output["source_results"]
     assert wetland["finding"] == "synthetic-mapped-overlap", wetland
     assert math.isclose(
@@ -52,6 +83,14 @@ def main_test() -> None:
         rel_tol=0, abs_tol=0.0001
     ), wetland
     assert 1.22e10 < wetland["measured_intersection_area_m2"] < 1.24e10
+    assert math.isclose(
+        wetland["measured_intersection_area_m2"], expected_overlap, rel_tol=1e-8
+    ), wetland
+    assert math.isclose(
+        wetland["measured_intersection_percent"],
+        round(100 * expected_overlap / expected_aoi, 6),
+        abs_tol=0.000001,
+    ), wetland
     assert unavailable["finding"] == "coverage-unavailable-no-absence-inference"
     assert unavailable["measured_intersection_area_m2"] is None
     assert unavailable["measured_intersection_percent"] is None
