@@ -193,6 +193,17 @@ def _validate_coords(geometry: Any) -> int:
                 raise SourceInspectionError("Invalid polygon ring")
             if ring[0] != ring[-1]:
                 raise SourceInspectionError("Unclosed polygon ring")
+            # Defensive sanity check only, not full OGC topological validity.
+            # Work relative to a vertex to reduce cancellation at global
+            # longitude/latitude offsets. Genuine sliver shapes may fail closed.
+            origin_x, origin_y = ring[0][:2]
+            if (not isinstance(origin_x, (int, float)) or isinstance(origin_x, bool)
+                    or not isinstance(origin_y, (int, float)) or isinstance(origin_y, bool)
+                    or not math.isfinite(origin_x) or not math.isfinite(origin_y)):
+                raise SourceInspectionError("Invalid polygon ring origin")
+            signed_twice_area = 0.0
+            first_three_or_more = set()
+            previous = None
             for pair in ring:
                 if not isinstance(pair, list) or len(pair) not in (2, 3):
                     raise SourceInspectionError("Invalid coordinate tuple")
@@ -203,9 +214,29 @@ def _validate_coords(geometry: Any) -> int:
                     for n in pair
                 ) or not (-180 <= x <= 180 and -90 <= y <= 90):
                     raise SourceInspectionError("Invalid geographic coordinates")
+                xy = (float(x), float(y))
+                if previous == xy:
+                    raise SourceInspectionError("Repeated consecutive polygon vertex")
+                previous = xy
+                first_three_or_more.add(xy)
+                if len(first_three_or_more) > MAX_VERTICES:
+                    raise SourceInspectionError("Polygon vertex budget exceeded")
                 total += 1
                 if total > MAX_VERTICES:
                     raise SourceInspectionError("Polygon vertex budget exceeded")
+            if len(first_three_or_more) < 3:
+                raise SourceInspectionError("Degenerate polygon ring")
+            # Exact signed shoelace may vanish on collinear/zero-area rings.
+            # A nonzero value is NOT evidence of a valid, simple polygon.
+            for index in range(len(ring) - 1):
+                x0, y0 = ring[index][:2]
+                x1, y1 = ring[index + 1][:2]
+                signed_twice_area += (
+                    (float(x0) - origin_x) * (float(y1) - origin_y)
+                    - (float(x1) - origin_x) * (float(y0) - origin_y)
+                )
+            if not math.isfinite(signed_twice_area) or signed_twice_area == 0.0:
+                raise SourceInspectionError("Degenerate zero-area polygon ring")
     return total
 
 
