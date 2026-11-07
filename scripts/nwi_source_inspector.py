@@ -141,17 +141,34 @@ def _verify_layer(layer: dict[str, Any]) -> None:
         raise SourceInspectionError("NWI layer lacks query capability")
     if "geojson" not in {item.strip().casefold() for item in str(layer.get("supportedQueryFormats", "")).split(",")}:
         raise SourceInspectionError("NWI layer lacks GeoJSON support")
-    fields = {
-        x.get("name") for x in layer.get("fields", []) if isinstance(x, dict)
+    raw_fields = layer.get("fields")
+    if not isinstance(raw_fields, list) or not raw_fields:
+        raise SourceInspectionError("NWI fields are missing or malformed")
+    fields: dict[str, str] = {}
+    for field in raw_fields:
+        if not isinstance(field, dict):
+            raise SourceInspectionError("NWI field entry is malformed")
+        name, field_type = field.get("name"), field.get("type")
+        if (not isinstance(name, str) or not name.strip()
+                or not isinstance(field_type, str) or not field_type.strip()
+                or name in fields):
+            raise SourceInspectionError("NWI field entry missing type or duplicated")
+        fields[name] = field_type
+    required_types = {
+        "OBJECTID": "esriFieldTypeOID",
+        "ATTRIBUTE": "esriFieldTypeString",
+        "WETLAND_TYPE": "esriFieldTypeString",
     }
-    if not {"OBJECTID", "ATTRIBUTE", "WETLAND_TYPE"} <= fields:
-        raise SourceInspectionError("NWI fields are incompatible")
+    if any(fields.get(name) != kind for name, kind in required_types.items()):
+        raise SourceInspectionError("NWI field schema or types are incompatible")
     max_records = layer.get("maxRecordCount")
     if type(max_records) is not int or max_records < PAGE_SIZE:
         raise SourceInspectionError("NWI page size exceeds service limits")
     advanced = layer.get("advancedQueryCapabilities")
-    if not isinstance(advanced, dict) or advanced.get("supportsPagination") is not True:
-        raise SourceInspectionError("NWI pagination support not confirmed")
+    if (not isinstance(advanced, dict)
+            or advanced.get("supportsPagination") is not True
+            or advanced.get("supportsOrderBy") is not True):
+        raise SourceInspectionError("NWI pagination or ordered-query capability not confirmed")
 
 
 def _validate_coords(geometry: Any, *, requested_bbox: tuple[float, float, float, float] | None = None) -> int:
