@@ -90,6 +90,32 @@ class LocalRasterWindowTests(unittest.TestCase):
         with self.assertRaises(stac.PreflightError):
             stac.calculate_window_ndvi(self.item, self.bbox, tiny)
 
+    def test_corrected_reflectance_candidate_requires_metadata_and_is_unverified(self):
+        import json
+        record = json.loads((ROOT / "fixtures" / "stac-radiometry-synthetic.json").read_text())
+        self.item["id"] = record["scene_id"]
+        baseline = stac.calculate_window_ndvi(self.item, self.bbox)
+        self.assertNotIn("radiometric_candidate", baseline)
+        candidate = stac.calculate_window_ndvi(self.item, self.bbox, radiometry=record)
+        corrected = candidate["radiometric_candidate"]
+        self.assertEqual(candidate["mean_ndvi_dn_ratio"], 0.5)
+        self.assertAlmostEqual(corrected["mean_ndvi_reflectance_candidate"], 0.666667, places=5)
+        self.assertEqual(corrected["corrected_valid_pixel_count"], 64)
+        self.assertFalse(corrected["product_metadata_authenticity_verified"])
+        self.assertFalse(corrected["customer_ready_ndvi"])
+        self.assertFalse(candidate["radiometric_offset_and_scale_verified"])
+
+    def test_negative_reflectance_candidate_is_not_silently_used(self):
+        import json
+        record = json.loads((ROOT / "fixtures" / "stac-radiometry-synthetic.json").read_text())
+        self.item["id"] = record["scene_id"]
+        self._write("B04", np.full((10, 10), 500, dtype="uint16"))
+        result = stac.calculate_window_ndvi(self.item, self.bbox, radiometry=record)
+        candidate = result["radiometric_candidate"]
+        self.assertIsNone(candidate["mean_ndvi_reflectance_candidate"])
+        self.assertEqual(candidate["corrected_valid_pixel_count"], 0)
+        self.assertEqual(candidate["excluded_negative_or_zero_reflectance_pixels"], 64)
+
     def test_cloud_mask_reduces_valid_pixel_count(self):
         scl = np.full((10, 10), 4, dtype="uint16")
         scl[2, 2] = 9  # high-probability cloud class
