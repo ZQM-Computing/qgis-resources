@@ -317,9 +317,28 @@ def publish_bundle(path: Path, bundle: bytes, *, overwrite: bool = False) -> str
         raise ScreeningError("Invalid report bundle size")
     try:
         with zipfile.ZipFile(BytesIO(bundle)) as reader:
-            if tuple(sorted(reader.namelist())) != ARCHIVE_FILES or reader.testzip() is not None:
+            entries = reader.infolist()
+            if tuple(sorted(entry.filename for entry in entries)) != ARCHIVE_FILES:
                 raise ScreeningError("Bundle integrity validation failed")
-    except (zipfile.BadZipFile, EOFError, OSError) as exc:
+            if any(
+                entry.is_dir() or entry.flag_bits & 1
+                or entry.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED)
+                or entry.file_size > 16 * 1024 * 1024
+                for entry in entries
+            ) or sum(entry.file_size for entry in entries) > 32 * 1024 * 1024:
+                raise ScreeningError("Bundle contents exceed bounded archive policy")
+            # Stream and CRC-check every allowed member without allocating a
+            # potentially expanded archive in memory.
+            total_uncompressed = 0
+            for entry in entries:
+                with reader.open(entry, "r") as member:
+                    member_bytes = 0
+                    while chunk := member.read(64 * 1024):
+                        member_bytes += len(chunk)
+                        total_uncompressed += len(chunk)
+                        if member_bytes > 16 * 1024 * 1024 or total_uncompressed > 32 * 1024 * 1024:
+                            raise ScreeningError("Decompressed bundle exceeds safety limits")
+    except (zipfile.BadZipFile, EOFError, OSError, RuntimeError) as exc:
         raise ScreeningError("Bundle integrity validation failed") from exc
     fd, candidate = tempfile.mkstemp(prefix=".zqm-screening-", suffix=".tmp", dir=path.parent)
     try:
