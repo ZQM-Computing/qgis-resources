@@ -18,6 +18,7 @@ import tempfile
 import zipfile
 
 from screening_manifest import load_manifest
+from screening_triage import build_triage
 from screening_spatial import (
     AREA_CRS, INPUT_CRS, ScreeningError, _collect_polygons,
     _fixture_path, _spatial_reference, analyze,
@@ -255,6 +256,7 @@ def build_bundle(manifest: dict, root: Path) -> bytes:
     """Compute and package all evidence before any output is published."""
     measurements = analyze(manifest, root)
     sources = _source_register(manifest, root, measurements)
+    triage = build_triage(measurements)
     report = {
         "schema_version": 1,
         "status": "synthetic-review-only",
@@ -262,6 +264,7 @@ def build_bundle(manifest: dict, root: Path) -> bytes:
         "jurisdiction": manifest["jurisdiction"],
         "study_area_reference": manifest["study_area"]["reference"],
         "measurement": measurements,
+        "screening_triage": triage,
         "constraint_matrix": [
             {
                 "source_id": item["source_id"],
