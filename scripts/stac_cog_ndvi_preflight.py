@@ -180,7 +180,7 @@ def _window_edge(value, *, upper):
     return math.ceil(value) if upper else math.floor(value)
 
 
-def calculate_window_ndvi(item, bbox):
+def calculate_window_ndvi(item, bbox, aoi_geometry=None):
     """Read only one bounded Sentinel scene window via Rasterio/GDAL HTTP range I/O.
 
     This intentionally reports an *exploratory DN-ratio*, without claiming
@@ -190,8 +190,15 @@ def calculate_window_ndvi(item, bbox):
     import numpy as np
     import rasterio
     from rasterio.enums import Resampling
+    from rasterio.features import geometry_mask
+    from rasterio.windows import transform as window_transform
+    from rasterio.warp import transform_geom
     from rasterio.vrt import WarpedVRT
     from rasterio.warp import transform_bounds
+
+    if aoi_geometry is not None:
+        from stac_aoi import validate_aoi
+        validate_aoi(aoi_geometry, bbox)
     from rasterio.windows import from_bounds, Window
 
     for key in SUPPORTED_ASSETS:
@@ -228,6 +235,18 @@ def calculate_window_ndvi(item, bbox):
                     n = nir.read(1, window=window, masked=True).astype("float32")
                     r = red_aligned.read(1, window=window, masked=True).astype("float32")
                     c = scl_aligned.read(1, window=window, masked=True)
+            aoi_pixels = width * height
+            if aoi_geometry is not None:
+                projected_aoi = transform_geom("EPSG:4326", nir.crs, aoi_geometry,
+                                               antimeridian_cutting=False)
+                polygon_pixels = geometry_mask(
+                    [projected_aoi], out_shape=(height, width),
+                    transform=window_transform(window, nir.transform),
+                    invert=True, all_touched=False,
+                )
+                aoi_pixels = int(polygon_pixels.sum())
+                if not aoi_pixels:
+                    raise PreflightError("polygon AOI has no pixel-center coverage")
             # SCL 4: vegetation, 5: not vegetated, 6: water. Cloud/shadow/
             # cirrus, snow and unclassified pixels are excluded.
             allowed = np.isin(np.asarray(c), [4, 5, 6])
@@ -236,6 +255,8 @@ def calculate_window_ndvi(item, bbox):
             valid &= np.isfinite(n) & np.isfinite(r)
             denom = np.asarray(n) + np.asarray(r)
             valid &= denom > 0
+            if aoi_geometry is not None:
+                valid &= polygon_pixels
             count = int(valid.sum())
             if not count:
                 raise PreflightError("no usable clear pixels; optical analysis unavailable")
@@ -247,7 +268,9 @@ def calculate_window_ndvi(item, bbox):
                 "valid_pixel_count": count,
                 "read_window_pixel_count": int(width * height),
                 "valid_fraction_of_window": round(count / (width * height), 6),
-                "aoi_polygon_mask_applied": False,
+                "aoi_pixel_count": aoi_pixels,
+                "valid_fraction_of_aoi": round(count / aoi_pixels, 6),
+                "aoi_polygon_mask_applied": aoi_geometry is not None,
                 "radiometric_offset_and_scale_verified": False,
                 "imagery_reuse_rights_verified": False,
                 "cloud_free_aoi_verified": False,
@@ -279,6 +302,7 @@ def main(argv=None):
     parser.add_argument("--allow-network", action="store_true")
     parser.add_argument("--budget-plan", type=Path, help="Required for live remote access; declared cost assumptions only")
     parser.add_argument("--stream-window", action="store_true", help="Only when --allow-network, max 250k pixels")
+    parser.add_argument("--aoi-geojson", type=Path, help="Optional local Polygon/MultiPolygon; validated even in metadata mode")
     args = parser.parse_args(argv)
     try:
         bbox = check_bbox(args.bbox)
@@ -289,6 +313,10 @@ def main(argv=None):
             raise PreflightError("live requests require explicit local budget plan")
         if args.stream_window and not args.allow_network:
             raise PreflightError("streaming requires explicit network opt-in")
+        aoi_geometry = None
+        if args.aoi_geojson is not None:
+            from stac_aoi import load_aoi
+            aoi_geometry = load_aoi(args.aoi_geojson, bbox)
         if args.fixture is not None:
             with args.fixture.open("rb") as handle:
                 raw = handle.read(MAX_FIXTURE_BYTES + 1)
@@ -321,11 +349,13 @@ def main(argv=None):
             "commercial_delivery_authorized": False,
             "purchased_imagery": False,
             "human_review_required": True,
+            "aoi_polygon_supplied": aoi_geometry is not None,
+            "aoi_boundary_accuracy_verified": False,
         }
         if args.allow_network:
             output["declared_budget_review"] = budget
         if args.stream_window:
-            output["pixel_window"] = calculate_window_ndvi(selected, bbox)
+            output["pixel_window"] = calculate_window_ndvi(selected, bbox, aoi_geometry)
         print(json.dumps(output, sort_keys=True, indent=2, allow_nan=False))
         return 0
     except (OSError, ValueError, TypeError, ImportError, RuntimeError, UnicodeError):
