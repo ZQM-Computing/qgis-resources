@@ -225,3 +225,63 @@ def test_no_network_without_explicit_flag(tmp_path, monkeypatch, capsys):
     assert result == 2
     assert "No network request made" in capsys.readouterr().out
     assert list(tmp_path.iterdir()) == []
+
+
+
+def test_rejects_nonmonotonic_ids_even_when_unique():
+    def wrong_order(payload, offset):
+        payload["features"][0]["properties"]["OBJECTID"] = 19
+        payload["features"][1]["properties"]["OBJECTID"] = 5
+        return payload
+
+    with pytest.raises(nwi.SourceInspectionError, match="out-of-order"):
+        nwi.collect(BBOX, fake_source(2, wrong_order)[0])
+
+
+def test_rejects_mismatched_geojson_crs_and_truncation_signals():
+    def wrong_crs(payload, offset):
+        payload["crs"] = {"type": "name", "properties": {"name": "EPSG:3857"}}
+        return payload
+
+    def bad_transfer_flag(payload, offset):
+        payload["exceededTransferLimit"] = "true"
+        return payload
+
+    for transform in (wrong_crs, bad_transfer_flag):
+        with pytest.raises(nwi.SourceInspectionError):
+            nwi.collect(BBOX, fake_source(2, transform)[0])
+
+
+def test_rejects_nonfinite_z_values_and_missing_required_wetland_type():
+    def bad_z(payload, offset):
+        ring = payload["features"][0]["geometry"]["coordinates"][0]
+        ring[0] = [ring[0][0], ring[0][1], float("nan")]
+        ring[-1] = ring[0][:]
+        return payload
+
+    def missing_wetland_type(payload, offset):
+        payload["features"][0]["properties"]["WETLAND_TYPE"] = None
+        return payload
+
+    for transform in (bad_z, missing_wetland_type):
+        with pytest.raises(nwi.SourceInspectionError):
+            nwi.collect(BBOX, fake_source(2, transform)[0])
+
+
+def test_source_hash_and_pagination_disclaimers_are_stable():
+    first = nwi.collect(BBOX, fake_source(2)[0], obtained_at="2026-11-07T20:00:00Z")
+    second = nwi.collect(BBOX, fake_source(2)[0], obtained_at="2026-11-07T20:00:00Z")
+    assert first == second
+    assert first["source"]["normalized_geojson_sha256"] == second["source"]["normalized_geojson_sha256"]
+    assert len(first["source"]["normalized_geojson_sha256"]) == 64
+    assert "point-in-time-snapshot-unverified" in first["source"]["feature_pagination_integrity"]
+    assert first["source"]["feature_vertices_checked"] > 0
+    assert first["coverage_state"] == "unverified"
+    assert first["reuse_rights"] == "unverified"
+
+
+def test_layer_metadata_accepts_whitespace_variations_but_rejects_boolean_id():
+    layer = metadata(supportedQueryFormats="JSON,geoJSON,PBF", capabilities="Map, Query, Data")
+    nwi._verify_layer(layer)
+    with pytest.raises(nwi.SourceInspectionError):
+        nwi._verify_layer(metadata(id=False))
