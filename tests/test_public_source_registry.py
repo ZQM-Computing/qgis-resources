@@ -31,3 +31,16 @@ def test_fws_registry_source_matches_fixed_allowlisted_client_endpoint():
     assert nwi["service_url"] == LAYER_URL
     assert nwi["screening_use"] == "inspection-only"
     assert nwi["source_maturity"].startswith("published-service-metadata")
+
+
+def test_2026_parcel_polygon_candidate_is_metadata_only_and_private_fields_excluded():
+    candidates = json.loads(REGISTRY.read_text(encoding="utf-8"))["candidates"]
+    parcel = next(item for item in candidates if item["id"] == "florida-dor-parcels-2026")
+    assert parcel["geometry_type"] == "esriGeometryPolygon"
+    assert parcel["service_url"].endswith("/Florida_Statewide_Cadastral/FeatureServer/0")
+    assert "August 2026" in parcel["published_edition_claim"]
+    assert "not tested" in parcel["published_edition_claim"]
+    assert parcel["commercial_use_approved"] is False
+    assert parcel["licensing_review"] == "pending"
+    assert parcel["actual_feature_coverage"] == "unverified"
+    assert "owner names/addresses" in parcel["caveat"]
