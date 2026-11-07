@@ -106,6 +106,21 @@ class StacCogTests(unittest.TestCase):
                     [item], bbox=[-46.63, -23.55, -46.60, -23.53],
                     period="2026-10-01/2026-10-31")
 
+    def test_partial_scene_envelope_cannot_claim_full_query_coverage(self):
+        item = sample()
+        item["bbox"] = [-46.62, -23.55, -46.60, -23.53]
+        with self.assertRaises(preflight.PreflightError):
+            preflight.select_item(
+                [item], bbox=[-46.63, -23.55, -46.60, -23.53],
+                period="2026-10-01/2026-10-31",
+            )
+        item["bbox"] = [-46.64, -23.56, -46.59, -23.52]
+        chosen, meta = preflight.select_item(
+            [item], bbox=[-46.63, -23.55, -46.60, -23.53],
+            period="2026-10-01/2026-10-31",
+        )
+        self.assertEqual(chosen["id"], item["id"])
+
     def test_scene_selection_deterministic_and_bounded(self):
         a, b = sample(), sample()
         b["id"] = "synthetic-sentinel-scene-02"
