@@ -13,6 +13,7 @@ import math
 from pathlib import Path
 import re
 import sys
+from urllib.parse import urlsplit
 
 MAX_INPUT_BYTES = 1024 * 1024
 MAX_PLOTS = 200
@@ -82,6 +83,30 @@ def _coordinates(coords, *, close=False):
     return True
 
 
+def _safe_source_reference(value):
+    """Validate URL syntax only. Does not authenticate or retrieve a source."""
+    if not isinstance(value, str) or len(value) > 500 or any(
+        ch.isspace() or ord(ch) < 32 or ord(ch) == 127 for ch in value
+    ):
+        return False
+    try:
+        url = urlsplit(value)
+        port = url.port
+    except ValueError:
+        return False
+    return (
+        url.scheme == "https"
+        and bool(url.hostname)
+        and url.username is None
+        and url.password is None
+        and port in (None, 443)
+        and not url.fragment
+        and url.hostname not in ("localhost",)
+        and not url.hostname.endswith((".localhost", ".local"))
+        and "." in url.hostname
+    )
+
+
 def _validate_geometry(geometry):
     if not isinstance(geometry, dict) or set(geometry) != {"type", "coordinates"}:
         return False
@@ -89,13 +114,24 @@ def _validate_geometry(geometry):
     if kind == "Point":
         return _coordinates([coords])
     if kind == "Polygon":
-        return (isinstance(coords, list) and 0 < len(coords) <= 100
-                and all(_coordinates(ring, close=True) for ring in coords))
-    if kind == "MultiPolygon":
-        return (isinstance(coords, list) and 0 < len(coords) <= 100
-                and all(isinstance(poly, list) and 0 < len(poly) <= 100
-                        and all(_coordinates(ring, close=True) for ring in poly)
-                        for poly in coords))
+        polygons = [coords]
+    elif kind == "MultiPolygon":
+        polygons = coords
+    else:
+        return False
+    if not isinstance(polygons, list) or not 0 < len(polygons) <= 100:
+        return False
+    total_vertices = 0
+    for polygon in polygons:
+        if not isinstance(polygon, list) or not 0 < len(polygon) <= 100:
+            return False
+        for ring in polygon:
+            if not _coordinates(ring, close=True):
+                return False
+            total_vertices += len(ring)
+            if total_vertices > MAX_VERTICES:
+                return False
+    return True
     return False
 
 
@@ -173,7 +209,7 @@ def assess(record):
             acquired = source.get("acquired_date")
             if not isinstance(digest, str) or not HEX_SHA256.fullmatch(digest):
                 add("missing-immutable-source-digest")
-            if not isinstance(ref, str) or not ref.startswith("https://") or len(ref) > 500 or "@" in ref:
+            if not _safe_source_reference(ref):
                 add("unverified-or-unsafe-source-reference")
             if not _valid_date(acquired):
                 add("missing-source-acquisition-date")
