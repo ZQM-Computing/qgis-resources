@@ -276,6 +276,7 @@ def main(argv=None):
     parser.add_argument("--cloud-limit", type=float, default=20)
     parser.add_argument("--fixture", type=Path, help="Local signed STAC test object, NO remote reads permitted")
     parser.add_argument("--allow-network", action="store_true")
+    parser.add_argument("--budget-plan", type=Path, help="Required for live remote access; declared cost assumptions only")
     parser.add_argument("--stream-window", action="store_true", help="Only when --allow-network, max 250k pixels")
     args = parser.parse_args(argv)
     try:
@@ -283,6 +284,8 @@ def main(argv=None):
         period = check_dates(args.start, args.end)
         if args.fixture is not None and args.allow_network:
             raise PreflightError("fixture and network mode are mutually exclusive")
+        if args.allow_network and args.budget_plan is None:
+            raise PreflightError("live requests require explicit local budget plan")
         if args.stream_window and not args.allow_network:
             raise PreflightError("streaming requires explicit network opt-in")
         if args.fixture is not None:
@@ -294,6 +297,15 @@ def main(argv=None):
                               parse_constant=lambda _: (_ for _ in ()).throw(PreflightError("nonfinite JSON")))
             items = [item]
         elif args.allow_network:
+            from stac_cost_budget import _pairs_unique, calculate, MAX_FILE_BYTES
+            with args.budget_plan.open("rb") as handle:
+                budget_raw = handle.read(MAX_FILE_BYTES + 1)
+            if len(budget_raw) > MAX_FILE_BYTES:
+                raise PreflightError("budget plan exceeds file size limit")
+            budget = calculate(json.loads(budget_raw.decode("utf-8"), object_pairs_hook=_pairs_unique,
+                                          parse_constant=lambda _: (_ for _ in ()).throw(PreflightError("nonfinite budget"))))
+            if budget["decision"] != "WITHIN_DECLARED_BUDGET_ONLY" or budget["remote_requests"] < 1:
+                raise PreflightError("declared remote budget insufficient")
             items = search_scene(bbox, period, args.cloud_limit)
         else:
             raise PreflightError("network disabled by default; provide --fixture")
@@ -309,6 +321,8 @@ def main(argv=None):
             "purchased_imagery": False,
             "human_review_required": True,
         }
+        if args.allow_network:
+            output["declared_budget_review"] = budget
         if args.stream_window:
             output["pixel_window"] = calculate_window_ndvi(selected, bbox)
         print(json.dumps(output, sort_keys=True, indent=2, allow_nan=False))
