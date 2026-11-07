@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "scope": "field-evidence-packet-proposal",
+  "project_id": "fictional-utility-pilot",
+  "release_approved": false,
+  "authorized_reviewer_role": "pending",
+  "evidence": {},
+  "evaluation": {
+    "development_segment_ids": [
+      "synthetic-line-1"
+    ],
+    "holdout_segment_ids": [
+      "synthetic-line-2"
+    ],
+    "blind_holdout_unlocked_only_after_model_freeze": false,
+    "prespecified_safety_thresholds_reviewed": false,
+    "field_calibration_completed": false,
+    "subgroup_error_analysis_completed": false,
+    "false_negative_review_completed": false
+  }
+}
