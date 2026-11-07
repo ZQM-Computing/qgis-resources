@@ -53,7 +53,9 @@ References: [Copernicus Sentinel-2 L2A Data Quality Report](https://sentiwiki.co
 
 An additional **offline cost gate** is provided:
 
-    python scripts/stac_cost_budget.py fixtures/stac-cost-budget-synthetic.json
+```bash
+python scripts/stac_cost_budget.py fixtures/stac-cost-budget-synthetic.json
+```
 
 It accepts explicitly declared estimates of number of requests, remote bytes, compute seconds and analyst minutes, as well as user-provided per-unit USD rates and a budget ceiling. The fixed policy caps requests at 100, transfer estimates at 2 GB, compute at 3,600 seconds, review time at 240 minutes, and approved budget ceilings at $10,000. Each cost is rounded upward to the nearest cent. Exceeding the ceiling is blocked. **Rates are purely hypothetical in the fixture; the tool does not monitor provider bills, enforce an actual egress quota, authorize API access, buy imagery or permit client delivery.** Production must use measured billing, authenticated budgets and a separate enforcement control plane.
 
