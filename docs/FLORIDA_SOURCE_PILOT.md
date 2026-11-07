@@ -1,10 +1,10 @@
 # Florida public-source inspection pilot (P0-A4)
 
-**Status:** source-discovery and read-only bounded ingestion prototype, not commercial coverage verification or a usable parcel screening engine. This independent source-inspection adapter targets `main` directly and does not require the synthetic screening code in PR #40 or modify any product delivery approval state.
+**Status:** source-discovery and read-only bounded ingestion prototype, not commercial coverage verification or a usable parcel screening engine. The synthetic screening core from PR #40 is merged, but this source adapter remains **unapproved for live or commercial use** and does not modify any delivery approval state.
 
 ## Grounded official sources
 
-- [USFWS NWI web mapping services](https://www.fws.gov/program/national-wetlands-inventory/web-mapping-services) publish a REST endpoint for Wetlands. On November 7, 2026, its publicly exposed ArcGIS REST metadata identified layer 0 as `Wetlands`, polygon features, `OBJECTID`, `ATTRIBUTE`, `WETLAND_TYPE`, GeoJSON query support, pagination, and a maximum 500 returned records per request. These are **service metadata observations**, not a successful live feature-download claim.
+- [USFWS NWI web mapping services](https://www.fws.gov/program/national-wetlands-inventory/web-mapping-services) publish a REST endpoint for Wetlands. On November 7, 2026, its publicly exposed ArcGIS REST metadata identified layer 0 as `Wetlands`, polygon features, `OBJECTID`, `ATTRIBUTE`, `WETLAND_TYPE`, GeoJSON query support, pagination, and a maximum 500 returned records per request. The metadata also advertises `OBJECTID` as `esriFieldTypeOID`, `ATTRIBUTE` and `WETLAND_TYPE` as `esriFieldTypeString`, and `supportsOrderBy=true`; the adapter now verifies these types/capabilities before querying features. These are **service metadata observations**, not a successful live feature-download claim.
 - [NWI state downloads](https://www.fws.gov/program/national-wetlands-inventory/download-state-wetlands-data) list an **October 2026 state-package posting** and include separate project-level metadata with imagery dates. The posting date is **not** evidence that a particular wetland polygon was mapped in October 2026. A real screening pipeline must associate its queried area with NWI project metadata, preserve imagery/interpretation dates and known mapping gaps, and reject unsubstantiated `current_edition` claims. The queried service layer and downloadable state package also must not be assumed to be identical without explicit comparison.
 - [USFWS Wetlands Mapper](https://www.fws.gov/program/national-wetlands-inventory/wetlands-mapper) says the mapped inventory uses a biological wetland definition and does **not** establish the scope of regulatory jurisdiction, wetland absence or legally protected boundaries. [Download guidance](https://www.fws.gov/program/national-wetlands-inventory/data-download) recommends consulting source publication dates and cautions, and provides state/watershed downloads for analysis.
 - [Florida Geospatial Open Data Portal](https://geodata.floridagio.gov/) advertises 2026 statewide parcel data with over 10.9 million records across Florida's 67 counties. The portal's general availability is **not** a verified specific-layer URL, parcel-boundary accuracy, survey, or license review for commercial redistribution.
@@ -23,7 +23,7 @@ Explicitly opt in to a small public read-only request:
 
     python scripts/nwi_source_inspector.py --bbox -82.01 27.71 -82.00 27.72 --out /tmp/nwi-inspection.json --network
 
-Sample coordinates define an arbitrary small test envelope and are **not a customer's parcel**. The adapter allows only official USFWS NWI layer 0 HTTPS endpoints, blocks HTTP redirects, bounds each response to 4 MiB, caps a Florida envelope at 0.02 degrees in each direction and limits returned features to 200. It first verifies layer capability/schema and obtains the server's count, then requests GeoJSON with stable `OBJECTID` pagination, reconciles counts and rejects truncated/invalid/duplicate records. It also rejects provider polygon bounding envelopes wholly outside the requested query box, including on later pages; this is only a necessary consistency check, **not** proof of true polygon intersection, dataset coverage or correct source geometry. If the server returns too many features or is inaccessible, the request **fails closed**; it does not declare no constraint.
+Sample coordinates define an arbitrary small test envelope and are **not a customer's parcel**. The adapter allows only official USFWS NWI layer 0 HTTPS endpoints, blocks HTTP redirects, bounds each response to 4 MiB, caps a Florida envelope at 0.02 degrees in each direction and limits returned features to 200. It first verifies layer capability/schema and obtains the server's count, then requests GeoJSON with stable `OBJECTID` pagination, reconciles counts and rejects truncated/invalid/duplicate records. Each returned ring must also have valid coordinate tuples, at least three distinct vertices, no immediately repeated vertices and nonzero signed planar ring area. Every provider feature must have a bounding envelope intersecting the requested box, including later pages; envelope intersection is NOT proof of actual polygon intersection. **These are elementary sanity checks, not full OGC topological validity**: self-intersections, invalid hole nesting and overlapping multipart components still require independent GDAL/OGR `IsValid()` assessment before spatial analysis or delivery. The Florida latitude/longitude guard is only a rectangular geographic envelope, not a point-in-Florida administrative boundary test. If the server returns too many features or is inaccessible, the request **fails closed**; it does not declare no constraint.
 
 Source results carry `coverage_state=unverified`, `reuse_rights=unverified`, `human_review=pending`, and `regulatory_determination=false`, including when the query returns zero features. The result also records a SHA-256 hash of the **normalized, filtered GeoJSON**, ordered unique-object-ID checks, and the total validated vertex count. This is an internal transformation fingerprint, **not** a signature or a hash of the unmodified agency response. Because layer data may change between a count request and the individual feature pages, count/ID reconciliation **does not prove point-in-time snapshot consistency**. If the agency metadata, geometry type, CRS, page count, identifiers, mandatory attributes, or source endpoint differ from the expected contract, ingestion fails instead of silently accepting an incomplete dataset. The adapter filters source attributes to an allowlist, records the provider URL, retrieval time, bounding box and requested CRS, and atomically creates one non-overwriting JSON snapshot. Its output **does not** feed the customer report or assert legal rights. The CLI produces no network request unless `--network` is explicitly supplied.
 
@@ -31,31 +31,39 @@ Tests run with a mocked provider response, never a live public endpoint:
 
     python -m pytest -q tests/test_nwi_source_inspector.py
 
-## Offline integrity replay — not authenticity or approval
+## Offline GDAL/OGR topology quarantine gate
 
-An inspected NWI snapshot can be checked again without network access using:
+The opt-in network inspector and the GDAL validation gate are deliberately separated. The inspector emits one **inspection-only** JSON snapshot without generating a customer screening result. A locally saved snapshot can be passed through the independent topology and source-integrity checker:
+
+    /usr/bin/python3 scripts/nwi_topology_gate.py /path/to/nwi-inspection.json
+
+The gate verifies the embedded normalized GeoJSON SHA-256 fingerprint (not a signature), expected NWI identity and source-status fields, bounded feature count, ordering and declared geographic CRS, and actual OGR/GEOS polygon validity. It exits nonzero on missing, malformed, tampered, self-intersecting, empty or nonpolygon geometries. It reads the file without modifying it, never requests network access, and emits only a machine-readable **quarantined-topology-reviewed-not-approved** summary.
+
+The existing GitHub QGIS runtime workflow calls `scripts/validate_nwi_topology_runtime.py` with **mocked synthetic polygons only**. The test proves that a valid ring passes, a modified checksum fails, and a self-intersecting bow-tie fails OGR validity even if its unkeyed hash is recomputed. **No actual live NWI feature has passed this gate**; it also cannot prove source authenticity, spatial completeness, temporal freshness, commercial reuse rights, wetland regulatory jurisdiction or client readiness.
+
+## Offline replay and analyst intake (merged from independent PR #47)
+
+After acquiring a **quarantined**, unapproved local snapshot, the additional
+offline gates can replay normalized JSON structure, ordered identifiers, exact
+attributes, vertex counts, the query-envelope constraint, and the unkeyed
+normalized-GeoJSON SHA-256 checksum:
 
     python scripts/nwi_snapshot_replay.py /path/to/nwi-inspection.json
-
-The `scripts/nwi_snapshot_replay.py` checker enforces normalized GeoJSON structure, exact ordered feature IDs, strict filtered attributes, layer and CRS identity, feature/vertex counts, bbox-envelope consistency and the source snapshot's normalized-GeoJSON SHA-256 digest. This detects accidental corruption and many internal mismatches between inspection and downstream processing. Source hashes can be regenerated by anyone editing the snapshot, however, and therefore **are not authenticated signatures**. No remote source is fetched during replay.
-
-A successful command returns `INTERNAL_INTEGRITY_REPLAYED_NOT_APPROVED`, with `snapshot_authenticity_verified=false`, `agency_temporal_consistency_verified=false`, `geographic_completeness_verified=false`, `reuse_rights_verified=false`, `regulatory_jurisdiction_determined=false`, and `commercial_delivery_authorized=false`. A zero-feature snapshot retains all those false states.
-
-The replay result must never be wired directly to a paid screening report or permission to use restricted data. To reach a client deliverable, independently verify original source acquisition and metadata, wetland-project mapping dates, actual local coverage, source rights and appropriate professional review. Tests use fabricated provider responses and do not demonstrate a live agency download.
-
-## Analyst source-candidate handoff (non-approving)
-
-After local integrity replay, a separate offline handoff can generate a **metadata-only, blocked analyst intake**:
-
     python scripts/nwi_analyst_handoff.py /path/to/nwi-inspection.json
 
-The handoff replays the full normalized snapshot and emits the source identity, requested bounding envelope, normalized feature digest/count, a stable `source-candidate-review-handoff` type, and six explicitly unresolved review gates. **It does not output source polygons, a screening manifest, a parcel analysis, a regulatory finding or a customer deliverable.** This keeps its data contract separate from the synthetic Site Feasibility Passport in PR #40.
+The first command returns `INTERNAL_INTEGRITY_REPLAYED_NOT_APPROVED` only
+for internally consistent input. The second returns a **metadata-only**
+`BLOCKED_PENDING_INDEPENDENT_SOURCE_REVIEW` analyst handoff, with required
+review gates for original agency acquisition, wetland-project imagery/vintage,
+AOI-specific geographic coverage, data rights, study boundary and qualified
+methodology review. Neither tool sends a network request, promotes a source
+into a customer screening report, grants commercial reuse rights, or produces
+a regulatory jurisdiction decision. The source checksum is **not** an agency
+signature. A zero-feature source remains `coverage_state=unverified`.
 
-The result always has `status=BLOCKED_PENDING_INDEPENDENT_SOURCE_REVIEW`, `commercial_delivery_authorized=false`, `source_authenticity_verified=false`, `aoi_coverage_verified=false` and `human_review_required=true`. A zero-feature snapshot cannot be interpreted as absence of wetlands. Successful CLI exit means only that a blocked intake could be assembled from internally consistent data.
-
-Independent approval requires authenticating the original agency acquisition, associating NWI project mapping dates and imagery vintages with the AOI, confirming coverage and known omissions, documenting reuse and redistribution rights, verifying parcel/study boundaries and coordinate references, and obtaining qualified analyst acceptance. **None of these checks is automated or asserted complete here.** Fingerprints are not cryptographic signatures from the issuing agency.
-
-The handoff is local, read-only and has no network flag, outbound submission, report-publishing action or commercial approval control.
+The separate OGR topology quarantine gate remains required for actual
+polygon validity; envelope overlap and normalized JSON replay are not
+substitutes for full geometry validation.
 
 ## Live-query status (November 7, 2026)
 
@@ -76,4 +84,4 @@ Reproduction from an approved network egress host requires an explicit `--networ
 
 Nothing in this adapter initiates commercial orders, sends client emails, deploys services, accesses private customer files or changes the approved synthetic-only report pipeline. Humans retain authorization over publication, licensing decisions and client-facing claims.
 
-Related: [product issue #39](https://github.com/ZQM-Computing/qgis-resources/issues/39), [synthetic PR #40](https://github.com/ZQM-Computing/qgis-resources/pull/40), [synthetic evidence bundle under review in PR #40](https://github.com/ZQM-Computing/qgis-resources/pull/40).
+Related: [product issue #39](https://github.com/ZQM-Computing/qgis-resources/issues/39), [synthetic PR #40](https://github.com/ZQM-Computing/qgis-resources/pull/40), [synthetic evidence bundle](SCREENING_REPORT.md).
