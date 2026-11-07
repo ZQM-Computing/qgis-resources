@@ -27,8 +27,11 @@ class ScreeningError(ValueError):
 
 def _fixture_path(root: Path, ref: str) -> Path:
     """Restrict all input reads to local synthetic fixtures (no URLs or escapes)."""
-    fixture_root = (root / "fixtures").resolve(strict=True)
-    candidate = (root / ref).resolve(strict=True)
+    try:
+        fixture_root = (root / "fixtures").resolve(strict=True)
+        candidate = (root / ref).resolve(strict=True)
+    except OSError as exc:
+        raise ScreeningError("Missing or inaccessible synthetic fixture") from exc
     if not candidate.is_relative_to(fixture_root) or candidate == fixture_root:
         raise ScreeningError("Fixture path escapes allowed directory")
     if not candidate.is_file() or candidate.suffix.casefold() != ".geojson":
@@ -47,6 +50,18 @@ def _spatial_reference(osr: Any, text: str) -> Any:
 def _collect_polygons(
     path: Path, declared_srs: Any, target_srs: Any, ogr: Any, osr: Any,
 ) -> Any:
+    # The GeoJSON driver may default to WGS84 for files without a CRS;
+    # this strict synthetic pilot does not silently accept that default.
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise ScreeningError("Unreadable synthetic GeoJSON metadata") from exc
+    crs = document.get("crs") if isinstance(document, dict) else None
+    if not isinstance(crs, dict) or not isinstance(crs.get("properties"), dict):
+        raise ScreeningError("Synthetic fixture must explicitly declare CRS")
+    fixture_crs = crs["properties"].get("name")
+    if not isinstance(fixture_crs, str) or not bool(_spatial_reference(osr, fixture_crs).IsSame(declared_srs)):
+        raise ScreeningError("Synthetic fixture CRS metadata mismatch")
     dataset = ogr.Open(str(path), 0)  # explicitly read only
     if dataset is None or dataset.GetLayerCount() != 1:
         raise ScreeningError("Expected one readable GeoJSON polygon layer")
@@ -91,7 +106,10 @@ def _collect_polygons(
 
 def analyze(manifest: dict[str, Any], root: Path) -> dict[str, Any]:
     """Measure clipped/dissolved overlay area; results are synthetic only."""
-    problems = validate_manifest(manifest)
+    try:
+        problems = validate_manifest(manifest)
+    except (TypeError, ValueError) as exc:
+        raise ScreeningError("Invalid manifest field types") from exc
     if problems:
         raise ScreeningError("Invalid metadata contract: " + ", ".join(problems))
     from osgeo import ogr, osr
