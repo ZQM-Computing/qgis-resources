@@ -237,8 +237,7 @@ def calculate_window_ndvi(item, bbox, aoi_geometry=None):
                     c = scl_aligned.read(1, window=window, masked=True)
             aoi_pixels = width * height
             if aoi_geometry is not None:
-                projected_aoi = transform_geom("EPSG:4326", nir.crs, aoi_geometry,
-                                               antimeridian_cutting=False)
+                projected_aoi = transform_geom("EPSG:4326", nir.crs, aoi_geometry)
                 polygon_pixels = geometry_mask(
                     [projected_aoi], out_shape=(height, width),
                     transform=window_transform(window, nir.transform),
