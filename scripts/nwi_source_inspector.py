@@ -131,13 +131,13 @@ def _query_filters(box: tuple[float, ...]) -> dict[str, str]:
 
 
 def _verify_layer(layer: dict[str, Any]) -> None:
-    if layer.get("id") != 0 or layer.get("geometryType") != "esriGeometryPolygon":
+    if type(layer.get("id")) is not int or layer["id"] != 0 or layer.get("geometryType") != "esriGeometryPolygon":
         raise SourceInspectionError("NWI layer identity or geometry changed")
     if layer.get("name") != "Wetlands":
         raise SourceInspectionError("NWI layer name changed")
-    if "Query" not in str(layer.get("capabilities", "")).split(","):
+    if "Query" not in {item.strip() for item in str(layer.get("capabilities", "")).split(",")}:
         raise SourceInspectionError("NWI layer lacks query capability")
-    if "geoJSON" not in str(layer.get("supportedQueryFormats", "")).split(", "):
+    if "geojson" not in {item.strip().casefold() for item in str(layer.get("supportedQueryFormats", "")).split(",")}:
         raise SourceInspectionError("NWI layer lacks GeoJSON support")
     fields = {
         x.get("name") for x in layer.get("fields", []) if isinstance(x, dict)
@@ -181,7 +181,7 @@ def _validate_coords(geometry: Any) -> int:
                 if any(
                     isinstance(n, bool) or not isinstance(n, (int, float))
                     or not math.isfinite(n)
-                    for n in (x, y)
+                    for n in pair
                 ) or not (-180 <= x <= 180 and -90 <= y <= 90):
                     raise SourceInspectionError("Invalid geographic coordinates")
                 total += 1
@@ -212,6 +212,8 @@ def collect(
     if not isinstance(obtained_at, str) or not obtained_at.endswith("Z"):
         raise SourceInspectionError("Expected explicit UTC retrieval time")
     seen: set[int] = set()
+    last_oid: int | None = None
+    vertices_seen = 0
     rows: list[dict[str, Any]] = []
     for offset in range(0, count, PAGE_SIZE):
         requested = min(PAGE_SIZE, count - offset)
@@ -228,9 +230,15 @@ def collect(
             page.get("type") != "FeatureCollection"
             or not isinstance(page_features, list)
             or len(page_features) != requested
-            or page.get("exceededTransferLimit") is True
+            or page.get("exceededTransferLimit") not in (None, False)
         ):
             raise SourceInspectionError("NWI page incomplete or truncated")
+        crs = page.get("crs")
+        # GeoJSON normally omits CRS (WGS84 longitude/latitude by RFC 7946).
+        # An explicit contradictory CRS must not pass an EPSG:4326 request.
+        if crs is not None:
+            if not isinstance(crs, dict) or crs.get("type") != "name" or not isinstance(crs.get("properties"), dict) or crs["properties"].get("name") not in ("EPSG:4326", "OGC:CRS84", "urn:ogc:def:crs:OGC:1.3:CRS84"):
+                raise SourceInspectionError("Unexpected GeoJSON coordinate reference system")
         for feature in page_features:
             if not isinstance(feature, dict) or feature.get("type") != "Feature":
                 raise SourceInspectionError("Invalid NWI feature payload")
@@ -238,10 +246,16 @@ def collect(
             if not isinstance(props, dict):
                 raise SourceInspectionError("NWI feature lacks attributes")
             oid = props.get("OBJECTID")
-            if type(oid) is not int or oid in seen:
-                raise SourceInspectionError("Missing/duplicate NWI feature identifier")
+            if type(oid) is not int or oid in seen or (last_oid is not None and oid <= last_oid):
+                raise SourceInspectionError("Missing/duplicate/out-of-order NWI feature identifier")
+            last_oid = oid
             seen.add(oid)
-            _validate_coords(feature.get("geometry"))
+            for field in ("ATTRIBUTE", "WETLAND_TYPE"):
+                if not isinstance(props.get(field), str) or not props[field].strip():
+                    raise SourceInspectionError("Missing or invalid NWI wetland attributes")
+            vertices_seen += _validate_coords(feature.get("geometry"))
+            if vertices_seen > MAX_VERTICES:
+                raise SourceInspectionError("Total NWI polygon vertex budget exceeded")
             rows.append({
                 "type": "Feature",
                 "id": oid,
@@ -258,6 +272,7 @@ def collect(
         "type": "FeatureCollection",
         "features": rows,
     }
+    normalized_sha256 = sha256(json.dumps(normalized, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")).hexdigest()
     return {
         "schema_version": 1,
         "status": "inspection-only-not-screened",
@@ -273,6 +288,9 @@ def collect(
             "requested_output_crs": "EPSG:4326",
             "retrieved_at_utc": obtained_at,
             "features_reconciled": count,
+            "normalized_geojson_sha256": normalized_sha256,
+            "feature_pagination_integrity": "count-and-ordered-unique-ids-checked; point-in-time-snapshot-unverified",
+            "feature_vertices_checked": vertices_seen,
             "limitations": (
                 "Query result is not proof of mapping completeness, legal jurisdiction, "
                 "absence of wetlands, reuse rights, current edition or professional clearance."
