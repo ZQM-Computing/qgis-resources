@@ -62,7 +62,13 @@ class ValidationHarnessTests(unittest.TestCase):
         self.assertIsNone(result["metrics"]["recall_sensitivity"])
         self.assertIsNone(result["metrics"]["false_negative_rate"])
         self.assertEqual(result["metrics"]["precision"], 0.0)
-        self.assertIsNone(result["metrics"]["specificity"] if result["negative_reference_count"] == 0 else None)
+        self.assertEqual(result["metrics"]["specificity"], 0.5)
+        reference = labels()
+        for label in reference["segment_labels"]:
+            label["inspection_needed"] = True
+        all_positive = evaluate(screening(), reference)
+        self.assertIsNone(all_positive["metrics"]["specificity"])
+        self.assertIsNone(all_positive["metrics"]["false_positive_rate"])
 
     def test_stale_input_digest_rejected(self):
         data = screening()
