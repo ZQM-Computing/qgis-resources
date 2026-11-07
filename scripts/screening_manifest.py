@@ -58,11 +58,22 @@ def _source_reference(origin: str, value: Any) -> bool:
             return False
         path = PurePosixPath(value)
         return len(path.parts) > 1 and path.parts[0] == "fixtures" and ".." not in path.parts
-    parts = urlsplit(value)
+    if any(ch.isspace() or ch == "\\\\" or ord(ch) < 32 or ord(ch) == 127 for ch in value):
+        return False
+    try:
+        parts = urlsplit(value)
+        port = parts.port
+        hostname = parts.hostname
+    except ValueError:
+        return False
     return (
-        parts.scheme == "https" and bool(parts.hostname)
+        parts.scheme == "https" and bool(hostname)
         and parts.username is None and parts.password is None
+        and port in (None, 443)
         and not parts.fragment
+        and hostname not in {"localhost"}
+        and not hostname.endswith((".localhost", ".local"))
+        and "." in hostname
     )
 
 
