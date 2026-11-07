@@ -176,5 +176,4 @@ Review each component separately. **Do not advertise savings, legal compliance, 
 
 This standalone prototype does not alter existing production services, credentials, trust roots, Stripe, DNS or customer data.
 
-
 <!-- /coderabbit-ai-generated:v1 -->
