@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "scope": "synthetic-only",
+  "horizontal_crs": "EPSG:32617",
+  "vertical_reference": "SYNTHETIC_SHARED_LOCAL_METRES",
+  "human_review": "pending",
+  "observation_date": "2026-11-07",
+  "review_threshold_m": 4,
+  "conductor_segments": [
+    {
+      "id": "line-1",
+      "start": [
+        500000,
+        3200000,
+        15
+      ],
+      "end": [
+        500020,
+        3200000,
+        15
+      ],
+      "absolute_position_uncertainty_m": 0.5
+    },
+    {
+      "id": "line-2",
+      "start": [
+        500100,
+        3200000,
+        20
+      ],
+      "end": [
+        500120,
+        3200000,
+        20
+      ],
+      "absolute_position_uncertainty_m": 0.5
+    }
+  ],
+  "vegetation_samples": [
+    {
+      "id": "sample-a",
+      "position": [
+        500010,
+        3200003,
+        15
+      ],
+      "absolute_position_uncertainty_m": 0.5
+    },
+    {
+      "id": "sample-b",
+      "position": [
+        500200,
+        3200000,
+        3
+      ],
+      "absolute_position_uncertainty_m": 0.25
+    }
+  ]
+}
