@@ -79,6 +79,25 @@ class StacCogTests(unittest.TestCase):
         with self.assertRaises(preflight.PreflightError):
             preflight.validate_item(d)
 
+    def test_scene_must_intersect_request_and_match_time_window(self):
+        data = sample()
+        _, metadata = preflight.select_item(
+            [data], bbox=[-46.63, -23.55, -46.60, -23.53],
+            period="2026-10-01/2026-10-31")
+        self.assertEqual(metadata["scene_id"], data["id"])
+        for change in ("wrong_bbox", "wrong_date", "impossible_date"):
+            item = sample()
+            if change == "wrong_bbox":
+                item["bbox"] = [5, 5, 6, 6]
+            elif change == "wrong_date":
+                item["properties"]["datetime"] = "2026-08-12T10:30:00Z"
+            else:
+                item["properties"]["datetime"] = "2026-18-95T10:30:00Z"
+            with self.subTest(change=change), self.assertRaises(preflight.PreflightError):
+                preflight.select_item(
+                    [item], bbox=[-46.63, -23.55, -46.60, -23.53],
+                    period="2026-10-01/2026-10-31")
+
     def test_scene_selection_deterministic_and_bounded(self):
         a, b = sample(), sample()
         b["id"] = "synthetic-sentinel-scene-02"
