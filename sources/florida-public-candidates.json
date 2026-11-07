@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "status": "discovery-candidates-not-approved",
+  "purpose": "Candidate public sources for read-only Florida pilot; each requires independent coverage, freshness, accuracy and reuse-rights validation before client use",
+  "candidates": [
+    {
+      "id": "usfws-nwi-wetlands",
+      "provider": "U.S. Fish and Wildlife Service, National Wetlands Inventory",
+      "official_reference": "https://www.fws.gov/program/national-wetlands-inventory/web-mapping-services",
+      "dataset_limitations": "https://www.fws.gov/program/national-wetlands-inventory/wetlands-mapper",
+      "service_url": "https://fwspublicservices.wim.usgs.gov/wetlandsmapservice/rest/services/Wetlands/MapServer/0",
+      "layer_id": 0,
+      "geometry_type": "esriGeometryPolygon",
+      "source_maturity": "published-service-metadata-observed-2026-11-07",
+      "licensing_review": "pending",
+      "actual_feature_coverage": "unverified",
+      "current_effective_edition": "unverified",
+      "commercial_use_approved": false,
+      "screening_use": "inspection-only",
+      "caveat": "Mapped wetland inventory is not a jurisdictional delineation; missing mapped features cannot be treated as wetlands absent"
+    },
+    {
+      "id": "florida-dor-parcels-2026",
+      "provider": "Florida Geographic Information Office / Florida Department of Revenue",
+      "official_reference": "https://geodata.floridagio.gov/",
+      "service_url": null,
+      "source_maturity": "portal-discovery-only",
+      "licensing_review": "pending",
+      "actual_feature_coverage": "unverified",
+      "current_effective_edition": "unverified",
+      "commercial_use_approved": false,
+      "screening_use": "discovery-only",
+      "caveat": "Portal advertises 2026 statewide parcel data, but no particular parcel service or authoritative surveyed boundary was validated for this pilot"
+    },
+    {
+      "id": "florida-dep-open-data",
+      "provider": "Florida Department of Environmental Protection",
+      "official_reference": "https://floridadep.gov/otis/enterprise-application-services/gis",
+      "service_catalog_url": "https://ags.dep.state.fl.us/arcgis/rest/services/OpenData",
+      "service_url": null,
+      "source_maturity": "official-service-catalog-observed-2026-11-07",
+      "licensing_review": "pending",
+      "actual_feature_coverage": "unverified",
+      "current_effective_edition": "unverified",
+      "commercial_use_approved": false,
+      "screening_use": "discovery-only",
+      "caveat": "Program data are not substitutes for agency decisions; layer-specific rights, vintage, geometry and coverage require review"
+    }
+  ]
+}
