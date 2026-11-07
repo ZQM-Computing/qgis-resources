@@ -50,4 +50,4 @@ Reproduction from an approved network egress host requires an explicit `--networ
 
 Nothing in this adapter initiates commercial orders, sends client emails, deploys services, accesses private customer files or changes the approved synthetic-only report pipeline. Humans retain authorization over publication, licensing decisions and client-facing claims.
 
-Related: [product issue #39](https://github.com/ZQM-Computing/qgis-resources/issues/39), [synthetic PR #40](https://github.com/ZQM-Computing/qgis-resources/pull/40), [synthetic evidence bundle](SCREENING_REPORT.md).
+Related: [product issue #39](https://github.com/ZQM-Computing/qgis-resources/issues/39), [synthetic PR #40](https://github.com/ZQM-Computing/qgis-resources/pull/40), [synthetic evidence bundle under review in PR #40](https://github.com/ZQM-Computing/qgis-resources/pull/40).
