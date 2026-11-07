@@ -34,6 +34,10 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: /usr/bin/python3 scripts/validate_dataset_qa_runtime.py
+      - name: Validate synthetic utility corridor proximity using GDAL/OGR
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: /usr/bin/python3 -m unittest discover -s tests -p 'test_utility_corridor_screening.py' -v
       - name: Exercise reprojection, raster clipping, and slope against a synthetic DEM
         env:
           QT_QPA_PLATFORM: offscreen
