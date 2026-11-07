@@ -353,7 +353,7 @@ def main(argv=None):
     parser.add_argument("--allow-network", action="store_true")
     parser.add_argument("--budget-plan", type=Path, help="Required for live remote access; declared cost assumptions only")
     parser.add_argument("--stream-window", action="store_true", help="Only when --allow-network, max 250k pixels")
-    parser.add_argument("--probe-range", action="store_true", help="Opt-in read-only 4 KiB COG range diagnostic; not GDAL egress metering")
+    parser.add_argument("--probe-range", action="store_true", help="Opt-in 4 KiB Range checks for B04/B08/SCL; not GDAL egress metering")
     parser.add_argument("--aoi-geojson", type=Path, help="Optional local Polygon/MultiPolygon; validated even in metadata mode")
     parser.add_argument("--radiometry-json", type=Path, help="Optional local, unverified scene-specific offset/quantification record")
     parser.add_argument("--product-metadata-xml", type=Path, help="Required with --radiometry-json; local bounded source consistency check")
@@ -392,8 +392,8 @@ def main(argv=None):
             budget = calculate(json.loads(budget_raw.decode("utf-8"), object_pairs_hook=_pairs_unique,
                                           parse_constant=lambda _: (_ for _ in ()).throw(PreflightError("nonfinite budget"))))
             if (budget["decision"] != "WITHIN_DECLARED_BUDGET_ONLY"
-                    or budget["remote_requests"] < (2 if args.probe_range else 1)
-                    or (args.probe_range and budget["estimated_range_bytes"] < 4096)):
+                    or budget["remote_requests"] < (4 if args.probe_range else 1)
+                    or (args.probe_range and budget["estimated_range_bytes"] < 3 * 4096)):
                 raise PreflightError("declared remote budget insufficient")
             items = search_scene(bbox, period, args.cloud_limit)
         else:
@@ -426,8 +426,8 @@ def main(argv=None):
         if args.allow_network:
             output["declared_budget_review"] = budget
         if args.probe_range:
-            from stac_range_probe import probe_range
-            output["cog_range_diagnostic"] = probe_range(selected["assets"]["B08"]["href"])
+            from stac_range_probe import probe_scene_assets
+            output["cog_range_diagnostic"] = probe_scene_assets(selected)
         if args.stream_window:
             output["pixel_window"] = calculate_window_ndvi(selected, bbox, aoi_geometry, radiometry)
         print(json.dumps(output, sort_keys=True, indent=2, allow_nan=False))
