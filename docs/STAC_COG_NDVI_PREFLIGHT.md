@@ -17,7 +17,7 @@
 3. With `--allow-network`, search the *fixed* Planetary Computer STAC endpoint, collection `sentinel-2-l2a`, max **4 returned items**, ordered locally by scene-level reported cloud cover (maximum 20% by default). **Scene-level cloud percent is not AOI-level usability.**
 4. Require B04, B08 and SCL asset references restricted to `https://sentinel2l2a01.blob.core.windows.net/sentinel2-l2/`, the documented storage account and container for the Planetary Computer Sentinel-2 L2A collection. Other Azure Blob accounts/containers are rejected, and no credential-bearing URL is included in output. Cloud signing is read-only; always treat signed URL query tokens as secrets.
 5. Only with `--stream-window --allow-network`, open the signed COG assets through Rasterio/GDAL, project the bounded geographic rectangle to the NIR grid, and clip its window to raster extent. Reject windows with zero valid pixels or more than **250,000 raster pixels**.
-6. Resample B04 bilinearly and SCL nearest to the B08 grid. Count pixels with SCL 4/5/6 and valid nonzero B04/B08 values. Compute a preliminary **digital-number band ratio** `(B08-B04)/(B08+B04)` for the rectangular window. It does **not** apply a client polygon mask, harmonization, radiometric offsets or atmospheric/BRDF uncertainty review; do not market this as an accuracy-calibrated NDVI.
+6. Resample B04 bilinearly and SCL nearest to the B08 grid. Count pixels with SCL 4/5/6 and valid nonzero B04/B08 values. Compute a preliminary **digital-number band ratio** `(B08-B04)/(B08+B04)` for the rectangular window. With an optional validated `--aoi-geojson` Polygon/MultiPolygon, it additionally uses a GDAL-reprojected pixel-center polygon mask, excluding pixels outside the supplied boundary. Without that argument it remains a rectangular window summary. **Neither mode** applies calibrated reflectance/radiometric offsets, atmospheric/BRDF uncertainty review or verified survey boundaries; do not market its digital-number ratio as calibrated NDVI.
 7. Report only scene ID/time, metadata cloud cover, valid pixel count, preview ratio, explicit unverified states and reviewer requirement. Do not write signed URLs, persistent imagery or customer boundaries to disk.
 
 ### Offline example (no network)
@@ -43,6 +43,27 @@ python scripts/stac_cog_ndvi_preflight.py \
 ```
 
 Install packages in a separate controlled environment. Re-evaluate API versions and credentials. Live tests should be executed only after confirming provider access, terms and rate limits. GDAL's HTTP range reads can issue multiple requests including auxiliary/overview reads; **a pixel-count cap does not guarantee an equivalent network-byte cap**.
+
+## Polygon AOI masking — bounded, local-only input
+
+`--aoi-geojson fixtures/stac-aoi-synthetic.geojson` accepts **only** a GeoJSON `Polygon` or `MultiPolygon` geometry in longitude/latitude (EPSG:4326). The AOI must remain within the requested `--bbox`. Input is limited to 128 KiB, at most 2,000 vertices and 20 polygon parts/rings per nesting level. Structural validation rejects nonfinite coordinates, unsupported dimensions, malformed rings and dateline crossing. Shapely/GEOS additionally checks polygon topology; invalid input is rejected rather than silently repaired.
+
+The Rasterio path transforms the polygon to the NIR raster grid, creates a pixel-center inclusion mask and combines it with the B04/B08 nodata and SCL mask. Output adds `aoi_pixel_count`, `valid_fraction_of_aoi` and `aoi_polygon_mask_applied`. If no pixel centers fall inside the polygon or none remains usable, the request fails closed. The pixel-window cap still applies **before** masking, so tiny polygons inside huge windows cannot evade compute limits.
+
+The AOI is never printed in results, and local fixture mode never reads pixels or initiates network requests. Polygon topology validity is **not** evidence of surveyed ownership, regulatory boundary accuracy, positional accuracy, or legal usage rights. Edge pixels are chosen by pixel-center semantics (`all_touched=False`); independent area-weighted/perimeter accuracy evaluation remains a backlog item.
+
+For an authorized live exploratory read, include the polygon and the required local cost budget:
+
+```bash
+python scripts/stac_cog_ndvi_preflight.py \
+  --bbox -46.69 -23.59 -46.61 -23.51 \
+  --start 2026-10-01 --end 2026-10-31 \
+  --aoi-geojson fixtures/stac-aoi-synthetic.geojson \
+  --budget-plan fixtures/stac-cost-budget-synthetic.json \
+  --allow-network --stream-window
+```
+
+The fixture geometry is **fictional**, and this command is provided only as an opt-in engineering example; live provider reads, licensing and costs have not been independently validated. The local synthetic runtime tests generate their own GeoTIFFs and do not connect to the provider.
 
 ## Backlog hardening: AOI coverage, radiometry and budget preflight
 
