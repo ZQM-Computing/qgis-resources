@@ -199,6 +199,10 @@ def calculate_window_ndvi(item, bbox, aoi_geometry=None, radiometry=None):
     if aoi_geometry is not None:
         from stac_aoi import validate_aoi
         validate_aoi(aoi_geometry, bbox)
+    if radiometry is not None:
+        # Reject mismatched/forged input before opening potentially remote COGs.
+        from stac_radiometry import validate_radiometry
+        validate_radiometry(radiometry, item["id"])
     from rasterio.windows import from_bounds, Window
 
     for key in SUPPORTED_ASSETS:
@@ -214,6 +218,20 @@ def calculate_window_ndvi(item, bbox, aoi_geometry=None, radiometry=None):
         with rasterio.open(nir_url) as nir, rasterio.open(red_url) as red, rasterio.open(scl_url) as scl:
             if not nir.crs or not red.crs or not scl.crs or nir.count != 1 or red.count != 1 or scl.count != 1:
                 raise PreflightError("missing CRS or unexpected raster bands")
+            if radiometry is not None:
+                # Rasterio read() returns raw encoded samples; if the source
+                # advertises scales or offsets, it may be pre-adjusted and
+                # applying BOA offsets again could corrupt the result.
+                for band_name, dataset in (("B04", red), ("B08", nir)):
+                    if (dataset.dtypes[0] != "uint16"
+                            or len(dataset.scales) != 1 or len(dataset.offsets) != 1
+                            or not math.isfinite(dataset.scales[0])
+                            or not math.isfinite(dataset.offsets[0])
+                            or not math.isclose(dataset.scales[0], 1.0, rel_tol=0.0, abs_tol=1e-12)
+                            or not math.isclose(dataset.offsets[0], 0.0, rel_tol=0.0, abs_tol=1e-12)):
+                        raise PreflightError(
+                            "radiometry requires unscaled raw uint16 " + band_name + " source"
+                        )
             left, bottom, right, top = transform_bounds("EPSG:4326", nir.crs, *bbox, densify_pts=21)
             raw = from_bounds(left, bottom, right, top, transform=nir.transform)
             col0, row0 = max(0, _window_edge(raw.col_off, upper=False)), max(0, _window_edge(raw.row_off, upper=False))
@@ -262,8 +280,7 @@ def calculate_window_ndvi(item, bbox, aoi_geometry=None, radiometry=None):
             ndvi = (np.asarray(n)[valid] - np.asarray(r)[valid]) / denom[valid]
             corrected_candidate = None
             if radiometry is not None:
-                from stac_radiometry import validate_radiometry, correct_dn_arrays
-                validate_radiometry(radiometry, item["id"])
+                from stac_radiometry import correct_dn_arrays
                 nir_ref, red_ref = correct_dn_arrays(
                     np.asarray(n), np.asarray(r), radiometry
                 )
@@ -289,6 +306,7 @@ def calculate_window_ndvi(item, bbox, aoi_geometry=None, radiometry=None):
                     "product_metadata_digest_claimed": radiometry["product_metadata_sha256"],
                     "product_metadata_authenticity_verified": False,
                     "processing_baseline_crosschecked_to_original_product": False,
+                    "raw_uint16_raster_scale_offset_checked": True,
                     "customer_ready_ndvi": False,
                 }
             result = {
