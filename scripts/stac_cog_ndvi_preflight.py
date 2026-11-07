@@ -180,7 +180,7 @@ def _window_edge(value, *, upper):
     return math.ceil(value) if upper else math.floor(value)
 
 
-def calculate_window_ndvi(item, bbox, aoi_geometry=None):
+def calculate_window_ndvi(item, bbox, aoi_geometry=None, radiometry=None):
     """Read only one bounded Sentinel scene window via Rasterio/GDAL HTTP range I/O.
 
     This intentionally reports an *exploratory DN-ratio*, without claiming
@@ -260,7 +260,38 @@ def calculate_window_ndvi(item, bbox, aoi_geometry=None):
             if not count:
                 raise PreflightError("no usable clear pixels; optical analysis unavailable")
             ndvi = (np.asarray(n)[valid] - np.asarray(r)[valid]) / denom[valid]
-            return {
+            corrected_candidate = None
+            if radiometry is not None:
+                from stac_radiometry import validate_radiometry, correct_dn_arrays
+                validate_radiometry(radiometry, item["id"])
+                nir_ref, red_ref = correct_dn_arrays(
+                    np.asarray(n), np.asarray(r), radiometry
+                )
+                reflectance_denominator = nir_ref + red_ref
+                # Negative reflectance can occur for dark targets; do not
+                # silently interpret nonpositive reflectance in NDVI.
+                candidate_mask = (
+                    valid & np.isfinite(reflectance_denominator)
+                    & (nir_ref >= 0) & (red_ref >= 0)
+                    & (reflectance_denominator > 1e-9)
+                )
+                candidate_count = int(candidate_mask.sum())
+                corrected_candidate = {
+                    "status": "CORRECTED_ARITHMETIC_ONLY_UNVERIFIED_SOURCE",
+                    "mean_ndvi_reflectance_candidate": (
+                        round(float(np.mean(
+                            (nir_ref[candidate_mask] - red_ref[candidate_mask])
+                            / reflectance_denominator[candidate_mask]
+                        )), 6) if candidate_count else None
+                    ),
+                    "corrected_valid_pixel_count": candidate_count,
+                    "excluded_negative_or_zero_reflectance_pixels": count - candidate_count,
+                    "product_metadata_digest_claimed": radiometry["product_metadata_sha256"],
+                    "product_metadata_authenticity_verified": False,
+                    "processing_baseline_crosschecked_to_original_product": False,
+                    "customer_ready_ndvi": False,
+                }
+            result = {
                 "status": "EXPLORATORY_REVIEW_ONLY",
                 "method": "Sentinel-2 B08/B04 digital-number ratio with SCL 4/5/6 mask",
                 "mean_ndvi_dn_ratio": round(float(np.mean(ndvi)), 6),
@@ -280,6 +311,9 @@ def calculate_window_ndvi(item, bbox, aoi_geometry=None):
                 "human_review_required": True,
                 "asset_urls_logged": False,
             }
+            if corrected_candidate is not None:
+                result["radiometric_candidate"] = corrected_candidate
+            return result
 
 
 def _unique(pairs):
@@ -302,6 +336,7 @@ def main(argv=None):
     parser.add_argument("--budget-plan", type=Path, help="Required for live remote access; declared cost assumptions only")
     parser.add_argument("--stream-window", action="store_true", help="Only when --allow-network, max 250k pixels")
     parser.add_argument("--aoi-geojson", type=Path, help="Optional local Polygon/MultiPolygon; validated even in metadata mode")
+    parser.add_argument("--radiometry-json", type=Path, help="Optional local, unverified scene-specific offset/quantification record")
     args = parser.parse_args(argv)
     try:
         bbox = check_bbox(args.bbox)
@@ -338,6 +373,10 @@ def main(argv=None):
         else:
             raise PreflightError("network disabled by default; provide --fixture")
         selected, metadata = select_item(items, args.cloud_limit, bbox=bbox, period=period)
+        radiometry = None
+        if args.radiometry_json is not None:
+            from stac_radiometry import load_radiometry
+            radiometry = load_radiometry(args.radiometry_json, metadata["scene_id"])
         output = {
             "status": "METADATA_PREFLIGHT_ONLY",
             "source": STAC_URL,
@@ -350,11 +389,12 @@ def main(argv=None):
             "human_review_required": True,
             "aoi_polygon_supplied": aoi_geometry is not None,
             "aoi_boundary_accuracy_verified": False,
+            "radiometry_metadata_supplied": radiometry is not None,
         }
         if args.allow_network:
             output["declared_budget_review"] = budget
         if args.stream_window:
-            output["pixel_window"] = calculate_window_ndvi(selected, bbox, aoi_geometry)
+            output["pixel_window"] = calculate_window_ndvi(selected, bbox, aoi_geometry, radiometry)
         print(json.dumps(output, sort_keys=True, indent=2, allow_nan=False))
         return 0
     except (OSError, ValueError, TypeError, ImportError, RuntimeError, UnicodeError):
