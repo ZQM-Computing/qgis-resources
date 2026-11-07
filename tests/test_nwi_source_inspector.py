@@ -376,3 +376,78 @@ def test_existing_or_invalid_output_is_rejected_before_any_network(tmp_path, mon
     assert called == []
     assert output.read_text() == '{"previous":true}'
     assert not list(tmp_path.glob(".nwi-inspect-*"))
+
+
+def test_offline_replay_checks_normalized_snapshot_integrity_only():
+    from nwi_snapshot_replay import replay
+    snap = nwi.collect(BBOX, fake_source(2)[0], obtained_at="2026-11-07T20:00:00Z")
+    result = replay(snap)
+    assert result["status"] == "INTERNAL_INTEGRITY_REPLAYED_NOT_APPROVED"
+    assert result["feature_count"] == 2
+    assert result["snapshot_authenticity_verified"] is False
+    assert result["geographic_completeness_verified"] is False
+    assert result["commercial_delivery_authorized"] is False
+
+
+@pytest.mark.parametrize("case", [
+    "geometry", "hash", "count", "vertex", "objectid", "extra-field",
+    "temporal-caveat", "authorization", "bounds", "crs"
+])
+def test_offline_replay_rejects_snapshot_mutation(case):
+    from nwi_snapshot_replay import replay
+    snap = nwi.collect(BBOX, fake_source(2)[0], obtained_at="2026-11-07T20:00:00Z")
+    if case == "geometry":
+        snap["feature_collection"]["features"][0]["geometry"]["coordinates"][0][0] = [-80.5, 29.5]
+    elif case == "hash":
+        snap["source"]["normalized_geojson_sha256"] = "0" * 64
+    elif case == "count":
+        snap["source"]["features_reconciled"] = 3
+    elif case == "vertex":
+        snap["source"]["feature_vertices_checked"] = 1
+    elif case == "objectid":
+        snap["feature_collection"]["features"][1]["id"] = 1
+    elif case == "extra-field":
+        snap["feature_collection"]["features"][0]["properties"]["PRIVATE"] = "unreviewed"
+    elif case == "temporal-caveat":
+        snap["source"]["feature_pagination_integrity"] = "verified"
+    elif case == "authorization":
+        snap["reuse_rights"] = "approved"
+    elif case == "bounds":
+        snap["source"]["request_bbox_epsg4326"] = None
+    else:
+        snap["source"]["requested_output_crs"] = "EPSG:3857"
+    with pytest.raises(nwi.SourceInspectionError):
+        replay(snap)
+
+
+def test_offline_replay_empty_source_does_not_mean_no_wetlands():
+    from nwi_snapshot_replay import replay
+    snap = nwi.collect(BBOX, fake_source(0)[0], obtained_at="2026-11-07T20:00:00Z")
+    result = replay(snap)
+    assert result["feature_count"] == 0
+    assert result["geographic_completeness_verified"] is False
+    assert result["regulatory_jurisdiction_determined"] is False
+
+
+def test_offline_replay_cli_is_read_only_and_does_not_authorize(tmp_path, capsys):
+    from nwi_snapshot_replay import main
+    snap = nwi.collect(BBOX, fake_source(2)[0], obtained_at="2026-11-07T20:00:00Z")
+    path = tmp_path / "snapshot.json"
+    path.write_text(json.dumps(snap), encoding="utf-8")
+    before = path.read_bytes()
+    assert main([str(path)]) == 0
+    assert "NOT_APPROVED" in capsys.readouterr().out
+    assert path.read_bytes() == before
+    path.write_text('{"source":{},"source":{}}', encoding="utf-8")
+    assert main([str(path)]) == 2
+
+
+def test_offline_replay_rejects_recomputed_hash_when_vertices_invalid():
+    from hashlib import sha256
+    from nwi_snapshot_replay import replay
+    snap = nwi.collect(BBOX, fake_source(1)[0], obtained_at="2026-11-07T20:00:00Z")
+    snap["feature_collection"]["features"][0]["geometry"]["coordinates"][0][0] = [-80.5, 29.5]
+    blob = json.dumps(snap["feature_collection"], sort_keys=True, separators=(",", ":")).encode("utf-8")
+    snap["source"]["normalized_geojson_sha256"] = sha256(blob).hexdigest()
+    with pytest.raises(nwi.SourceInspectionError):
+        replay(snap)
