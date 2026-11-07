@@ -38,8 +38,12 @@ def metadata(**overrides):
         "id": 0, "name": "Wetlands", "geometryType": "esriGeometryPolygon",
         "capabilities": "Map,Query,Data", "supportedQueryFormats": "JSON, geoJSON, PBF",
         "maxRecordCount": 500,
-        "fields": [{"name": x} for x in ("OBJECTID", "ATTRIBUTE", "WETLAND_TYPE")],
-        "advancedQueryCapabilities": {"supportsPagination": True},
+        "fields": [
+            {"name": "OBJECTID", "type": "esriFieldTypeOID"},
+            {"name": "ATTRIBUTE", "type": "esriFieldTypeString"},
+            {"name": "WETLAND_TYPE", "type": "esriFieldTypeString"},
+        ],
+        "advancedQueryCapabilities": {"supportsPagination": True, "supportsOrderBy": True},
     }
     return {**result, **overrides}
 
@@ -339,3 +343,33 @@ def test_existing_or_invalid_output_is_rejected_before_any_network(tmp_path, mon
     assert called == []
     assert output.read_text() == '{"previous":true}'
     assert not list(tmp_path.glob(".nwi-inspect-*"))
+
+
+def test_reject_schema_drift_and_malformed_field_type_metadata():
+    """Reject a layer that changes required field semantics or metadata shape."""
+    for fields in (
+        [],
+        None,
+        [{"name": ["OBJECTID"], "type": "esriFieldTypeOID"}],
+        [
+            {"name": "OBJECTID", "type": "esriFieldTypeString"},
+            {"name": "ATTRIBUTE", "type": "esriFieldTypeString"},
+            {"name": "WETLAND_TYPE", "type": "esriFieldTypeString"},
+        ],
+        [
+            {"name": "OBJECTID", "type": "esriFieldTypeOID"},
+            {"name": "OBJECTID", "type": "esriFieldTypeOID"},
+            {"name": "ATTRIBUTE", "type": "esriFieldTypeString"},
+            {"name": "WETLAND_TYPE", "type": "esriFieldTypeString"},
+        ],
+    ):
+        with pytest.raises(nwi.SourceInspectionError):
+            nwi._verify_layer(metadata(fields=fields))
+
+
+def test_reject_source_when_ordered_pagination_is_not_supported():
+    """Sorted IDs are necessary to detect simple offset-page inconsistencies."""
+    with pytest.raises(nwi.SourceInspectionError, match="pagination or ordering"):
+        nwi._verify_layer(metadata(
+            advancedQueryCapabilities={"supportsPagination": True, "supportsOrderBy": False}
+        ))
