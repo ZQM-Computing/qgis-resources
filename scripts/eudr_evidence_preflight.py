@@ -86,7 +86,7 @@ def _coordinates(coords, *, close=False):
 def _safe_source_reference(value):
     """Validate URL syntax only. Does not authenticate or retrieve a source."""
     if not isinstance(value, str) or len(value) > 500 or any(
-        ch.isspace() or ord(ch) < 32 or ord(ch) == 127 for ch in value
+        ch.isspace() or ch == "\\" or ord(ch) < 32 or ord(ch) == 127 for ch in value
     ):
         return False
     try:
