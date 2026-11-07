@@ -68,6 +68,14 @@ class StacCogTests(unittest.TestCase):
             "https://test.blob.core.windows.net/container/B08.tif?sig=redacted"
         ))
 
+    def test_raster_grid_edges_snap_only_very_near_integer(self):
+        self.assertEqual(preflight._window_edge(9.00000000000034, upper=True), 9)
+        self.assertEqual(preflight._window_edge(1.00000000000051, upper=False), 1)
+        self.assertEqual(preflight._window_edge(9.01, upper=True), 10)
+        self.assertEqual(preflight._window_edge(0.99, upper=False), 0)
+        with self.assertRaises(preflight.PreflightError):
+            preflight._window_edge(float("nan"), upper=False)
+
     def test_required_asset_or_cloud_metadata_missing(self):
         for key in ("B04", "B08", "SCL"):
             d = sample()
