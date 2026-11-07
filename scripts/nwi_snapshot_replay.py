@@ -38,7 +38,10 @@ def replay(snapshot: dict) -> dict:
     if (src.get("service") != LAYER_URL or type(src.get("layer_id")) is not int
             or src["layer_id"] != 0 or src.get("requested_output_crs") != "EPSG:4326"):
         raise SourceInspectionError("source identity or coordinate reference mismatch")
-    bbox = _bbox(src.get("request_bbox_epsg4326"))
+    bounds = src.get("request_bbox_epsg4326")
+    if not isinstance(bounds, (list, tuple)):
+        raise SourceInspectionError("missing query bounds")
+    bbox = _bbox(bounds)
     if collection.get("type") != "FeatureCollection" or set(collection) != {"type", "features"}:
         raise SourceInspectionError("unexpected normalized GeoJSON envelope")
     rows = collection["features"]
