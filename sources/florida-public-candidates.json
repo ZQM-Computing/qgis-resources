@@ -17,7 +17,11 @@
       "current_effective_edition": "unverified",
       "commercial_use_approved": false,
       "screening_use": "inspection-only",
-      "caveat": "Mapped wetland inventory is not a jurisdictional delineation; missing mapped features cannot be treated as wetlands absent"
+      "caveat": "Mapped wetland inventory is not a jurisdictional delineation; missing mapped features cannot be treated as wetlands absent; USFWS state downloads include separate wetlands project metadata for image dates. Do not treat a state-wide release date as the mapping date for a queried polygon",
+      "state_download_reference": "https://www.fws.gov/program/national-wetlands-inventory/download-state-wetlands-data",
+      "state_download_published_window": "October 2026 posting; per-project mapping/imaging dates remain unverified",
+      "project_metadata_required": true,
+      "project_mapping_date_verified": false
     },
     {
       "id": "florida-dor-parcels-2026",
