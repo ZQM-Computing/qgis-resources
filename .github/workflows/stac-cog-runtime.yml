@@ -7,6 +7,9 @@ on:
       - 'scripts/stac_cog_ndvi_preflight.py'
       - 'tests/test_stac_cog_ndvi_preflight.py'
       - 'tests/test_stac_cog_raster_runtime.py'
+      - 'scripts/stac_aoi.py'
+      - 'tests/test_stac_aoi.py'
+      - 'fixtures/stac-aoi-synthetic.geojson'
       - 'scripts/stac_cost_budget.py'
       - 'tests/test_stac_cost_budget.py'
       - 'fixtures/stac-cost-budget-synthetic.json'
@@ -18,6 +21,9 @@ on:
       - 'scripts/stac_cog_ndvi_preflight.py'
       - 'tests/test_stac_cog_ndvi_preflight.py'
       - 'tests/test_stac_cog_raster_runtime.py'
+      - 'scripts/stac_aoi.py'
+      - 'tests/test_stac_aoi.py'
+      - 'fixtures/stac-aoi-synthetic.geojson'
       - 'scripts/stac_cost_budget.py'
       - 'tests/test_stac_cost_budget.py'
       - 'fixtures/stac-cost-budget-synthetic.json'
@@ -39,7 +45,7 @@ jobs:
       - name: Install distribution-consistent Rasterio and Numpy
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y python3-rasterio python3-numpy
+          sudo apt-get install --no-install-recommends -y python3-rasterio python3-numpy python3-shapely
       - name: Confirm actual Rasterio runtime
         run: /usr/bin/python3 -c 'import rasterio, numpy; print(rasterio.__version__)'
       - name: Run synthetic GeoTIFF window regression suite
@@ -47,6 +53,8 @@ jobs:
           GDAL_DISABLE_READDIR_ON_OPEN: EMPTY_DIR
           PROJ_NETWORK: "OFF"
         run: /usr/bin/python3 -m unittest discover -s tests -p 'test_stac_cog_raster_runtime.py' -v
+      - name: Run strict AOI topology and offline gating tests
+        run: /usr/bin/python3 -m unittest discover -s tests -p 'test_stac_aoi.py' -v
       - name: Run offline metadata tests
         run: /usr/bin/python3 -m unittest discover -s tests -p 'test_stac_cog_ndvi_preflight.py' -v
       - name: Run hypothetical no-purchase cost budget tests
