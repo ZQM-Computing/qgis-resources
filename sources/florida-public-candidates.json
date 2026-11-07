@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "status": "discovery-candidates-not-approved",
+  "purpose": "Candidate public sources for read-only Florida pilot; each requires independent coverage, freshness, accuracy and reuse-rights validation before client use",
+  "candidates": [
+    {
+      "id": "usfws-nwi-wetlands",
+      "provider": "U.S. Fish and Wildlife Service, National Wetlands Inventory",
+      "official_reference": "https://www.fws.gov/program/national-wetlands-inventory/web-mapping-services",
+      "dataset_limitations": "https://www.fws.gov/program/national-wetlands-inventory/wetlands-mapper",
+      "service_url": "https://fwspublicservices.wim.usgs.gov/wetlandsmapservice/rest/services/Wetlands/MapServer/0",
+      "layer_id": 0,
+      "geometry_type": "esriGeometryPolygon",
+      "source_maturity": "published-service-metadata-observed-2026-11-07",
+      "licensing_review": "pending",
+      "actual_feature_coverage": "unverified",
+      "current_effective_edition": "unverified",
+      "commercial_use_approved": false,
+      "screening_use": "inspection-only",
+      "caveat": "Mapped wetland inventory is not a jurisdictional delineation; missing mapped features cannot be treated as wetlands absent; USFWS state downloads include separate wetlands project metadata for image dates. Do not treat a state-wide release date as the mapping date for a queried polygon",
+      "state_download_reference": "https://www.fws.gov/program/national-wetlands-inventory/download-state-wetlands-data",
+      "state_download_published_window": "October 2026 posting; per-project mapping/imaging dates remain unverified",
+      "project_metadata_required": true,
+      "project_mapping_date_verified": false
+    },
+    {
+      "id": "florida-dor-parcels-2026",
+      "provider": "Florida Geographic Information Office / Florida Department of Revenue",
+      "official_reference": "https://geodata.floridagio.gov/",
+      "service_url": "https://services9.arcgis.com/Gh9awoU677aKree0/ArcGIS/rest/services/Florida_Statewide_Cadastral/FeatureServer/0",
+      "source_maturity": "published-2026-polygon-metadata-identified-2026-11-07",
+      "licensing_review": "pending",
+      "actual_feature_coverage": "unverified",
+      "current_effective_edition": "unverified",
+      "commercial_use_approved": false,
+      "screening_use": "discovery-only",
+      "caveat": "Official metadata now describes 2026 polygon export, while older cached layer descriptions identified 2025; independently verify exact live edition and relevant county features. Do not fetch owner names/addresses for pilot analysis, assume surveyed boundaries, or approve commercial redistribution without review.",
+      "geometry_type": "esriGeometryPolygon",
+      "layer_id": 0,
+      "source_metadata_url": "https://www.arcgis.com/sharing/rest/content/items/efa909d6b1c841d298b0a649e7f71cf2/info/metadata/metadata.xml?format=default&output=html",
+      "published_edition_claim": "August 2026 (official linked metadata), live feature query not tested"
+    },
+    {
+      "id": "florida-dep-open-data",
+      "provider": "Florida Department of Environmental Protection",
+      "official_reference": "https://floridadep.gov/otis/enterprise-application-services/gis",
+      "service_catalog_url": "https://ags.dep.state.fl.us/arcgis/rest/services/OpenData",
+      "service_url": null,
+      "source_maturity": "official-service-catalog-observed-2026-11-07",
+      "licensing_review": "pending",
+      "actual_feature_coverage": "unverified",
+      "current_effective_edition": "unverified",
+      "commercial_use_approved": false,
+      "screening_use": "discovery-only",
+      "caveat": "Program data are not substitutes for agency decisions; layer-specific rights, vintage, geometry and coverage require review"
+    }
+  ]
+}
