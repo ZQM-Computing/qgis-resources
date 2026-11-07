@@ -191,6 +191,9 @@ def _validate_coords(geometry: Any) -> int:
         for ring in polygon:
             if not isinstance(ring, list) or len(ring) < 4:
                 raise SourceInspectionError("Invalid polygon ring")
+            if (not isinstance(ring[0], list) or len(ring[0]) not in (2, 3)
+                    or not isinstance(ring[-1], list) or len(ring[-1]) not in (2, 3)):
+                raise SourceInspectionError("Invalid polygon ring endpoint")
             if ring[0] != ring[-1]:
                 raise SourceInspectionError("Unclosed polygon ring")
             # Defensive sanity check only, not full OGC topological validity.
