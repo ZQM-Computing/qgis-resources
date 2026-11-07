@@ -121,6 +121,21 @@ def test_validation_is_deterministic_and_does_not_mutate_input():
     assert manifest == original
 
 
+def test_malformed_array_valued_metadata_is_reported_not_crashed():
+    manifest = sample()
+    manifest["study_area"]["boundary_basis"] = ["synthetic-not-surveyed"]
+    manifest["service_tier"] = ["preliminary"]
+    manifest["sources"][0]["origin"] = ["synthetic"]
+    manifest["sources"][0]["coverage_state"] = ["verified"]
+    manifest["sources"][0]["reuse_rights"] = ["approved"]
+    errors = manifest_module.validate_manifest(manifest)
+    assert any("boundary_basis: invalid" in error for error in errors)
+    assert any("service_tier: invalid" in error for error in errors)
+    assert any(".origin: invalid" in error for error in errors)
+    assert any(".coverage_state: invalid" in error for error in errors)
+    assert any(".reuse_rights: invalid" in error for error in errors)
+
+
 def test_missing_source_file_returns_error_without_writing(tmp_path):
     absent = tmp_path / "absent.json"
     assert manifest_module.main([str(absent)]) == 2
