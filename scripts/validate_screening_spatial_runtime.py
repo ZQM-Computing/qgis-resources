@@ -148,6 +148,26 @@ def main_test() -> None:
         study["crs"] = {"type": "name", "properties": {"name": "EPSG:3857"}}
         aoi_path.write_text(json.dumps(study))
         must_fail(manifest, root)
+        for name in ("screening-aoi.geojson", "synthetic-wetlands.geojson"):
+            shutil.copyfile(REPO / "fixtures" / name, fixtures / name)
+        # Supplied file/URL CRS text must fail for both manifest and fixture
+        # boundaries, before any generic native CRS parsing can occur.
+        for unsupported in ("/tmp/untrusted-crs", "file:///tmp/untrusted-crs",
+                            "https://example.invalid/crs", "EPSG:4326\n"):
+            for section in ("study_area", "source"):
+                invalid_crs = deepcopy(manifest)
+                record = (invalid_crs["study_area"] if section == "study_area"
+                          else invalid_crs["sources"][0])
+                record["crs"] = unsupported
+                must_fail(invalid_crs, REPO)
+            for name in ("screening-aoi.geojson", "synthetic-wetlands.geojson"):
+                fixture_path = fixtures / name
+                original = (REPO / "fixtures" / name).read_bytes()
+                document = json.loads(original)
+                document["crs"]["properties"]["name"] = unsupported
+                fixture_path.write_text(json.dumps(document))
+                must_fail(manifest, root)
+                fixture_path.write_bytes(original)
         # Missing source file and manifest/source CRS disagreement fail closed.
         (fixtures / "synthetic-wetlands.geojson").unlink()
         must_fail(manifest, root)

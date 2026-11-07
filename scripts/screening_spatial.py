@@ -42,9 +42,14 @@ def _fixture_path(root: Path, ref: str) -> Path:
 
 
 def _spatial_reference(osr: Any, text: str) -> Any:
-    """Parse a declared CRS and use traditional GIS coordinate axis order."""
+    """Accept only pilot EPSG identifiers before calling the native CRS API."""
+    if text not in (INPUT_CRS, AREA_CRS):
+        raise ScreeningError("Unsupported pilot coordinate reference system")
+    # Never pass supplied text to GDAL's general parser (which also accepts
+    # file paths and URLs). Only these fixed authority codes reach native code.
+    code = 4326 if text == INPUT_CRS else 6933
     srs = osr.SpatialReference()
-    if srs.SetFromUserInput(text) != 0:
+    if srs.ImportFromEPSG(code) != 0:
         raise ScreeningError("Unparseable coordinate reference system")
     srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
     return srs
