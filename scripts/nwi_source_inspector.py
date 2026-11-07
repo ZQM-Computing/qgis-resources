@@ -154,7 +154,7 @@ def _verify_layer(layer: dict[str, Any]) -> None:
         raise SourceInspectionError("NWI pagination support not confirmed")
 
 
-def _validate_coords(geometry: Any) -> int:
+def _validate_coords(geometry: Any, *, requested_bbox: tuple[float, float, float, float] | None = None) -> int:
     if not isinstance(geometry, dict):
         raise SourceInspectionError("Missing geometry")
     kind = geometry.get("type")
@@ -168,6 +168,8 @@ def _validate_coords(geometry: Any) -> int:
     if not isinstance(polygons, list) or not polygons:
         raise SourceInspectionError("Missing polygons")
     total = 0
+    minx, miny = math.inf, math.inf
+    maxx, maxy = -math.inf, -math.inf
     for polygon in polygons:
         if not isinstance(polygon, list) or not polygon:
             raise SourceInspectionError("Missing polygon rings")
@@ -186,9 +188,17 @@ def _validate_coords(geometry: Any) -> int:
                     for n in pair
                 ) or not (-180 <= x <= 180 and -90 <= y <= 90):
                     raise SourceInspectionError("Invalid geographic coordinates")
+                minx, miny = min(minx, x), min(miny, y)
+                maxx, maxy = max(maxx, x), max(maxy, y)
                 total += 1
                 if total > MAX_VERTICES:
                     raise SourceInspectionError("Polygon vertex budget exceeded")
+    # Bounding envelopes are only a necessary spatial-relevance check; they
+    # cannot prove actual polygon intersection or completeness of agency data.
+    if requested_bbox is not None:
+        west, south, east, north = requested_bbox
+        if maxx < west or minx > east or maxy < south or miny > north:
+            raise SourceInspectionError("NWI geometry envelope outside requested area")
     return total
 
 
@@ -265,7 +275,7 @@ def collect(
             for field in ("ATTRIBUTE", "WETLAND_TYPE"):
                 if not isinstance(props.get(field), str) or not props[field].strip():
                     raise SourceInspectionError("Missing or invalid NWI wetland attributes")
-            vertices_seen += _validate_coords(feature.get("geometry"))
+            vertices_seen += _validate_coords(feature.get("geometry"), requested_bbox=box)
             if vertices_seen > MAX_VERTICES:
                 raise SourceInspectionError("Total NWI polygon vertex budget exceeded")
             rows.append({
