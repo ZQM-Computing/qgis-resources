@@ -38,4 +38,6 @@ Both the map and measurements use EPSG:6933 equal-area projected coordinates. Th
 
 P0-A3 establishes a **synthetic evidence package**, not a commercially validated geospatial product. Remaining: (1) review packaging and accuracy of the graphical report; (2) use real lawful, up-to-date public data first in Florida/US and then a documented non-US pilot; (3) source rights and completeness verification; (4) independent reviewer acceptance; (5) unit economics and market validation. Production deployment, external publication and customer data require separately approved controls.
 
+Release and rollback gates: [screening production-readiness register](SCREENING_PRODUCTION_READINESS.md). The synthetic report is internal-review-only; a green CI run is not customer-delivery authorization.
+
 Related: [P0 pilot issue #39](https://github.com/ZQM-Computing/qgis-resources/issues/39), [synthetic spatial analysis](SCREENING_SPATIAL.md), [source manifest](SCREENING_MANIFEST.md), [workflow contracts](WORKFLOW_CONTRACTS.md).

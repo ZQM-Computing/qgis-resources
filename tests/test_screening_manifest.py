@@ -102,6 +102,30 @@ def test_external_source_reference_requires_https_and_no_embedded_credentials():
         assert not manifest_module._source_reference("external", url)
 
 
+def test_untrusted_external_url_syntax_fails_without_traceback():
+    invalid = (
+        "https://[invalid-ipv6/dataset.geojson",
+        "https://example.org:malformed/file",
+        "https://example.org:8443/file",
+        "https://localhost/secret",
+        "https://example.local/source",
+        "https://example.org/file#fragment",
+        "https://example.org/path\\\\file",
+        "https://example.org/path\\nfile",
+        "https://user:pass@example.org/dataset",
+    )
+    for candidate in invalid:
+        assert not manifest_module._source_reference("external", candidate)
+        manifest = sample()
+        manifest["sources"][0]["origin"] = "external"
+        manifest["sources"][0]["source_ref"] = candidate
+        errors = manifest_module.validate_manifest(manifest)
+        assert any("sources[0].source_ref" in e for e in errors), candidate
+    assert manifest_module._source_reference(
+        "external", "https://data.example.org:443/synthetic.geojson"
+    )
+
+
 def test_no_traversal_in_synthetic_references():
     """Verify no traversal in synthetic references."""
     for ref in ("../secrets", "fixtures/../secrets", "/tmp/source.geojson", "fixtures\\x.geojson", "https://x.test"):
