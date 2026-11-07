@@ -78,6 +78,16 @@ class LocalRasterWindowTests(unittest.TestCase):
         with self.assertRaises(stac.PreflightError):
             stac.calculate_window_ndvi(self.item, [-46.20, -23.59, -46.19, -23.58])
 
+    def test_partial_raster_coverage_is_blocked_not_reported_as_full(self):
+        # A scene may intersect a request but not fully cover it.
+        for bbox in (
+            [-46.71, -23.59, -46.61, -23.51],
+            [-46.69, -23.61, -46.61, -23.51],
+            [-46.69, -23.59, -46.59, -23.51],
+        ):
+            with self.subTest(bbox=bbox), self.assertRaises(stac.PreflightError):
+                stac.calculate_window_ndvi(self.item, bbox)
+
     def test_pixel_budget_is_enforced(self):
         with patch.object(stac, "MAX_PIXELS", 25):
             with self.assertRaises(stac.PreflightError):
