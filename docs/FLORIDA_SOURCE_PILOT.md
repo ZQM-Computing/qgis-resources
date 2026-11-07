@@ -31,6 +31,16 @@ Tests run with a mocked provider response, never a live public endpoint:
 
     python -m pytest -q tests/test_nwi_source_inspector.py
 
+## Offline GDAL/OGR topology quarantine gate
+
+The opt-in network inspector and the GDAL validation gate are deliberately separated. The inspector emits one **inspection-only** JSON snapshot without generating a customer screening result. A locally saved snapshot can be passed through the independent topology and source-integrity checker:
+
+    /usr/bin/python3 scripts/nwi_topology_gate.py /path/to/nwi-inspection.json
+
+The gate verifies the embedded normalized GeoJSON SHA-256 fingerprint (not a signature), expected NWI identity and source-status fields, bounded feature count, ordering and declared geographic CRS, and actual OGR/GEOS polygon validity. It exits nonzero on missing, malformed, tampered, self-intersecting, empty or nonpolygon geometries. It reads the file without modifying it, never requests network access, and emits only a machine-readable **quarantined-topology-reviewed-not-approved** summary.
+
+The existing GitHub QGIS runtime workflow calls `scripts/validate_nwi_topology_runtime.py` with **mocked synthetic polygons only**. The test proves that a valid ring passes, a modified checksum fails, and a self-intersecting bow-tie fails OGR validity even if its unkeyed hash is recomputed. **No actual live NWI feature has passed this gate**; it also cannot prove source authenticity, spatial completeness, temporal freshness, commercial reuse rights, wetland regulatory jurisdiction or client readiness.
+
 ## Live-query status (November 7, 2026)
 
 A direct read-only request for a deliberately small non-client Florida test envelope was attempted from the execution environment. DNS resolution to the USFWS service failed; an external web retrieval of the dynamic query endpoint also did not return a usable response. **No feature response, count result, or agency query success is claimed; no live spatial output was produced.** Separately, publicly accessible ArcGIS layer metadata confirmed query support, the polygon layer identity, fields, feature paging, and GeoJSON formats.
