@@ -1,0 +1,83 @@
+name: STAC COG local raster tests
+
+on:
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'scripts/stac_cog_ndvi_preflight.py'
+      - 'tests/test_stac_cog_ndvi_preflight.py'
+      - 'tests/test_stac_cog_raster_runtime.py'
+      - 'scripts/stac_aoi.py'
+      - 'scripts/stac_radiometry.py'
+      - 'scripts/stac_product_xml.py'
+      - 'scripts/stac_range_probe.py'
+      - 'tests/test_stac_range_probe.py'
+      - 'tests/test_stac_product_xml.py'
+      - 'fixtures/stac-product-metadata-synthetic.xml'
+      - 'tests/test_stac_radiometry.py'
+      - 'fixtures/stac-radiometry-synthetic.json'
+      - 'tests/test_stac_aoi.py'
+      - 'fixtures/stac-aoi-synthetic.geojson'
+      - 'scripts/stac_cost_budget.py'
+      - 'tests/test_stac_cost_budget.py'
+      - 'fixtures/stac-cost-budget-synthetic.json'
+      - 'fixtures/stac-sentinel-synthetic-item.json'
+      - '.github/workflows/stac-cog-runtime.yml'
+  push:
+    branches: [main, master]
+    paths:
+      - 'scripts/stac_cog_ndvi_preflight.py'
+      - 'tests/test_stac_cog_ndvi_preflight.py'
+      - 'tests/test_stac_cog_raster_runtime.py'
+      - 'scripts/stac_aoi.py'
+      - 'scripts/stac_radiometry.py'
+      - 'scripts/stac_product_xml.py'
+      - 'scripts/stac_range_probe.py'
+      - 'tests/test_stac_range_probe.py'
+      - 'tests/test_stac_product_xml.py'
+      - 'fixtures/stac-product-metadata-synthetic.xml'
+      - 'tests/test_stac_radiometry.py'
+      - 'fixtures/stac-radiometry-synthetic.json'
+      - 'tests/test_stac_aoi.py'
+      - 'fixtures/stac-aoi-synthetic.geojson'
+      - 'scripts/stac_cost_budget.py'
+      - 'tests/test_stac_cost_budget.py'
+      - 'fixtures/stac-cost-budget-synthetic.json'
+      - 'fixtures/stac-sentinel-synthetic-item.json'
+      - '.github/workflows/stac-cog-runtime.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-window:
+    name: Offline Rasterio band/window validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install distribution-consistent Rasterio and Numpy
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y python3-rasterio python3-numpy python3-shapely
+      - name: Confirm actual Rasterio runtime
+        run: /usr/bin/python3 -c 'import rasterio, numpy; print(rasterio.__version__)'
+      - name: Run synthetic GeoTIFF window regression suite
+        env:
+          GDAL_DISABLE_READDIR_ON_OPEN: EMPTY_DIR
+          PROJ_NETWORK: "OFF"
+        run: /usr/bin/python3 -m unittest discover -s tests -p 'test_stac_cog_raster_runtime.py' -v
+      - name: Run strict AOI topology and offline gating tests
+        run: /usr/bin/python3 -m unittest discover -s tests -p 'test_stac_aoi.py' -v
+      - name: Validate scene-bound radiometric metadata and corrected arithmetic
+        run: /usr/bin/python3 -m unittest discover -s tests -p 'test_stac_radiometry.py' -v
+      - name: Verify local Sentinel product XML provenance consistency
+        run: /usr/bin/python3 -m unittest discover -s tests -p 'test_stac_product_xml.py' -v
+      - name: Run zero-network strict HTTP range regression tests
+        run: /usr/bin/python3 -m unittest discover -s tests -p 'test_stac_range_probe.py' -v
+      - name: Run offline metadata tests
+        run: /usr/bin/python3 -m unittest discover -s tests -p 'test_stac_cog_ndvi_preflight.py' -v
+      - name: Run hypothetical no-purchase cost budget tests
+        run: /usr/bin/python3 -m unittest discover -s tests -p 'test_stac_cost_budget.py' -v
