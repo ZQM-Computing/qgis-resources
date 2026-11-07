@@ -78,13 +78,13 @@ def assess(record):
         if code not in issues:
             issues.append(code)
 
-    if record.get("schema_version") != 1:
+    if type(record.get("schema_version")) is not int or record["schema_version"] != 1:
         issue("unsupported-schema-version")
     batch = record.get("batch_id")
     if not isinstance(batch, str) or not OPAQUE_ID.fullmatch(batch):
         issue("invalid-batch-id")
     commodity = record.get("commodity")
-    if commodity not in COMMODITIES:
+    if not isinstance(commodity, str) or commodity not in COMMODITIES:
         issue("unsupported-or-unverified-commodity")
     product_scope = record.get("product_scope")
     if product_scope != "human-review-pending":
@@ -161,7 +161,7 @@ def assess(record):
     return {
         "schema_version": 1,
         "batch_id": batch if isinstance(batch, str) and OPAQUE_ID.fullmatch(batch) else None,
-        "commodity": commodity if commodity in COMMODITIES else None,
+        "commodity": commodity if isinstance(commodity, str) and commodity in COMMODITIES else None,
         "status": "BLOCKED" if issues else "REVIEW_REQUIRED",
         "exceptions": sorted(issues),
         "plots": output_plots,
