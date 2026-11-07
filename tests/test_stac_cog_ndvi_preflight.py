@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
+from tempfile import TemporaryDirectory
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -145,6 +147,29 @@ class StacCogTests(unittest.TestCase):
                                                str(ROOT / "fixtures/stac-sentinel-synthetic-item.json")]), 2)
         self.assertEqual(preflight.main(args + ["--fixture",
                                                str(ROOT / "fixtures/stac-sentinel-synthetic-item.json")]), 0)
+
+    def test_network_opt_in_must_have_budget_and_stays_mocked(self):
+        args = ["--bbox", "-46.63", "-23.55", "-46.60", "-23.53",
+                "--start", "2026-10-01", "--end", "2026-10-31",
+                "--allow-network"]
+        with patch.object(preflight, "search_scene", side_effect=AssertionError("no network allowed")):
+            self.assertEqual(preflight.main(args), 2)
+        with TemporaryDirectory() as folder:
+            budget = json.loads((ROOT / "fixtures" / "stac-cost-budget-synthetic.json").read_text())
+            path = Path(folder) / "budget.json"
+            budget["approved_spend_ceiling_usd"] = "0"
+            path.write_text(json.dumps(budget), encoding="utf-8")
+            with patch.object(preflight, "search_scene", side_effect=AssertionError("budget should block network")):
+                self.assertEqual(preflight.main(args + ["--budget-plan", str(path)]), 2)
+            budget["approved_spend_ceiling_usd"] = "21.20"
+            path.write_text(json.dumps(budget), encoding="utf-8")
+            with patch.object(preflight, "search_scene", return_value=[sample()]) as mocked:
+                self.assertEqual(preflight.main(args + ["--budget-plan", str(path)]), 0)
+                mocked.assert_called_once()
+            budget["request_count"] = 0
+            path.write_text(json.dumps(budget), encoding="utf-8")
+            with patch.object(preflight, "search_scene", side_effect=AssertionError("zero requests")):
+                self.assertEqual(preflight.main(args + ["--budget-plan", str(path)]), 2)
 
     def test_input_not_mutated_or_urls_reported(self):
         data = sample()
