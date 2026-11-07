@@ -27,6 +27,7 @@ class BudgetError(ValueError):
 
 
 def _pairs_unique(pairs):
+    """Build a budget object while rejecting duplicate JSON fields."""
     result = {}
     for key, value in pairs:
         if key in result:
@@ -36,6 +37,7 @@ def _pairs_unique(pairs):
 
 
 def _decimal(value, name, maximum, *, allow_zero=True):
+    """Parse a finite nonnegative price within the declared maximum."""
     if isinstance(value, bool) or not isinstance(value, (int, float, str)):
         raise BudgetError(f"invalid {name}")
     try:
@@ -48,12 +50,14 @@ def _decimal(value, name, maximum, *, allow_zero=True):
 
 
 def _count(value, name, maximum):
+    """Validate a nonboolean integer metering count within policy limits."""
     if type(value) is not int or value < 0 or value > maximum:
         raise BudgetError(f"invalid {name}")
     return value
 
 
 def calculate(plan):
+    """Validate declared metering and prices and return a rounded no-purchase budget decision."""
     if not isinstance(plan, dict) or set(plan) != {
         "schema_version", "scope", "request_count", "estimated_range_bytes",
         "estimated_compute_seconds", "estimated_review_minutes", "rates",
@@ -105,6 +109,7 @@ def calculate(plan):
 
 
 def main(argv=None):
+    """Read a bounded budget plan and return success, over-budget or invalid status."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("budget_plan", type=Path)
     args = parser.parse_args(argv)

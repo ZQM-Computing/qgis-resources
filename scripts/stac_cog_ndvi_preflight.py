@@ -35,6 +35,7 @@ class PreflightError(ValueError):
 
 
 def check_bbox(values):
+    """Validate a finite EPSG:4326 rectangle within the geographic query limits."""
     if not isinstance(values, (list, tuple)) or len(values) != 4:
         raise PreflightError("bbox must contain west,south,east,north")
     if any(isinstance(v, bool) or not isinstance(v, (int, float))
@@ -49,6 +50,7 @@ def check_bbox(values):
 
 
 def check_dates(start, end):
+    """Validate calendar dates and return a bounded inclusive STAC date interval."""
     if not all(isinstance(v, str) and ISO_DAY.fullmatch(v) for v in (start, end)):
         raise PreflightError("date range must be YYYY-MM-DD")
     try:
@@ -58,6 +60,13 @@ def check_dates(start, end):
     if a > b or (b - a).days > MAX_SEARCH_DAYS:
         raise PreflightError("date window exceeds bounded search period")
     return f"{a.isoformat()}/{b.isoformat()}"
+
+
+def check_cloud_limit(value):
+    """Reject nonnumeric, nonfinite or out-of-range scene cloud ceilings."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 100:
+        raise PreflightError("invalid scene cloud ceiling")
+    return value
 
 
 def _safe_href(href):
@@ -127,10 +136,10 @@ def validate_item(item):
 
 
 def select_item(items, maximum_cloud_percent=20, *, bbox=None, period=None):
+    """Choose the least cloudy valid scene covering the requested bounds and dates."""
     if not isinstance(items, list) or not 0 < len(items) <= MAX_ITEMS:
         raise PreflightError("no bounded search results")
-    if isinstance(maximum_cloud_percent, bool) or not isinstance(maximum_cloud_percent, (int, float)) or not 0 <= maximum_cloud_percent <= 100:
-        raise PreflightError("invalid scene cloud ceiling")
+    check_cloud_limit(maximum_cloud_percent)
     candidates = []
     for item in items:
         metadata = validate_item(item)
@@ -157,12 +166,15 @@ def search_scene(bbox, period, cloud_limit):
     """One bounded STAC search, automatically signed; explicit network opt-in caller only."""
     from pystac_client import Client
     import planetary_computer
-    catalog = Client.open(STAC_URL, modifier=planetary_computer.sign_inplace)
-    search = catalog.search(
-        collections=[COLLECTION], bbox=list(bbox), datetime=period,
-        query={"eo:cloud_cover": {"lte": cloud_limit}}, max_items=MAX_ITEMS,
-    )
-    return [item.to_dict() for item in search.items()]
+    try:
+        catalog = Client.open(STAC_URL, modifier=planetary_computer.sign_inplace)
+        search = catalog.search(
+            collections=[COLLECTION], bbox=list(bbox), datetime=period,
+            query={"eo:cloud_cover": {"lte": cloud_limit}}, max_items=MAX_ITEMS,
+        )
+        return [item.to_dict() for item in search.items()]
+    except Exception:
+        raise PreflightError("STAC search failed") from None
 
 
 def _window_edge(value, *, upper):
@@ -214,127 +226,133 @@ def calculate_window_ndvi(item, bbox, aoi_geometry=None, radiometry=None):
 
     # This restricts what our own application requests; GDAL may issue multiple
     # byte-range requests for tiles/overviews and may read auxiliary metadata.
-    with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif,.tiff"):
-        with rasterio.open(nir_url) as nir, rasterio.open(red_url) as red, rasterio.open(scl_url) as scl:
-            if not nir.crs or not red.crs or not scl.crs or nir.count != 1 or red.count != 1 or scl.count != 1:
-                raise PreflightError("missing CRS or unexpected raster bands")
-            if radiometry is not None:
-                # Rasterio read() returns raw encoded samples; if the source
-                # advertises scales or offsets, it may be pre-adjusted and
-                # applying BOA offsets again could corrupt the result.
-                for band_name, dataset in (("B04", red), ("B08", nir)):
-                    if (dataset.dtypes[0] != "uint16"
-                            or len(dataset.scales) != 1 or len(dataset.offsets) != 1
-                            or not math.isfinite(dataset.scales[0])
-                            or not math.isfinite(dataset.offsets[0])
-                            or not math.isclose(dataset.scales[0], 1.0, rel_tol=0.0, abs_tol=1e-12)
-                            or not math.isclose(dataset.offsets[0], 0.0, rel_tol=0.0, abs_tol=1e-12)):
-                        raise PreflightError(
-                            "radiometry requires unscaled raw uint16 " + band_name + " source"
-                        )
-            left, bottom, right, top = transform_bounds("EPSG:4326", nir.crs, *bbox, densify_pts=21)
-            raw = from_bounds(left, bottom, right, top, transform=nir.transform)
-            col0, row0 = max(0, _window_edge(raw.col_off, upper=False)), max(0, _window_edge(raw.row_off, upper=False))
-            col1, row1 = min(nir.width, _window_edge(raw.col_off + raw.width, upper=True)), min(nir.height, _window_edge(raw.row_off + raw.height, upper=True))
-            width, height = col1 - col0, row1 - row0
-            if width <= 0 or height <= 0 or width * height > MAX_PIXELS:
-                raise PreflightError("empty or oversized raster window")
-            if (raw.col_off < -1e-7 or raw.row_off < -1e-7
-                    or raw.col_off + raw.width > nir.width + 1e-7
-                    or raw.row_off + raw.height > nir.height + 1e-7):
-                raise PreflightError("scene raster lacks full requested AOI coverage")
-            window = Window(col0, row0, width, height)
-            with WarpedVRT(red, crs=nir.crs, transform=nir.transform,
-                           width=nir.width, height=nir.height,
-                           resampling=Resampling.bilinear) as red_aligned:
-                with WarpedVRT(scl, crs=nir.crs, transform=nir.transform,
+    try:
+        with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif,.tiff"):
+            with rasterio.open(nir_url) as nir, rasterio.open(red_url) as red, rasterio.open(scl_url) as scl:
+                if not nir.crs or not red.crs or not scl.crs or nir.count != 1 or red.count != 1 or scl.count != 1:
+                    raise PreflightError("missing CRS or unexpected raster bands")
+                if radiometry is not None:
+                    # Rasterio read() returns raw encoded samples; if the source
+                    # advertises scales or offsets, it may be pre-adjusted and
+                    # applying BOA offsets again could corrupt the result.
+                    for band_name, dataset in (("B04", red), ("B08", nir)):
+                        if (dataset.dtypes[0] != "uint16"
+                                or len(dataset.scales) != 1 or len(dataset.offsets) != 1
+                                or not math.isfinite(dataset.scales[0])
+                                or not math.isfinite(dataset.offsets[0])
+                                or not math.isclose(dataset.scales[0], 1.0, rel_tol=0.0, abs_tol=1e-12)
+                                or not math.isclose(dataset.offsets[0], 0.0, rel_tol=0.0, abs_tol=1e-12)):
+                            raise PreflightError(
+                                "radiometry requires unscaled raw uint16 " + band_name + " source"
+                            )
+                left, bottom, right, top = transform_bounds("EPSG:4326", nir.crs, *bbox, densify_pts=21)
+                raw = from_bounds(left, bottom, right, top, transform=nir.transform)
+                col0, row0 = max(0, _window_edge(raw.col_off, upper=False)), max(0, _window_edge(raw.row_off, upper=False))
+                col1, row1 = min(nir.width, _window_edge(raw.col_off + raw.width, upper=True)), min(nir.height, _window_edge(raw.row_off + raw.height, upper=True))
+                width, height = col1 - col0, row1 - row0
+                if width <= 0 or height <= 0 or width * height > MAX_PIXELS:
+                    raise PreflightError("empty or oversized raster window")
+                if (raw.col_off < -1e-7 or raw.row_off < -1e-7
+                        or raw.col_off + raw.width > nir.width + 1e-7
+                        or raw.row_off + raw.height > nir.height + 1e-7):
+                    raise PreflightError("scene raster lacks full requested AOI coverage")
+                window = Window(col0, row0, width, height)
+                with WarpedVRT(red, crs=nir.crs, transform=nir.transform,
                                width=nir.width, height=nir.height,
-                               resampling=Resampling.nearest) as scl_aligned:
-                    n = nir.read(1, window=window, masked=True).astype("float32")
-                    r = red_aligned.read(1, window=window, masked=True).astype("float32")
-                    c = scl_aligned.read(1, window=window, masked=True)
-            aoi_pixels = width * height
-            if aoi_geometry is not None:
-                projected_aoi = transform_geom("EPSG:4326", nir.crs, aoi_geometry)
-                polygon_pixels = geometry_mask(
-                    [projected_aoi], out_shape=(height, width),
-                    transform=window_transform(window, nir.transform),
-                    invert=True, all_touched=False,
-                )
-                aoi_pixels = int(polygon_pixels.sum())
-                if not aoi_pixels:
-                    raise PreflightError("polygon AOI has no pixel-center coverage")
-            # SCL 4: vegetation, 5: not vegetated, 6: water. Cloud/shadow/
-            # cirrus, snow and unclassified pixels are excluded.
-            allowed = np.isin(np.asarray(c), [4, 5, 6])
-            valid = allowed & (~np.ma.getmaskarray(n)) & (~np.ma.getmaskarray(r)) & (~np.ma.getmaskarray(c))
-            valid &= (np.asarray(n) > 0) & (np.asarray(r) > 0)
-            valid &= np.isfinite(n) & np.isfinite(r)
-            denom = np.asarray(n) + np.asarray(r)
-            valid &= denom > 0
-            if aoi_geometry is not None:
-                valid &= polygon_pixels
-            count = int(valid.sum())
-            if not count:
-                raise PreflightError("no usable clear pixels; optical analysis unavailable")
-            ndvi = (np.asarray(n)[valid] - np.asarray(r)[valid]) / denom[valid]
-            corrected_candidate = None
-            if radiometry is not None:
-                from stac_radiometry import correct_dn_arrays
-                nir_ref, red_ref = correct_dn_arrays(
-                    np.asarray(n), np.asarray(r), radiometry
-                )
-                reflectance_denominator = nir_ref + red_ref
-                # Negative reflectance can occur for dark targets; do not
-                # silently interpret nonpositive reflectance in NDVI.
-                candidate_mask = (
-                    valid & np.isfinite(reflectance_denominator)
-                    & (nir_ref >= 0) & (red_ref >= 0)
-                    & (reflectance_denominator > 1e-9)
-                )
-                candidate_count = int(candidate_mask.sum())
-                corrected_candidate = {
-                    "status": "CORRECTED_ARITHMETIC_ONLY_UNVERIFIED_SOURCE",
-                    "mean_ndvi_reflectance_candidate": (
-                        round(float(np.mean(
-                            (nir_ref[candidate_mask] - red_ref[candidate_mask])
-                            / reflectance_denominator[candidate_mask]
-                        )), 6) if candidate_count else None
-                    ),
-                    "corrected_valid_pixel_count": candidate_count,
-                    "excluded_negative_or_zero_reflectance_pixels": count - candidate_count,
-                    "product_metadata_digest_claimed": radiometry["product_metadata_sha256"],
-                    "product_metadata_authenticity_verified": False,
-                    "processing_baseline_crosschecked_to_original_product": False,
-                    "raw_uint16_raster_scale_offset_checked": True,
-                    "customer_ready_ndvi": False,
+                               resampling=Resampling.bilinear) as red_aligned:
+                    with WarpedVRT(scl, crs=nir.crs, transform=nir.transform,
+                                   width=nir.width, height=nir.height,
+                                   resampling=Resampling.nearest) as scl_aligned:
+                        n = nir.read(1, window=window, masked=True).astype("float32")
+                        r = red_aligned.read(1, window=window, masked=True).astype("float32")
+                        c = scl_aligned.read(1, window=window, masked=True)
+                aoi_pixels = width * height
+                if aoi_geometry is not None:
+                    projected_aoi = transform_geom("EPSG:4326", nir.crs, aoi_geometry)
+                    polygon_pixels = geometry_mask(
+                        [projected_aoi], out_shape=(height, width),
+                        transform=window_transform(window, nir.transform),
+                        invert=True, all_touched=False,
+                    )
+                    aoi_pixels = int(polygon_pixels.sum())
+                    if not aoi_pixels:
+                        raise PreflightError("polygon AOI has no pixel-center coverage")
+                # SCL 4: vegetation, 5: not vegetated, 6: water. Cloud/shadow/
+                # cirrus, snow and unclassified pixels are excluded.
+                allowed = np.isin(np.asarray(c), [4, 5, 6])
+                valid = allowed & (~np.ma.getmaskarray(n)) & (~np.ma.getmaskarray(r)) & (~np.ma.getmaskarray(c))
+                valid &= (np.asarray(n) > 0) & (np.asarray(r) > 0)
+                valid &= np.isfinite(n) & np.isfinite(r)
+                denom = np.asarray(n) + np.asarray(r)
+                valid &= denom > 0
+                if aoi_geometry is not None:
+                    valid &= polygon_pixels
+                count = int(valid.sum())
+                if not count:
+                    raise PreflightError("no usable clear pixels; optical analysis unavailable")
+                ndvi = (np.asarray(n)[valid] - np.asarray(r)[valid]) / denom[valid]
+                corrected_candidate = None
+                if radiometry is not None:
+                    from stac_radiometry import correct_dn_arrays
+                    nir_ref, red_ref = correct_dn_arrays(
+                        np.asarray(n), np.asarray(r), radiometry
+                    )
+                    reflectance_denominator = nir_ref + red_ref
+                    # Negative reflectance can occur for dark targets; do not
+                    # silently interpret nonpositive reflectance in NDVI.
+                    candidate_mask = (
+                        valid & np.isfinite(reflectance_denominator)
+                        & (nir_ref >= 0) & (red_ref >= 0)
+                        & (reflectance_denominator > 1e-9)
+                    )
+                    candidate_count = int(candidate_mask.sum())
+                    corrected_candidate = {
+                        "status": "CORRECTED_ARITHMETIC_ONLY_UNVERIFIED_SOURCE",
+                        "mean_ndvi_reflectance_candidate": (
+                            round(float(np.mean(
+                                (nir_ref[candidate_mask] - red_ref[candidate_mask])
+                                / reflectance_denominator[candidate_mask]
+                            )), 6) if candidate_count else None
+                        ),
+                        "corrected_valid_pixel_count": candidate_count,
+                        "excluded_negative_or_zero_reflectance_pixels": count - candidate_count,
+                        "product_metadata_digest_claimed": radiometry["product_metadata_sha256"],
+                        "product_metadata_authenticity_verified": False,
+                        "processing_baseline_crosschecked_to_original_product": False,
+                        "raw_uint16_raster_scale_offset_checked": True,
+                        "customer_ready_ndvi": False,
+                    }
+                result = {
+                    "status": "EXPLORATORY_REVIEW_ONLY",
+                    "method": "Sentinel-2 B08/B04 digital-number ratio with SCL 4/5/6 mask",
+                    "mean_ndvi_dn_ratio": round(float(np.mean(ndvi)), 6),
+                    "valid_pixel_count": count,
+                    "read_window_pixel_count": int(width * height),
+                    "valid_fraction_of_window": round(count / (width * height), 6),
+                    "aoi_pixel_count": aoi_pixels,
+                    "valid_fraction_of_aoi": round(count / aoi_pixels, 6),
+                    "aoi_polygon_mask_applied": aoi_geometry is not None,
+                    "radiometric_offset_and_scale_verified": False,
+                    "imagery_reuse_rights_verified": False,
+                    "cloud_free_aoi_verified": False,
+                    "raster_full_bbox_coverage_checked": True,
+                    "radiometric_correction_required": True,
+                    "deforestation_determined": False,
+                    "underwriting_liability_estimated": False,
+                    "human_review_required": True,
+                    "asset_urls_logged": False,
                 }
-            result = {
-                "status": "EXPLORATORY_REVIEW_ONLY",
-                "method": "Sentinel-2 B08/B04 digital-number ratio with SCL 4/5/6 mask",
-                "mean_ndvi_dn_ratio": round(float(np.mean(ndvi)), 6),
-                "valid_pixel_count": count,
-                "read_window_pixel_count": int(width * height),
-                "valid_fraction_of_window": round(count / (width * height), 6),
-                "aoi_pixel_count": aoi_pixels,
-                "valid_fraction_of_aoi": round(count / aoi_pixels, 6),
-                "aoi_polygon_mask_applied": aoi_geometry is not None,
-                "radiometric_offset_and_scale_verified": False,
-                "imagery_reuse_rights_verified": False,
-                "cloud_free_aoi_verified": False,
-                "raster_full_bbox_coverage_checked": True,
-                "radiometric_correction_required": True,
-                "deforestation_determined": False,
-                "underwriting_liability_estimated": False,
-                "human_review_required": True,
-                "asset_urls_logged": False,
-            }
-            if corrected_candidate is not None:
-                result["radiometric_candidate"] = corrected_candidate
-            return result
+                if corrected_candidate is not None:
+                    result["radiometric_candidate"] = corrected_candidate
+                return result
+    except PreflightError:
+        raise
+    except Exception:
+        raise PreflightError("raster window analysis failed") from None
 
 
 def _unique(pairs):
+    """Build a JSON object while rejecting duplicate keys."""
     result = {}
     for key, value in pairs:
         if key in result:
@@ -344,6 +362,7 @@ def _unique(pairs):
 
 
 def main(argv=None):
+    """Parse CLI inputs, enforce local gates, and report generic blocked failures."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bbox", nargs=4, type=float, required=True, metavar=("W", "S", "E", "N"))
     parser.add_argument("--start", required=True)
@@ -361,6 +380,7 @@ def main(argv=None):
     try:
         bbox = check_bbox(args.bbox)
         period = check_dates(args.start, args.end)
+        check_cloud_limit(args.cloud_limit)
         if args.fixture is not None and args.allow_network:
             raise PreflightError("fixture and network mode are mutually exclusive")
         if args.allow_network and args.budget_plan is None:

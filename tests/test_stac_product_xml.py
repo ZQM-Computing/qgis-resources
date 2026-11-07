@@ -20,11 +20,13 @@ STAC = ROOT / "fixtures" / "stac-sentinel-synthetic-item.json"
 
 
 def record():
+    """Load a fresh unverified radiometry record for XML consistency tests."""
     return json.loads(RECORD.read_text())
 
 
 class ProductXmlTests(unittest.TestCase):
     def test_fixture_digest_and_offsets_match_but_not_source_authenticated(self):
+        """Verify fixture digest and offsets match but not source authenticated."""
         original = record()
         self.assertEqual(hashlib.sha256(XML.read_bytes()).hexdigest(),
                          original["product_metadata_sha256"])
@@ -35,12 +37,14 @@ class ProductXmlTests(unittest.TestCase):
         self.assertFalse(output["commercial_approval"])
 
     def test_digest_mismatch_rejected(self):
+        """Verify digest mismatch rejected."""
         r = record()
         r["product_metadata_sha256"] = "0" * 64
         with self.assertRaises(RadiometryError):
             verify_local_product_xml(XML, r, r["scene_id"])
 
     def test_duplicate_baseline_and_offset_differ_from_record(self):
+        """Verify duplicate baseline and offset differ from record."""
         original = XML.read_text()
         variants = [
             original.replace("<PROCESSING_BASELINE>05.10", "<PROCESSING_BASELINE>04.00"),
@@ -60,6 +64,7 @@ class ProductXmlTests(unittest.TestCase):
                         verify_local_product_xml(path, r, r["scene_id"])
 
     def test_doctype_external_entity_rejected_despite_matching_hash(self):
+        """Verify doctype external entity rejected despite matching hash."""
         xml = '<!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><Level-2A_User_Product/>'
         with TemporaryDirectory() as folder:
             path = Path(folder) / "hostile.xml"
@@ -70,6 +75,7 @@ class ProductXmlTests(unittest.TestCase):
                 verify_local_product_xml(path, r, r["scene_id"])
 
     def test_cli_requires_both_xml_and_json_no_network(self):
+        """Verify cli requires both xml and json no network."""
         args = ["--bbox", "-46.63", "-23.55", "-46.60", "-23.53",
                 "--start", "2026-10-01", "--end", "2026-10-31",
                 "--fixture", str(STAC)]
@@ -79,6 +85,7 @@ class ProductXmlTests(unittest.TestCase):
                                                "--product-metadata-xml", str(XML)]), 0)
 
     def test_mismatched_source_records_block_before_remote_pixel_read(self):
+        """Verify mismatched source records block before remote pixel read."""
         args = ["--bbox", "-46.63", "-23.55", "-46.60", "-23.53",
                 "--start", "2026-10-01", "--end", "2026-10-31",
                 "--allow-network",

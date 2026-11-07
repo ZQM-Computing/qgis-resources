@@ -12,11 +12,13 @@ import stac_radiometry as radio
 
 
 def fixture():
+    """Load a fresh synthetic local fixture for each assertion."""
     return json.loads((ROOT / "fixtures" / "stac-radiometry-synthetic.json").read_text())
 
 
 class RadiometryTests(unittest.TestCase):
     def test_known_post_baseline_formula_and_unverified_metadata(self):
+        """Verify known post baseline formula and unverified metadata."""
         record = fixture()
         self.assertEqual(radio.validate_radiometry(record, record["scene_id"]), record)
         n, r = radio.correct_dn_arrays(6000.0, 2000.0, record)
@@ -26,6 +28,7 @@ class RadiometryTests(unittest.TestCase):
         self.assertFalse(record["provider_metadata_authenticity_verified"])
 
     def test_scene_mismatch_and_untrusted_approval_block(self):
+        """Verify scene mismatch and untrusted approval block."""
         d = fixture()
         with self.assertRaises(radio.RadiometryError):
             radio.validate_radiometry(d, "other-scene")
@@ -36,6 +39,7 @@ class RadiometryTests(unittest.TestCase):
                 radio.validate_radiometry(d, d["scene_id"])
 
     def test_invalid_offsets_quantification_and_processing_baseline(self):
+        """Verify invalid offsets quantification and processing baseline."""
         for name, value in (
             ("boa_quantification_value", 0),
             ("boa_quantification_value", True),
@@ -53,12 +57,14 @@ class RadiometryTests(unittest.TestCase):
                 radio.validate_radiometry(d, d["scene_id"])
 
     def test_no_silent_unrecognized_metadata_properties(self):
+        """Verify no silent unrecognized metadata properties."""
         d = fixture()
         d["source_authenticated"] = True
         with self.assertRaises(radio.RadiometryError):
             radio.validate_radiometry(d, d["scene_id"])
 
     def test_rejects_duplicate_json_or_nonfinite_values(self):
+        """Verify rejects duplicate json or nonfinite values."""
         for raw in ('{"a":1,"a":2}', '{"a":NaN}'):
             with TemporaryDirectory() as directory:
                 path = Path(directory) / "bad.json"
@@ -67,6 +73,7 @@ class RadiometryTests(unittest.TestCase):
                     radio.load_radiometry(path, "synthetic-sentinel-scene-01")
 
     def test_pure_nonmutating_metadata_validation(self):
+        """Verify pure nonmutating metadata validation."""
         d = fixture()
         before = deepcopy(d)
         self.assertEqual(radio.validate_radiometry(d, d["scene_id"]), d)

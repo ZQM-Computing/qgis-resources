@@ -24,6 +24,7 @@ class RadiometryError(ValueError):
 
 
 def _unique(pairs):
+    """Build a JSON object while rejecting duplicate keys."""
     result = {}
     for key, value in pairs:
         if key in result:
@@ -33,10 +34,12 @@ def _unique(pairs):
 
 
 def _bad_constant(value):
+    """Reject nonfinite constants in radiometry JSON."""
     raise RadiometryError("nonfinite radiometry value")
 
 
 def _finite_number(value, low, high):
+    """Return whether a nonboolean finite number lies within inclusive bounds."""
     return type(value) in (int, float) and math.isfinite(value) and low <= value <= high
 
 
@@ -83,6 +86,7 @@ def validate_radiometry(record, scene_id):
 
 
 def load_radiometry(path, scene_id):
+    """Load bounded local radiometry JSON and bind its parameters to the scene."""
     with Path(path).open("rb") as stream:
         raw = stream.read(MAX_BYTES + 1)
     if len(raw) > MAX_BYTES:

@@ -21,6 +21,7 @@ class FakeResponse:
     def __init__(self, *, status=206, content_range="bytes 0-4095/20000",
                  content_length="4096", data=b"II*\x00" + b"\0" * 4092,
                  encoding=None):
+        """Configure a synthetic HTTP response with controlled headers and payload."""
         self.status = status
         self.headers = Message()
         self.headers["Content-Range"] = content_range
@@ -31,22 +32,28 @@ class FakeResponse:
         self.data = data
 
     def __enter__(self):
+        """Return the synthetic response for context-manager tests."""
         return self
 
     def __exit__(self, *args):
+        """Propagate errors raised while inspecting the synthetic response."""
         return False
 
     def getcode(self):
+        """Return the configured synthetic HTTP status."""
         return self.status
 
     def read(self, n):
+        """Return at most the requested number of synthetic payload bytes."""
         return self.data[:n]
 
 
 class RangeTests(unittest.TestCase):
     def test_bounded_range_request_and_safe_no_token_output(self):
+        """Verify bounded range request and safe no token output."""
         requests = []
         def transport(req, *, timeout):
+            """Record the probe request and return a controlled synthetic response."""
             requests.append((req, timeout))
             return FakeResponse()
         output = probe.probe_range(URL, transport=transport)
@@ -59,6 +66,7 @@ class RangeTests(unittest.TestCase):
         self.assertEqual(requests[0][1], 8)
 
     def test_rejects_bad_http_range_replies(self):
+        """Verify rejects bad http range replies."""
         variants = (
             {"status": 200},
             {"status": 302},
@@ -80,18 +88,22 @@ class RangeTests(unittest.TestCase):
                 probe.probe_range(URL, transport=lambda req, timeout: FakeResponse(**kwargs))
 
     def test_rejects_untrusted_url_without_transport(self):
+        """Verify rejects untrusted url without transport."""
         with self.assertRaises(probe.RangeProbeError):
             probe.probe_range("https://untrusted.example.org/asset.tif",
                               transport=lambda *_a, **_kw: self.fail("network must not run"))
 
     def test_redirect_handler_explicitly_denies_redirects(self):
+        """Verify redirect handler explicitly denies redirects."""
         with self.assertRaises(probe.RangeProbeError):
             probe._DenyRedirects().redirect_request(None, None, 302, "Found", {}, "https://other.example.org")
 
     def test_three_required_bands_must_all_succeed_before_summary(self):
+        """Verify three required bands must all succeed before summary."""
         scene = json.loads((ROOT / "fixtures/stac-sentinel-synthetic-item.json").read_text())
         observed = []
         def transport(request, *, timeout):
+            """Record the probe request and return a controlled synthetic response."""
             observed.append(request.full_url)
             return FakeResponse()
         result = probe.probe_scene_assets(scene, transport=transport)
@@ -104,6 +116,7 @@ class RangeTests(unittest.TestCase):
         self.assertEqual(len(observed), 3)
 
     def test_missing_or_bad_second_band_blocks_all_band_summary(self):
+        """Verify missing or bad second band blocks all band summary."""
         scene = json.loads((ROOT / "fixtures/stac-sentinel-synthetic-item.json").read_text())
         del scene["assets"]["SCL"]
         with self.assertRaises(probe.RangeProbeError):
@@ -111,6 +124,7 @@ class RangeTests(unittest.TestCase):
         scene = json.loads((ROOT / "fixtures/stac-sentinel-synthetic-item.json").read_text())
         called = []
         def transport(request, *, timeout):
+            """Record the probe request and return a controlled synthetic response."""
             called.append(request.full_url)
             return FakeResponse(status=200 if len(called) == 2 else 206)
         with self.assertRaises(probe.RangeProbeError):
@@ -118,6 +132,7 @@ class RangeTests(unittest.TestCase):
         self.assertEqual(len(called), 2)
 
     def test_rejects_fake_tiff_marker_with_only_byte_order(self):
+        """Verify rejects fake tiff marker with only byte order."""
         with self.assertRaises(probe.RangeProbeError):
             probe.probe_range(
                 URL, transport=lambda *_a, **_kw: FakeResponse(
@@ -126,6 +141,7 @@ class RangeTests(unittest.TestCase):
             )
 
     def test_cli_does_not_probe_without_opt_in_and_budget(self):
+        """Verify cli does not probe without opt in and budget."""
         args = ["--bbox", "-46.63", "-23.55", "-46.60", "-23.53",
                 "--start", "2026-10-01", "--end", "2026-10-31"]
         with patch.object(probe, "probe_range", side_effect=AssertionError("probe unexpectedly called")):

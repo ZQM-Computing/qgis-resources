@@ -20,6 +20,7 @@ class AoiError(ValueError):
 
 
 def _unique(pairs):
+    """Build a JSON object while rejecting duplicate keys."""
     result = {}
     for k, v in pairs:
         if k in result:
@@ -29,10 +30,12 @@ def _unique(pairs):
 
 
 def _reject_constant(value):
+    """Reject nonfinite constants in local GeoJSON."""
     raise AoiError("nonfinite GeoJSON value")
 
 
 def load_aoi(path: Path, bbox):
+    """Load bounded local GeoJSON and validate its polygon against the query bbox."""
     with Path(path).open("rb") as stream:
         data = stream.read(MAX_GEOJSON_BYTES + 1)
     if len(data) > MAX_GEOJSON_BYTES:
@@ -46,6 +49,7 @@ def load_aoi(path: Path, bbox):
 
 
 def validate_aoi(geometry, bbox):
+    """Validate polygon structure, coordinate budgets, bbox containment and topology."""
     if not isinstance(geometry, dict) or set(geometry) != {"type", "coordinates"}:
         raise AoiError("expected only a GeoJSON geometry object")
     kind, coordinates = geometry["type"], geometry["coordinates"]

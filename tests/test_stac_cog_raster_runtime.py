@@ -28,6 +28,7 @@ import stac_cog_ndvi_preflight as stac
 @unittest.skipUnless(rasterio is not None and np is not None, "Rasterio/Numpy runtime required")
 class LocalRasterWindowTests(unittest.TestCase):
     def setUp(self):
+        """Create isolated local fixtures and register cleanup for each test."""
         self.tmp = TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
@@ -44,6 +45,7 @@ class LocalRasterWindowTests(unittest.TestCase):
         self.addCleanup(self.patch.stop)
 
     def _write(self, key, arr):
+        """Write a synthetic single-band raster and attach its path to the test item."""
         path = self.root / (key + ".tif")
         with rasterio.open(path, "w", driver="GTiff", height=10, width=10,
                            count=1, dtype=str(arr.dtype), crs="EPSG:4326",
@@ -51,7 +53,40 @@ class LocalRasterWindowTests(unittest.TestCase):
             dst.write(arr, 1)
         self.item["assets"][key] = {"href": str(path)}
 
+    def test_raster_library_errors_are_wrapped_and_validation_preserved(self):
+        """Verify raster library errors are wrapped and validation preserved."""
+        from rasterio.errors import WindowError
+        for target in ("rasterio.open", "rasterio.warp.transform_bounds",
+                       "rasterio.windows.from_bounds", "rasterio.vrt.WarpedVRT"):
+            with self.subTest(target=target), patch(target, side_effect=WindowError("secret-token")):
+                with self.assertRaisesRegex(stac.PreflightError, "^raster window analysis failed$") as caught:
+                    stac.calculate_window_ndvi(self.item, self.bbox)
+                self.assertTrue(caught.exception.__suppress_context__)
+        original = stac.PreflightError("existing validation failure")
+        with patch("rasterio.open", side_effect=original):
+            with self.assertRaises(stac.PreflightError) as caught:
+                stac.calculate_window_ndvi(self.item, self.bbox)
+            self.assertIs(caught.exception, original)
+
+    def test_documented_aoi_bbox_fits_ten_metre_window(self):
+        """Verify documented aoi bbox fits ten metre window."""
+        import json
+        import re
+        from rasterio.warp import transform_bounds
+        doc = (ROOT / "docs/STAC_COG_NDVI_PREFLIGHT.md").read_text()
+        example = next(block for block in re.findall(r"```bash\n(.*?)```", doc, re.S)
+                       if "--aoi-geojson fixtures/stac-aoi-synthetic.geojson" in block)
+        bbox = stac.check_bbox([float(v) for v in re.search(r"--bbox ([^\n]+)", example)[1].split()[:4]])
+        geometry = json.loads((ROOT / "fixtures/stac-aoi-synthetic.geojson").read_text())
+        from stac_aoi import validate_aoi
+        validate_aoi(geometry, bbox)
+        left, bottom, right, top = transform_bounds("EPSG:4326", "EPSG:32723", *bbox)
+        # Two extra pixels per axis conservatively allow grid alignment.
+        pixels = (int(np.ceil((right-left)/10)) + 2) * (int(np.ceil((top-bottom)/10)) + 2)
+        self.assertLess(pixels, stac.MAX_PIXELS)
+
     def test_expected_local_window_ratio_and_pixel_limits(self):
+        """Verify expected local window ratio and pixel limits."""
         result = stac.calculate_window_ndvi(self.item, self.bbox)
         self.assertEqual(result["status"], "EXPLORATORY_REVIEW_ONLY")
         self.assertAlmostEqual(result["mean_ndvi_dn_ratio"], 0.5, places=5)
@@ -62,6 +97,7 @@ class LocalRasterWindowTests(unittest.TestCase):
         self.assertFalse(result["asset_urls_logged"])
 
     def test_polygon_mask_excludes_outside_pixels(self):
+        """Verify polygon mask excludes outside pixels."""
         import json
         polygon = json.loads((ROOT / "fixtures" / "stac-aoi-synthetic.geojson").read_text())
         result = stac.calculate_window_ndvi(self.item, self.bbox, polygon)
@@ -73,6 +109,7 @@ class LocalRasterWindowTests(unittest.TestCase):
         self.assertAlmostEqual(result["mean_ndvi_dn_ratio"], 0.5, places=5)
 
     def test_polygon_mask_cloud_and_empty_mask_fail_closed(self):
+        """Verify polygon mask cloud and empty mask fail closed."""
         import json
         polygon = json.loads((ROOT / "fixtures" / "stac-aoi-synthetic.geojson").read_text())
         scl = np.full((10, 10), 4, dtype="uint16")
@@ -91,6 +128,7 @@ class LocalRasterWindowTests(unittest.TestCase):
             stac.calculate_window_ndvi(self.item, self.bbox, tiny)
 
     def test_corrected_reflectance_candidate_requires_metadata_and_is_unverified(self):
+        """Verify corrected reflectance candidate requires metadata and is unverified."""
         import json
         record = json.loads((ROOT / "fixtures" / "stac-radiometry-synthetic.json").read_text())
         self.item["id"] = record["scene_id"]
@@ -106,6 +144,7 @@ class LocalRasterWindowTests(unittest.TestCase):
         self.assertFalse(candidate["radiometric_offset_and_scale_verified"])
 
     def test_prescaled_raster_metadata_blocks_double_radiometric_adjustment(self):
+        """Verify prescaled raster metadata blocks double radiometric adjustment."""
         import json
         record = json.loads((ROOT / "fixtures" / "stac-radiometry-synthetic.json").read_text())
         self.item["id"] = record["scene_id"]
@@ -121,6 +160,7 @@ class LocalRasterWindowTests(unittest.TestCase):
                         setattr(src, metadata_type, (1.0 if metadata_type == "scales" else 0.0,))
 
     def test_wrong_scene_radiometry_is_rejected_before_any_raster_open(self):
+        """Verify wrong scene radiometry is rejected before any raster open."""
         import json
         record = json.loads((ROOT / "fixtures" / "stac-radiometry-synthetic.json").read_text())
         self.item["id"] = "wrong-scene-identifier"
@@ -129,6 +169,7 @@ class LocalRasterWindowTests(unittest.TestCase):
                 stac.calculate_window_ndvi(self.item, self.bbox, radiometry=record)
 
     def test_negative_reflectance_candidate_is_not_silently_used(self):
+        """Verify negative reflectance candidate is not silently used."""
         import json
         record = json.loads((ROOT / "fixtures" / "stac-radiometry-synthetic.json").read_text())
         self.item["id"] = record["scene_id"]
@@ -140,6 +181,7 @@ class LocalRasterWindowTests(unittest.TestCase):
         self.assertEqual(candidate["excluded_negative_or_zero_reflectance_pixels"], 64)
 
     def test_cloud_mask_reduces_valid_pixel_count(self):
+        """Verify cloud mask reduces valid pixel count."""
         scl = np.full((10, 10), 4, dtype="uint16")
         scl[2, 2] = 9  # high-probability cloud class
         self._write("SCL", scl)
@@ -148,16 +190,19 @@ class LocalRasterWindowTests(unittest.TestCase):
         self.assertAlmostEqual(result["mean_ndvi_dn_ratio"], 0.5, places=5)
 
     def test_all_clouds_return_no_evidence(self):
+        """Verify all clouds return no evidence."""
         self._write("SCL", np.full((10, 10), 9, dtype="uint16"))
         with self.assertRaises(stac.PreflightError):
             stac.calculate_window_ndvi(self.item, self.bbox)
 
     def test_window_outside_raster_is_rejected(self):
+        """Verify window outside raster is rejected."""
         with self.assertRaises(stac.PreflightError):
             stac.calculate_window_ndvi(self.item, [-46.20, -23.59, -46.19, -23.58])
 
     def test_partial_raster_coverage_is_blocked_not_reported_as_full(self):
         # A scene may intersect a request but not fully cover it.
+        """Verify partial raster coverage is blocked not reported as full."""
         for bbox in (
             [-46.71, -23.59, -46.61, -23.51],
             [-46.69, -23.61, -46.61, -23.51],
@@ -167,6 +212,7 @@ class LocalRasterWindowTests(unittest.TestCase):
                 stac.calculate_window_ndvi(self.item, bbox)
 
     def test_pixel_budget_is_enforced(self):
+        """Verify pixel budget is enforced."""
         with patch.object(stac, "MAX_PIXELS", 25):
             with self.assertRaises(stac.PreflightError):
                 stac.calculate_window_ndvi(self.item, self.bbox)

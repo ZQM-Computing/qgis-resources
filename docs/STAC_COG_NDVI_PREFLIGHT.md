@@ -1,3 +1,7 @@
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:e6bf4da934c400fa07f57e8bfb2bb473eb19ba651d2a86e2645cf1bbddeb9397 -->
+
 # STAC → COG windowed NDVI preflight (P0, opt-in)
 
 **Status:** engineering prototype for bounded exploratory imagery screening, not operational asset monitoring, definitive land-cover change, EUDR due diligence, utility clearance or financial underwriting. **Default: no network. Paid imagery purchases: impossible by design.**
@@ -16,7 +20,7 @@
 2. Without `--allow-network`, require `--fixture` and perform metadata validation only. The local file is fictional. Never read pixels from a test fixture or arbitrary URLs supplied by users.
 3. With `--allow-network`, search the *fixed* Planetary Computer STAC endpoint, collection `sentinel-2-l2a`, max **4 returned items**, ordered locally by scene-level reported cloud cover (maximum 20% by default). **Scene-level cloud percent is not AOI-level usability.**
 4. Require B04, B08 and SCL asset references restricted to `https://sentinel2l2a01.blob.core.windows.net/sentinel2-l2/`, the documented storage account and container for the Planetary Computer Sentinel-2 L2A collection. Other Azure Blob accounts/containers are rejected, and no credential-bearing URL is included in output. Cloud signing is read-only; always treat signed URL query tokens as secrets.
-5. Only with `--stream-window --allow-network`, open the signed COG assets through Rasterio/GDAL, project the bounded geographic rectangle to the NIR grid, and clip its window to raster extent. Reject windows with zero valid pixels or more than **250,000 raster pixels**.
+5. Only with `--stream-window --allow-network`, open the signed COG assets through Rasterio/GDAL, project the bounded geographic rectangle to the NIR grid, and clip its window to raster extent. Reject windows with zero valid pixels or more than **250,000 raster pixels**. This raster cap is independent of the 0.25° query-span limit: at B08’s 10 m resolution, a 0.25° square generally exceeds the streaming cap. Choose a smaller bbox; the AOI example below uses 0.04° per side (about 190,000 window pixels at that location). Projection and grid alignment determine the actual window size.
 6. Resample B04 bilinearly and SCL nearest to the B08 grid. Count pixels with SCL 4/5/6 and valid nonzero B04/B08 values. Compute a preliminary **digital-number band ratio** `(B08-B04)/(B08+B04)` for the rectangular window. With an optional validated `--aoi-geojson` Polygon/MultiPolygon, it additionally uses a GDAL-reprojected pixel-center polygon mask, excluding pixels outside the supplied boundary. Without that argument it remains a rectangular window summary. **Neither mode** applies calibrated reflectance/radiometric offsets, atmospheric/BRDF uncertainty review or verified survey boundaries; do not market its digital-number ratio as calibrated NDVI.
 7. Report only scene ID/time, metadata cloud cover, valid pixel count, preview ratio, explicit unverified states and reviewer requirement. Do not write signed URLs, persistent imagery or customer boundaries to disk.
 
@@ -56,7 +60,7 @@ For an authorized live exploratory read, include the polygon and the required lo
 
 ```bash
 python scripts/stac_cog_ndvi_preflight.py \
-  --bbox -46.69 -23.59 -46.61 -23.51 \
+  --bbox -46.68 -23.56 -46.64 -23.52 \
   --start 2026-10-01 --end 2026-10-31 \
   --aoi-geojson fixtures/stac-aoi-synthetic.geojson \
   --budget-plan fixtures/stac-cost-budget-synthetic.json \
@@ -171,3 +175,6 @@ Review each component separately. **Do not advertise savings, legal compliance, 
 - Preserve human review; output cannot authorize EUDR DDS, environmental regulatory determinations, utility inspection orders, insurance underwriting or paid imagery tasking.
 
 This standalone prototype does not alter existing production services, credentials, trust roots, Stripe, DNS or customer data.
+
+
+<!-- /coderabbit-ai-generated:v1 -->

@@ -23,11 +23,13 @@ class RangeProbeError(ValueError):
 
 class _DenyRedirects(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
+        """Refuse HTTP redirects so signed asset requests stay on the allowed origin."""
         raise RangeProbeError("COG redirect blocked")
 
 
 def _open_request(request, *, timeout):
     # Disable environment-driven HTTP proxies as an implicit remote hop.
+    """Open a bounded diagnostic request without environment HTTP proxies."""
     opener = urllib.request.build_opener(
         urllib.request.ProxyHandler({}), _DenyRedirects(),
     )

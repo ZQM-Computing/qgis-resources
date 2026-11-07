@@ -17,6 +17,7 @@ BAND_IDS = {"3": "boa_add_offset_b04", "7": "boa_add_offset_b08"}
 
 
 def _tag(element):
+    """Return an XML element name without its namespace."""
     return element.tag.rsplit("}", 1)[-1]
 
 

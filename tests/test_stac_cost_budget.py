@@ -14,6 +14,7 @@ import stac_cost_budget as budget
 
 
 def template():
+    """Load a fresh hypothetical no-purchase cost plan."""
     return {
         "schema_version": 1,
         "scope": "preflight-no-purchase",
@@ -34,6 +35,7 @@ def template():
 
 class BudgetTests(unittest.TestCase):
     def test_conservative_cost_and_no_operational_approval(self):
+        """Verify conservative cost and no operational approval."""
         result = budget.calculate(template())
         self.assertEqual(result["decision"], "WITHIN_DECLARED_BUDGET_ONLY")
         self.assertEqual(result["estimated_cost_upper_rounded_usd"], "21.20")
@@ -43,6 +45,7 @@ class BudgetTests(unittest.TestCase):
             self.assertFalse(result[denied])
 
     def test_over_budget_is_blocking(self):
+        """Verify over budget is blocking."""
         d = template()
         d["approved_spend_ceiling_usd"] = "21.19"
         result = budget.calculate(d)
@@ -50,6 +53,7 @@ class BudgetTests(unittest.TestCase):
         self.assertEqual(result["estimated_cost_upper_rounded_usd"], "21.20")
 
     def test_small_nonzero_cost_rounds_up_to_one_cent(self):
+        """Verify small nonzero cost rounds up to one cent."""
         d = template()
         for k in d["rates"]:
             d["rates"][k] = "0"
@@ -60,6 +64,7 @@ class BudgetTests(unittest.TestCase):
         self.assertEqual(budget.calculate(d)["decision"], "BLOCKED_OVER_BUDGET")
 
     def test_paid_purchase_never_authorized(self):
+        """Verify paid purchase never authorized."""
         for bad in (True, "false", None, 0):
             with self.subTest(bad=bad):
                 d = template()
@@ -68,6 +73,7 @@ class BudgetTests(unittest.TestCase):
                     budget.calculate(d)
 
     def test_invalid_cost_and_metering_inputs_fail_closed(self):
+        """Verify invalid cost and metering inputs fail closed."""
         for field, val in (("request_count", 101),
                            ("request_count", -1),
                            ("request_count", 1.5),
@@ -89,6 +95,7 @@ class BudgetTests(unittest.TestCase):
                 budget.calculate(d)
 
     def test_unknown_fields_and_missing_rates_blocked(self):
+        """Verify unknown fields and missing rates blocked."""
         for field in ("unapproved_extra",):
             d = template()
             d[field] = "yes"
@@ -100,12 +107,14 @@ class BudgetTests(unittest.TestCase):
             budget.calculate(d)
 
     def test_deterministic_pure(self):
+        """Verify deterministic pure."""
         d = template()
         before = deepcopy(d)
         self.assertEqual(budget.calculate(d), budget.calculate(d))
         self.assertEqual(d, before)
 
     def test_cli_exit_codes_and_json_rejection(self):
+        """Verify cli exit codes and json rejection."""
         with TemporaryDirectory() as td:
             p = Path(td) / "budget.json"
             p.write_text(json.dumps(template()), encoding="utf-8")

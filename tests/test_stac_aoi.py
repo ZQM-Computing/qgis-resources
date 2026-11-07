@@ -18,18 +18,21 @@ BBOX = [-46.69, -23.59, -46.61, -23.51]
 
 
 def fixture():
+    """Load a fresh synthetic local fixture for each assertion."""
     return json.loads((ROOT / "fixtures" / "stac-aoi-synthetic.geojson").read_text())
 
 
 @unittest.skipUnless(importlib.util.find_spec("shapely") is not None, "Shapely required")
 class AoiGeometryTests(unittest.TestCase):
     def test_valid_polygon_does_not_mutate_source(self):
+        """Verify valid polygon does not mutate source."""
         geometry = fixture()
         original = deepcopy(geometry)
         self.assertEqual(stac_aoi.validate_aoi(geometry, BBOX), geometry)
         self.assertEqual(geometry, original)
 
     def test_rejects_nonpolygon_and_out_of_scope_geometry(self):
+        """Verify rejects nonpolygon and out of scope geometry."""
         cases = [
             {"type": "Point", "coordinates": [-46.65, -23.54]},
             {"type": "Feature", "geometry": fixture(), "properties": {}},
@@ -47,6 +50,7 @@ class AoiGeometryTests(unittest.TestCase):
                 stac_aoi.validate_aoi(geometry, BBOX)
 
     def test_rejects_self_crossing_and_overlapping_multipolygons(self):
+        """Verify rejects self crossing and overlapping multipolygons."""
         crossed = {"type": "Polygon", "coordinates": [[
             [-46.68, -23.56], [-46.64, -23.52],
             [-46.68, -23.52], [-46.64, -23.56],
@@ -59,6 +63,7 @@ class AoiGeometryTests(unittest.TestCase):
                 stac_aoi.validate_aoi(geometry, BBOX)
 
     def test_rejects_nan_bool_and_large_vertex_counts(self):
+        """Verify rejects nan bool and large vertex counts."""
         for value in (float("nan"), True):
             g = fixture()
             g["coordinates"][0][1][0] = value
@@ -71,6 +76,7 @@ class AoiGeometryTests(unittest.TestCase):
             stac_aoi.validate_aoi(g, BBOX)
 
     def test_rejects_duplicate_json_keys_and_nonfinite_json(self):
+        """Verify rejects duplicate json keys and nonfinite json."""
         for raw in (
             '{"type":"Polygon","type":"MultiPolygon","coordinates":[]}',
             '{"type":"Polygon","coordinates":[[[0,NaN]]]}',
@@ -82,6 +88,7 @@ class AoiGeometryTests(unittest.TestCase):
                     stac_aoi.load_aoi(path, BBOX)
 
     def test_offline_cli_accepts_valid_boundary_metadata_only(self):
+        """Verify offline cli accepts valid boundary metadata only."""
         args = [
             "--bbox", "-46.69", "-23.59", "-46.61", "-23.51",
             "--start", "2026-10-01", "--end", "2026-10-31",
@@ -91,6 +98,7 @@ class AoiGeometryTests(unittest.TestCase):
         self.assertEqual(stac.main(args), 0)
 
     def test_cli_refuses_invalid_polygon_before_optional_network(self):
+        """Verify cli refuses invalid polygon before optional network."""
         from unittest.mock import patch
         with TemporaryDirectory() as directory:
             bad = Path(directory) / "bad.geojson"
