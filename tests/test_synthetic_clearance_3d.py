@@ -24,6 +24,8 @@ class ClearanceTests(unittest.TestCase):
         self.assertEqual(match["nominal_separation_m"], 3.0)
         self.assertEqual(match["conservative_lower_bound_m"], 2.0)
         self.assertEqual(match["conservative_upper_bound_m"], 4.0)
+        self.assertEqual(match["flag_basis"], "nominal-proximity")
+        self.assertFalse(result["position_error_assumptions_verified"])
         self.assertEqual(result["segments"][1]["finding"], "SAMPLED_POINTS_OUTSIDE_THRESHOLD_NOT_CLEARANCE")
         self.assertFalse(result["field_clearance_verified"])
         self.assertFalse(result["cost_savings_estimated"])
@@ -39,6 +41,7 @@ class ClearanceTests(unittest.TestCase):
         result = analyze(data)
         self.assertEqual(result["segments"][0]["candidates"][0]["nominal_separation_m"], 5)
         self.assertEqual(result["segments"][0]["candidates"][0]["conservative_lower_bound_m"], 2.5)
+        self.assertEqual(result["segments"][0]["candidates"][0]["flag_basis"], "uncertainty-overlap")
 
     def test_no_candidate_is_insufficient_evidence(self):
         data = fixture()
@@ -50,6 +53,25 @@ class ClearanceTests(unittest.TestCase):
         data["vegetation_samples"] = []
         with self.assertRaises(ValueError):
             analyze(data)
+
+    def test_excessive_position_error_fails_closed(self):
+        for field in ("conductor_segments", "vegetation_samples"):
+            data = fixture()
+            data[field][0]["absolute_position_uncertainty_m"] = 101
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                analyze(data)
+
+    def test_only_explicit_false_or_absent_work_order_authority(self):
+        for value in (True, 1, "approved", None):
+            data = fixture()
+            data["work_order_authorized"] = value
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                analyze(data)
+
+    def test_outside_uncertainty_band_does_not_flag(self):
+        data = fixture()
+        data["vegetation_samples"][0]["position"] = [500010, 3200010, 15]
+        self.assertEqual(analyze(data)["status"], "INSUFFICIENT_EVIDENCE")
 
     def test_missing_uncertainty_fails(self):
         data = fixture()
