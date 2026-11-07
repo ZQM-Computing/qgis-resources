@@ -112,6 +112,16 @@ class PreflightTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     preflight.load(p)
 
+    def test_invalid_production_period_and_acquisition_date(self):
+        for value in ("2026-02-30", "2026-05-02/2026-05-01", "tomorrow", ""):
+            with self.subTest(period=value):
+                d = sample()
+                d["production_date_or_range"] = value
+                self.assertIn("missing-production-period", preflight.assess(d)["exceptions"])
+        d = sample()
+        d["plots"][0]["source"]["acquired_date"] = "2026-13-40"
+        self.assertIn("missing-source-acquisition-date", preflight.assess(d)["exceptions"])
+
     def test_wrong_commodity_and_schema_types_are_reported(self):
         d = sample()
         d["commodity"] = ["coffee"]
