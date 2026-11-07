@@ -40,10 +40,12 @@ class SourceInspectionError(ValueError):
 class _DenyRedirects(HTTPRedirectHandler):
     def redirect_request(self, request: Any, fp: Any, code: Any, msg: Any,
                          headers: Any, newurl: Any) -> None:
+        """Reject redirects so requests cannot escape the allowlisted endpoint."""
         raise SourceInspectionError("External redirect rejected")
 
 
 def _no_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Build a JSON object, rejecting repeated keys rather than losing evidence."""
     result: dict[str, Any] = {}
     for key, value in pairs:
         if key in result:
@@ -53,6 +55,7 @@ def _no_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 
 def _decode_json(raw: bytes) -> dict[str, Any]:
+    """Decode a finite JSON object and reject malformed or provider error payloads."""
     try:
         data = json.loads(
             raw.decode("utf-8"),
@@ -99,6 +102,7 @@ def _http_json(url: str) -> dict[str, Any]:
 
 
 def _bbox(values: list[float] | tuple[float, ...]) -> tuple[float, float, float, float]:
+    """Validate a finite, ordered bounding box within the small Florida pilot limits."""
     if not isinstance(values, (list, tuple)) or len(values) != 4 or any(
         isinstance(x, bool) or not isinstance(x, (float, int)) or not math.isfinite(x)
         for x in values
@@ -116,11 +120,13 @@ def _bbox(values: list[float] | tuple[float, ...]) -> tuple[float, float, float,
 
 
 def _url(params: dict[str, str], *, metadata: bool = False) -> str:
+    """Encode parameters for the fixed metadata or query endpoint."""
     base = LAYER_URL if metadata else QUERY_URL
     return base + "?" + urlencode(params)
 
 
 def _query_filters(box: tuple[float, ...]) -> dict[str, str]:
+    """Build the EPSG:4326 envelope intersection filter for the requested bounds."""
     return {
         "geometry": ",".join(format(x, ".8f") for x in box),
         "geometryType": "esriGeometryEnvelope",
@@ -131,6 +137,7 @@ def _query_filters(box: tuple[float, ...]) -> dict[str, str]:
 
 
 def _verify_layer(layer: dict[str, Any]) -> None:
+    """Require the expected layer identity, field types and pagination capabilities."""
     if not isinstance(layer, dict):
         raise SourceInspectionError("Invalid NWI layer metadata")
     if type(layer.get("id")) is not int or layer["id"] != 0 or layer.get("geometryType") != "esriGeometryPolygon":
@@ -174,6 +181,7 @@ def _verify_layer(layer: dict[str, Any]) -> None:
 def _validate_coords(
     geometry: Any, *, requested_bbox: tuple[float, float, float, float] | None = None
 ) -> int:
+    """Check polygon structure and bounds and count vertices; topology remains unverified."""
     if not isinstance(geometry, dict):
         raise SourceInspectionError("Missing geometry")
     kind = geometry.get("type")
@@ -405,6 +413,7 @@ def publish_snapshot(out: Path, snapshot: dict[str, Any]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Collect and publish an inspection snapshot only with explicit network consent."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bbox", nargs=4, type=float, required=True,
                         metavar=("W", "S", "E", "N"))

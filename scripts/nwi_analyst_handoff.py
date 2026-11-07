@@ -63,6 +63,7 @@ def candidate_handoff(snapshot: dict) -> dict:
 
 
 def _load(path: Path) -> dict:
+    """Read a size-bounded snapshot, rejecting duplicate keys and nonfinite constants."""
     with path.open("rb") as stream:
         data = stream.read(MAX_OUTPUT_BYTES + 1)
     if len(data) > MAX_OUTPUT_BYTES:
@@ -77,6 +78,7 @@ def _load(path: Path) -> dict:
 
 
 def main(argv=None) -> int:
+    """Print a blocked metadata handoff or return failure for invalid snapshots."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("snapshot", type=Path)
     args = parser.parse_args(argv)

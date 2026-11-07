@@ -92,6 +92,7 @@ def replay(snapshot: dict) -> dict:
 
 
 def main(argv=None) -> int:
+    """Report offline snapshot integrity and return failure for invalid evidence."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("snapshot", type=Path)
     args = parser.parse_args(argv)

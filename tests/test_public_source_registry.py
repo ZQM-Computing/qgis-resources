@@ -3,11 +3,15 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import sys
 
-REGISTRY = Path(__file__).resolve().parents[1] / "sources" / "florida-public-candidates.json"
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+REGISTRY = ROOT / "sources" / "florida-public-candidates.json"
 
 
 def test_candidate_registry_cannot_claim_authoritative_commercial_approval():
+    """Verify candidate registry cannot claim authoritative commercial approval."""
     payload = json.loads(REGISTRY.read_text(encoding="utf-8"))
     assert payload["schema_version"] == 1
     assert payload["status"] == "discovery-candidates-not-approved"
@@ -24,6 +28,7 @@ def test_candidate_registry_cannot_claim_authoritative_commercial_approval():
 
 
 def test_fws_registry_source_matches_fixed_allowlisted_client_endpoint():
+    """Verify fws registry source matches fixed allowlisted client endpoint."""
     from nwi_source_inspector import LAYER_URL
 
     candidates = json.loads(REGISTRY.read_text(encoding="utf-8"))["candidates"]
@@ -34,6 +39,7 @@ def test_fws_registry_source_matches_fixed_allowlisted_client_endpoint():
 
 
 def test_2026_parcel_polygon_candidate_is_metadata_only_and_private_fields_excluded():
+    """Verify 2026 parcel polygon candidate is metadata only and private fields excluded."""
     candidates = json.loads(REGISTRY.read_text(encoding="utf-8"))["candidates"]
     parcel = next(item for item in candidates if item["id"] == "florida-dor-parcels-2026")
     assert parcel["geometry_type"] == "esriGeometryPolygon"
@@ -47,6 +53,7 @@ def test_2026_parcel_polygon_candidate_is_metadata_only_and_private_fields_exclu
 
 
 def test_nwi_project_metadata_dates_required_for_real_screening():
+    """Verify nwi project metadata dates required for real screening."""
     candidates = json.loads(REGISTRY.read_text(encoding="utf-8"))["candidates"]
     wetland = next(item for item in candidates if item["id"] == "usfws-nwi-wetlands")
     assert wetland["state_download_reference"].startswith("https://www.fws.gov/")

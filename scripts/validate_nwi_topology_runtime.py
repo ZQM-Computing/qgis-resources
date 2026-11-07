@@ -20,6 +20,7 @@ BOX = (-81.01, 29.01, -81.0, 29.02)
 
 
 def _feature(geometry: dict) -> dict:
+    """Wrap synthetic geometry in an NWI feature with the required properties."""
     return {
         "type": "Feature",
         "properties": {
@@ -32,10 +33,12 @@ def _feature(geometry: dict) -> dict:
 
 
 def _polygon(ring: list[list[float]]) -> dict:
+    """Wrap a synthetic ring in a GeoJSON polygon."""
     return {"type": "Polygon", "coordinates": [ring]}
 
 
 def _mock_fetch(url: str) -> dict:
+    """Serve synthetic layer metadata, counts and features without network access."""
     if urlsplit(url).path == urlsplit(LAYER_URL).path:
         return {
             "id": 0,
@@ -68,6 +71,7 @@ def _mock_fetch(url: str) -> dict:
 
 
 def _fail(snapshot: dict) -> None:
+    """Require the OGR gate to reject an invalid snapshot."""
     try:
         validate_snapshot(snapshot)
     except SourceInspectionError:

@@ -51,9 +51,11 @@ def metadata(**overrides):
 
 
 def fake_source(count=2, alter=None):
+    """Return a synthetic paginated fetcher with optional response mutations."""
     calls = []
 
     def fetch(url):
+        """Serve synthetic metadata, counts and optionally altered feature pages."""
         calls.append(url)
         params = parse_qs(urlsplit(url).query)
         if urlsplit(url).path == urlsplit(nwi.LAYER_URL).path:
@@ -104,6 +106,7 @@ def test_zero_count_is_not_proof_of_no_wetland():
 
 
 def test_pagination_recovers_exact_count_and_queries_each_page():
+    """Verify pagination recovers exact count and queries each page."""
     fetch, urls = fake_source(123)
     value = nwi.collect(BBOX, fetch)
     assert len(value["feature_collection"]["features"]) == 123
@@ -138,6 +141,7 @@ def test_incomplete_page_or_duplicate_id_fails_closed():
 
 
 def test_invalid_layer_metadata_blocks_retrieval_before_count():
+    """Verify invalid layer metadata blocks retrieval before count."""
     for bad in (
         {"geometryType": "esriGeometryPoint"},
         {"name": "Not Wetlands"},
@@ -151,6 +155,7 @@ def test_invalid_layer_metadata_blocks_retrieval_before_count():
 
 
 def test_reject_non_polygon_or_malformed_coordinates():
+    """Verify reject non polygon or malformed coordinates."""
     for invalid in (
         {"type": "Point", "coordinates": [-81, 29]},
         {"type": "Polygon", "coordinates": [[[-81, 29], [-81, 29], [-81, 29], [-80, 29]]]},
@@ -188,6 +193,7 @@ def test_http_client_rejects_unknown_domains_without_network():
 
 
 def test_source_json_decoder_fails_on_duplicate_keys_and_nonfinite():
+    """Verify source json decoder fails on duplicate keys and nonfinite."""
     for raw in (
         b'{"count": 1, "count": 2}',
         b'{"count": NaN}',
@@ -248,6 +254,7 @@ def test_rejects_nonmonotonic_ids_even_when_unique():
 
 
 def test_rejects_mismatched_geojson_crs_and_truncation_signals():
+    """Verify rejects mismatched geojson crs and truncation signals."""
     def wrong_crs(payload, offset):
         payload["crs"] = {"type": "name", "properties": {"name": "EPSG:3857"}}
         return payload
@@ -262,6 +269,7 @@ def test_rejects_mismatched_geojson_crs_and_truncation_signals():
 
 
 def test_rejects_nonfinite_z_values_and_missing_required_wetland_type():
+    """Verify rejects nonfinite z values and missing required wetland type."""
     def bad_z(payload, offset):
         ring = payload["features"][0]["geometry"]["coordinates"][0]
         ring[0] = [ring[0][0], ring[0][1], float("nan")]
@@ -278,7 +286,9 @@ def test_rejects_nonfinite_z_values_and_missing_required_wetland_type():
 
 
 def test_rejects_provider_feature_wholly_outside_requested_envelope():
+    """Verify rejects provider feature wholly outside requested envelope."""
     def misplaced(payload, offset):
+        """Move synthetic vertices outside the requested envelope."""
         for feature in payload["features"]:
             feature["geometry"]["coordinates"] = [[
                 [-80.5, 29.50], [-80.49, 29.50],
@@ -291,7 +301,9 @@ def test_rejects_provider_feature_wholly_outside_requested_envelope():
 
 
 def test_rejects_mismatched_envelope_on_later_page():
+    """Verify rejects mismatched envelope on later page."""
     def misplaced_page(payload, offset):
+        """Move later-page vertices outside the requested envelope."""
         if offset == 100:
             payload["features"][0]["geometry"]["coordinates"] = [[
                 [-82.0, 29.5], [-81.99, 29.5],
@@ -342,11 +354,13 @@ def test_rejects_malformed_provenance_timestamp(timestamp):
 
 
 def test_malformed_provider_container_responses_fail_closed():
+    """Verify malformed provider container responses fail closed."""
     for invalid in ([], "not json", None):
         with pytest.raises(nwi.SourceInspectionError, match="layer metadata"):
             nwi.collect(BBOX, lambda _url, value=invalid: value)
 
         def bad_count(url, value=invalid):
+            """Return a malformed count response while preserving synthetic metadata."""
             if urlsplit(url).path == urlsplit(nwi.LAYER_URL).path:
                 return metadata()
             return value
@@ -355,6 +369,7 @@ def test_malformed_provider_container_responses_fail_closed():
             nwi.collect(BBOX, bad_count)
 
         def bad_page(url, value=invalid):
+            """Return a malformed feature page while preserving synthetic count and metadata."""
             p = parse_qs(urlsplit(url).query)
             if urlsplit(url).path == urlsplit(nwi.LAYER_URL).path:
                 return metadata()
@@ -367,6 +382,7 @@ def test_malformed_provider_container_responses_fail_closed():
 
 
 def test_existing_or_invalid_output_is_rejected_before_any_network(tmp_path, monkeypatch):
+    """Verify existing or invalid output is rejected before any network."""
     output = tmp_path / "existing.json"
     output.write_text('{"previous":true}')
     called = []
@@ -403,6 +419,7 @@ def test_offline_replay_checks_normalized_snapshot_integrity_only():
     "temporal-caveat", "authorization", "bounds", "crs"
 ])
 def test_offline_replay_rejects_snapshot_mutation(case):
+    """Verify offline replay rejects snapshot mutation."""
     from nwi_snapshot_replay import replay
     snap = nwi.collect(BBOX, fake_source(2)[0], obtained_at="2026-11-07T20:00:00Z")
     if case == "geometry":
@@ -492,6 +509,7 @@ def test_handoff_cannot_claim_absence_when_source_has_zero_features():
 
 @pytest.mark.parametrize("change", ["approval", "geometry", "checksum", "source", "count"])
 def test_handoff_refuses_internally_inconsistent_or_approved_source(change):
+    """Verify handoff refuses internally inconsistent or approved source."""
     from nwi_analyst_handoff import candidate_handoff
     snapshot = nwi.collect(BBOX, fake_source(2)[0], obtained_at="2026-11-07T20:00:00Z")
     if change == "approval":
@@ -509,6 +527,7 @@ def test_handoff_refuses_internally_inconsistent_or_approved_source(change):
 
 
 def test_handoff_cli_no_network_no_writes_and_no_approval(tmp_path, capsys, monkeypatch):
+    """Verify handoff cli no network no writes and no approval."""
     from nwi_analyst_handoff import main
     snap = nwi.collect(BBOX, fake_source(1)[0], obtained_at="2026-11-07T20:00:00Z")
     path = tmp_path / "snapshot.json"
