@@ -43,6 +43,20 @@ python scripts/stac_cog_ndvi_preflight.py \
 
 Install packages in a separate controlled environment. Re-evaluate API versions and credentials. Live tests should be executed only after confirming provider access, terms and rate limits. GDAL's HTTP range reads can issue multiple requests including auxiliary/overview reads; **a pixel-count cap does not guarantee an equivalent network-byte cap**.
 
+## Backlog hardening: AOI coverage, radiometry and budget preflight
+
+The preflight now **requires the scene bounding envelope to fully cover the requested AOI bounding box**, and separately refuses partial raster-window coverage before computing a summary. This is a *necessary* spatial coverage condition, not a guarantee of cloud-free or gap-free pixels. Multi-scene mosaicking and antimeridian handling remain explicitly unsupported.
+
+**Radiometric science blocker:** Sentinel-2 L2A processing baseline 04.00 introduced `BOA_ADD_OFFSET`, and simply dividing raw B08/B04 digital numbers can bias the reported vegetation index. Planetary Computer's `sentinel-2-l2a` assets may not expose this offset in STAC `raster:bands` or GeoTIFF headers; authoritative product metadata must be retrieved and validated before calculating calibrated surface reflectance. This prototype deliberately returns `mean_ndvi_dn_ratio` and `radiometric_offset_and_scale_verified=false`. It must not be sold as calibrated NDVI or reliable deforestation evidence.
+
+References: [Copernicus Sentinel-2 L2A Data Quality Report](https://sentiwiki.copernicus.eu/__attachments/1692737/OMPC.CS.DQR.002.12-2025-Sentinel-2-MSI-L2A-DQR-January2026.pdf?inst-v=57724d91-952e-43dd-b156-b6e5f1d03465) and [Planetary Computer ingestion notes](https://sentinel-hub.github.io/titiler-openeo/planetary-computer/).
+
+An additional **offline cost gate** is provided:
+
+    python scripts/stac_cost_budget.py fixtures/stac-cost-budget-synthetic.json
+
+It accepts explicitly declared estimates of number of requests, remote bytes, compute seconds and analyst minutes, as well as user-provided per-unit USD rates and a budget ceiling. The fixed policy caps requests at 100, transfer estimates at 2 GB, compute at 3,600 seconds, review time at 240 minutes, and approved budget ceilings at $10,000. Each cost is rounded upward to the nearest cent. Exceeding the ceiling is blocked. **Rates are purely hypothetical in the fixture; the tool does not monitor provider bills, enforce an actual egress quota, authorize API access, buy imagery or permit client delivery.** Production must use measured billing, authenticated budgets and a separate enforcement control plane.
+
 ## Zero-fixed-cost rollout and optimization
 
 Keep a single versioned, read-only acquisition policy above the existing land, utility and EUDR evidence applications. **Do not add Snowflake, BigQuery or an image warehouse** before customer volume and actual cost justify them.
