@@ -38,7 +38,8 @@ python -m pip install pystac-client planetary-computer rasterio numpy
 python scripts/stac_cog_ndvi_preflight.py \
   --bbox -46.63 -23.55 -46.60 -23.53 \
   --start 2026-10-01 --end 2026-10-31 \
-  --allow-network --stream-window
+  --allow-network --stream-window \
+  --budget-plan fixtures/stac-cost-budget-synthetic.json
 ```
 
 Install packages in a separate controlled environment. Re-evaluate API versions and credentials. Live tests should be executed only after confirming provider access, terms and rate limits. GDAL's HTTP range reads can issue multiple requests including auxiliary/overview reads; **a pixel-count cap does not guarantee an equivalent network-byte cap**.
@@ -57,7 +58,7 @@ An additional **offline cost gate** is provided:
 python scripts/stac_cost_budget.py fixtures/stac-cost-budget-synthetic.json
 ```
 
-It accepts explicitly declared estimates of number of requests, remote bytes, compute seconds and analyst minutes, as well as user-provided per-unit USD rates and a budget ceiling. The fixed policy caps requests at 100, transfer estimates at 2 GB, compute at 3,600 seconds, review time at 240 minutes, and approved budget ceilings at $10,000. Each cost is rounded upward to the nearest cent. Exceeding the ceiling is blocked. **Rates are purely hypothetical in the fixture; the tool does not monitor provider bills, enforce an actual egress quota, authorize API access, buy imagery or permit client delivery.** Production must use measured billing, authenticated budgets and a separate enforcement control plane.
+Live requests now require `--budget-plan` before a remote STAC search is even attempted; blocked or zero-request plans fail before network access. This is not a live billing counter, and network bytes or charges can exceed declared estimates. It accepts explicitly declared estimates of number of requests, remote bytes, compute seconds and analyst minutes, as well as user-provided per-unit USD rates and a budget ceiling. The fixed policy caps requests at 100, transfer estimates at 2 GB, compute at 3,600 seconds, review time at 240 minutes, and approved budget ceilings at $10,000. Each cost is rounded upward to the nearest cent. Exceeding the ceiling is blocked. **Rates are purely hypothetical in the fixture; the tool does not monitor provider bills, enforce an actual egress quota, authorize API access, buy imagery or permit client delivery.** Production must use measured billing, authenticated budgets and a separate enforcement control plane.
 
 ## Zero-fixed-cost rollout and optimization
 
