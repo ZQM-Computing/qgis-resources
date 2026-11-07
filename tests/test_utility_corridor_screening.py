@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import importlib.util
 import json
 import math
 from pathlib import Path
@@ -17,6 +18,7 @@ def sample():
     return json.loads((ROOT / "fixtures" / "utility-corridor-synthetic.json").read_text(encoding="utf-8"))
 
 
+@unittest.skipUnless(importlib.util.find_spec("osgeo") is not None, "GDAL/OGR required for spatial runtime")
 class CorridorTests(unittest.TestCase):
     def test_expected_horizontal_proximity_and_unknown_clearance(self):
         result = analyze(sample())
