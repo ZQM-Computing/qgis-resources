@@ -53,7 +53,7 @@ def _source_reference(origin: str, value: Any) -> bool:
         if "\\" in value or "://" in value or value.startswith("/"):
             return False
         path = PurePosixPath(value)
-        return path.parts[0] == "fixtures" and ".." not in path.parts and len(path.parts) > 1
+        return len(path.parts) > 1 and path.parts[0] == "fixtures" and ".." not in path.parts
     parts = urlsplit(value)
     return (
         parts.scheme == "https" and bool(parts.hostname)
