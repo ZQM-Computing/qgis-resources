@@ -63,6 +63,17 @@ outputs. This is version-specific test evidence, not a certification for
 Windows, other QGIS versions, or production client datasets. See the
 [dataset QA guide](docs/DATASET_QA.md) for tested output and report-write safety.
 
+## Rank 1 environmental GIS exhibit QA (synthetic)
+
+[Exhibit production review notes](docs/RANK1_EXHIBIT_PRODUCTION.md) describe
+how an environmental consultant could review synthetic PostGIS/GeoPandas
+screening data, source coverage and QA flags in QGIS layouts. This is a
+**documented outline**, not a runtime-validated figure series or evidence
+of a completed client engagement. All data is synthetic, desktop-only;
+not a field wetland delineation, jurisdictional determination, Phase I ESA,
+survey, professional certification or permit approval. Source/retrieval
+records and uncertainty flags are mandatory before any real-world use.
+
 ## Coordinate reference system policy
 
 Coordinate transformations change coordinates; CRS assignment does not. Area, distance, and buffer values use the relevant geometry or algorithm units. Do not assume degrees are metres or that EPSG:3857 is suitable for measurement. Select a local or regional projected CRS appropriate to the study area and state the choice in analysis outputs. EPSG:4326 is used for interchange examples, not as a universal measurement CRS.
