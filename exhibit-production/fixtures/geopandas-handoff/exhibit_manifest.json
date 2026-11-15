@@ -1,0 +1,44 @@
+{
+  "analysis_crs": "EPSG:32617",
+  "data": "synthetic",
+  "disclaimer": "Desktop-only demonstration; no professional or regulatory determination.",
+  "file_inventory": [
+    {
+      "bytes": 984,
+      "filename": "LIMITATIONS.txt",
+      "sha256": "b337557d919f22a798739d82e90e9420acca04793961abac9af582f21313e694"
+    },
+    {
+      "bytes": 1071,
+      "filename": "manifest.json",
+      "sha256": "e3826db174df43672926ce3b1938f5b2616d918ff92d4ed214e191fe7d014037"
+    },
+    {
+      "bytes": 597,
+      "filename": "parcel_constraints.csv",
+      "sha256": "f01c71737d09d8519e61434a4ab7752288af5f89d57144c6a2f991d7c212a07d"
+    },
+    {
+      "bytes": 86470,
+      "filename": "parcel_review_map.png",
+      "sha256": "ef57a5a4f64493f6d514068c99c8bf11f894a4341a8e1d82019ab9627b116076"
+    },
+    {
+      "bytes": 139264,
+      "filename": "parcel_screening.gpkg",
+      "sha256": "fe3e1feec84872f7657d5f85f3b5f16faa193013953de1edd17eb22533350dab"
+    },
+    {
+      "bytes": 2681,
+      "filename": "parcel_screening.json",
+      "sha256": "2053f6962c5fa25f8b16b9114e9d8c13d742ec2957395118847d99f1fe75c918"
+    },
+    {
+      "bytes": 744,
+      "filename": "source_register.json",
+      "sha256": "7791962bbdeb5a422f5ec068bc755264c996af9d89451f06bed02c19c6a20eca"
+    }
+  ],
+  "method": "rank1_synthetic_exhibit_handoff_v1",
+  "source_count": 2
+}

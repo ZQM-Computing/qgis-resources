@@ -1,0 +1,5 @@
+parcel_id,constraint_type,status,parcel_m2,parcel_acres,covered_m2,unknown_m2,known_overlap_m2,known_overlap_acres,known_overlap_pct_parcel,coverage_pct_parcel
+DEMO-P1,flood_hazard,no_mapped_intersection,10000.0,2.471053814671653,10000.0,0.0,0.0,0.0,0.0,100.0
+DEMO-P1,wetland_inventory,intersects,10000.0,2.471053814671653,10000.0,0.0,5000.0,1.2355269073358266,50.0,100.0
+DEMO-P2,flood_hazard,partial_source_coverage,10000.0,2.471053814671653,5000.0,5000.0,2500.0,0.6177634536679133,25.0,50.0
+DEMO-P2,wetland_inventory,no_source_coverage,10000.0,2.471053814671653,0.0,10000.0,0.0,0.0,0.0,0.0

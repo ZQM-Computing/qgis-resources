@@ -1,0 +1,15 @@
+SYNTHETIC ENVIRONMENTAL GIS EXHIBIT HANDOFF - DEMONSTRATION ONLY
+
+Desktop GIS / database preparation only. NOT a field wetland delineation,
+jurisdictional determination, Phase I environmental site assessment (ESA),
+boundary survey, professional certification, engineering opinion, or permit
+approval. All features and source records in the documented demo are synthetic.
+Review current authoritative sources and verify every mapped indicator with
+qualified field professionals before property purchase, development or permits.
+
+Read source_register.json (publisher, source URL, retrieval date, limitations)
+and parcel_screening.json (coverage, unknown area, and screening status).
+A no-mapped-intersection finding is not proof that a constraint is absent.
+GeoPackage geometries are illustrative; not certified parcel boundaries.
+Client approval, sheet layout, professional signoff, licensing, and project
+specific map figures are out of scope. This is NOT a completed client project.

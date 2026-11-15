@@ -1,0 +1,81 @@
+{
+  "disclaimer": "Synthetic desktop GIS screen only; not wetland delineation, jurisdictional determination, Phase I ESA, survey, professional certification or permit approval.",
+  "method": "synthetic_preliminary_parcel_screening_v1",
+  "provenance_status": "validated",
+  "rows": [
+    {
+      "constraint_type": "flood_hazard",
+      "coverage_pct_parcel": 100.0,
+      "covered_m2": 10000.0,
+      "known_overlap_acres": 0.0,
+      "known_overlap_m2": 0.0,
+      "known_overlap_pct_parcel": 0.0,
+      "parcel_acres": 2.471053814671653,
+      "parcel_id": "DEMO-P1",
+      "parcel_m2": 10000.0,
+      "status": "no_mapped_intersection",
+      "unknown_m2": 0.0
+    },
+    {
+      "constraint_type": "wetland_inventory",
+      "coverage_pct_parcel": 100.0,
+      "covered_m2": 10000.0,
+      "known_overlap_acres": 1.2355269073358266,
+      "known_overlap_m2": 5000.0,
+      "known_overlap_pct_parcel": 50.0,
+      "parcel_acres": 2.471053814671653,
+      "parcel_id": "DEMO-P1",
+      "parcel_m2": 10000.0,
+      "status": "intersects",
+      "unknown_m2": 0.0
+    },
+    {
+      "constraint_type": "flood_hazard",
+      "coverage_pct_parcel": 50.0,
+      "covered_m2": 5000.0,
+      "known_overlap_acres": 0.6177634536679133,
+      "known_overlap_m2": 2500.0,
+      "known_overlap_pct_parcel": 25.0,
+      "parcel_acres": 2.471053814671653,
+      "parcel_id": "DEMO-P2",
+      "parcel_m2": 10000.0,
+      "status": "partial_source_coverage",
+      "unknown_m2": 5000.0
+    },
+    {
+      "constraint_type": "wetland_inventory",
+      "coverage_pct_parcel": 0.0,
+      "covered_m2": 0.0,
+      "known_overlap_acres": 0.0,
+      "known_overlap_m2": 0.0,
+      "known_overlap_pct_parcel": 0.0,
+      "parcel_acres": 2.471053814671653,
+      "parcel_id": "DEMO-P2",
+      "parcel_m2": 10000.0,
+      "status": "no_source_coverage",
+      "unknown_m2": 10000.0
+    }
+  ],
+  "source_register": [
+    {
+      "accessed_utc": "2026-11-02T12:00:00Z",
+      "boundary_basis": "synthetic fixture; not a surveyed boundary",
+      "constraint_type": "flood_hazard",
+      "dataset_id": "synthetic-flood_hazard",
+      "effective_date": null,
+      "horizontal_accuracy_m": null,
+      "native_resolution_m": null,
+      "source_url": "https://example.org/synthetic/flood_hazard"
+    },
+    {
+      "accessed_utc": "2026-11-02T12:00:00Z",
+      "boundary_basis": "synthetic fixture; not a surveyed boundary",
+      "constraint_type": "wetland_inventory",
+      "dataset_id": "synthetic-wetland_inventory",
+      "effective_date": null,
+      "horizontal_accuracy_m": null,
+      "native_resolution_m": null,
+      "source_url": "https://example.org/synthetic/wetland_inventory"
+    }
+  ]
+}

@@ -99,6 +99,13 @@ Each algorithm must define parameters, supported geometry types, CRS behavior, u
 
 ### P4 — Ship one complete reference project
 
+The [Rank 1 parcel atlas](../exhibit-production/README.md) is a narrow,
+implemented environmental-exhibit reference: actual GeoPandas handoff input,
+portable QGIS project and XML layout, PDF series, source snapshot, page
+manifest and runtime/failure checks. Its synthetic fixture passed locally on
+Linux/QGIS 3.40.6. It does not complete the broader watershed/terrain example
+below or establish readiness for real client data or other desktop platforms.
+
 Use synthetic data to demonstrate an end-to-end watershed or land-cover assessment:
 
 - Study boundary, land-cover polygons, sample observations, and a small synthetic elevation raster.
