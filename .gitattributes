@@ -1,0 +1,3 @@
+# Preserve the upstream fixture bytes: manifests hash CSV line endings too.
+exhibit-production/fixtures/geopandas-handoff/* -text
+exhibit-production/fixtures/geopandas-handoff/parcel_constraints.csv whitespace=cr-at-eol

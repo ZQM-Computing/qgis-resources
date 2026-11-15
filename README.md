@@ -67,9 +67,12 @@ Windows, other QGIS versions, or production client datasets. See the
 
 [Exhibit production review notes](docs/RANK1_EXHIBIT_PRODUCTION.md) describe
 how an environmental consultant could review synthetic PostGIS/GeoPandas
-screening data, source coverage and QA flags in QGIS layouts. This is a
-**documented outline**, not a runtime-validated figure series or evidence
-of a completed client engagement. All data is synthetic, desktop-only;
+screening data, source coverage and QA flags in QGIS layouts. The
+[parcel atlas implementation](exhibit-production/README.md) now consumes the
+GeoPandas handoff and generates a portable QGIS project, XML layout template,
+PDF figure series and delivery manifest. Its synthetic two-parcel export and
+failure cases were tested locally on Linux/QGIS 3.40.6; the PR's own CI must
+also pass. This is not evidence of a completed client engagement. All data is synthetic, desktop-only;
 not a field wetland delineation, jurisdictional determination, Phase I ESA,
 survey, professional certification or permit approval. Source/retrieval
 records and uncertainty flags are mandatory before any real-world use.

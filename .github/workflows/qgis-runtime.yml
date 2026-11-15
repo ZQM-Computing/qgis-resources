@@ -25,7 +25,11 @@ jobs:
       - name: Install QGIS and Python bindings
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y qgis python3-qgis
+          sudo apt-get install --no-install-recommends -y qgis python3-qgis poppler-utils fonts-dejavu-core
+      - name: Render and reopen the synthetic parcel atlas, portable project, and layout template
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: /usr/bin/python3 -m unittest discover -s tests -p 'test_parcel_atlas_runtime.py' -v
       - name: Exercise plugin and batch buffer algorithm in real QGIS
         env:
           QT_QPA_PLATFORM: offscreen

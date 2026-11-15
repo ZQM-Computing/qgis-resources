@@ -1,0 +1,13 @@
+{
+  "page_name": "'Parcel ' || \"parcel_id\"",
+  "filename": "'EnvConstraints_' || lpad(to_string(@atlas_featurenumber), 4, '0') || '_' || regexp_replace(\"parcel_id\", '[^A-Za-z0-9_-]', '_') || '_' || replace(@exhibit_date, '-', '')",
+  "title": "'Environmental Constraints'",
+  "subtitle": "'Parcel ' || \"parcel_id\" || ' | SYNTHETIC DESKTOP SCREENING'",
+  "page": "to_string(@atlas_featurenumber) || ' / ' || to_string(@atlas_totalfeatures)",
+  "scale": "'Scale 1:' || format_number(map_get(item_variables('main_map'), 'map_scale'), 0)",
+  "date": "@exhibit_date",
+  "crs": "'CRS: ' || @project_crs || ' | metres | grid north'",
+  "wetland_summary": "'Wetland indicator: ' || CASE WHEN \"wetland_status\" = 'intersects' THEN 'mapped overlap' WHEN \"wetland_status\" = 'no_mapped_intersection' THEN 'no mapped intersection (covered area)' WHEN \"wetland_status\" = 'partial_source_coverage' THEN 'PARTIAL COVERAGE - remainder unknown' ELSE 'NO SOURCE COVERAGE - unknown' END || ' | known overlap ' || format_number(\"wetland_known_pct\", 1) || '% | coverage ' || format_number(\"wetland_coverage_pct\", 1) || '%'",
+  "flood_summary": "'Flood indicator: ' || CASE WHEN \"flood_status\" = 'intersects' THEN 'mapped overlap' WHEN \"flood_status\" = 'no_mapped_intersection' THEN 'no mapped intersection (covered area)' WHEN \"flood_status\" = 'partial_source_coverage' THEN 'PARTIAL COVERAGE - remainder unknown' ELSE 'NO SOURCE COVERAGE - unknown' END || ' | known overlap ' || format_number(\"flood_known_pct\", 1) || '% | coverage ' || format_number(\"flood_coverage_pct\", 1) || '%'",
+  "findings_filter": "\"has_indicator\" = 1 OR \"has_data_gap\" = 1"
+}

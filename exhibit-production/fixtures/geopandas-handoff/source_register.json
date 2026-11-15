@@ -1,0 +1,22 @@
+[
+  {
+    "accessed_utc": "2026-11-02T12:00:00Z",
+    "boundary_basis": "synthetic fixture; not a surveyed boundary",
+    "constraint_type": "flood_hazard",
+    "dataset_id": "synthetic-flood_hazard",
+    "effective_date": null,
+    "horizontal_accuracy_m": null,
+    "native_resolution_m": null,
+    "source_url": "https://example.org/synthetic/flood_hazard"
+  },
+  {
+    "accessed_utc": "2026-11-02T12:00:00Z",
+    "boundary_basis": "synthetic fixture; not a surveyed boundary",
+    "constraint_type": "wetland_inventory",
+    "dataset_id": "synthetic-wetland_inventory",
+    "effective_date": null,
+    "horizontal_accuracy_m": null,
+    "native_resolution_m": null,
+    "source_url": "https://example.org/synthetic/wetland_inventory"
+  }
+]

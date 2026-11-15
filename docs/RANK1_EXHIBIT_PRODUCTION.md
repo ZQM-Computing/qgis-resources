@@ -3,8 +3,8 @@
 **Synthetic desktop GIS demonstration only. Not a field wetland delineation,
 jurisdictional determination, Phase I environmental site assessment (ESA),
 boundary survey, engineering opinion, permit approval or professional
-certification.** This describes a proposed review workflow, not evidence of
-client delivery or a verified QGIS layout export. Real maps require current
+certification.** This describes a review workflow and its linked synthetic
+implementation, not evidence of client delivery. Real maps require current
 source records, professional review and appropriate regulatory interpretation.
 
 ## Where this fits
@@ -25,7 +25,12 @@ technical demonstrations are:
 These links are documentation references, **not** proof that an automated,
 tested, cross-repository pipeline or a complete permit exhibit exists.
 
-## Proposed QGIS handoff and map-series workflow
+## QGIS handoff and map-series workflow
+
+The [parcel atlas implementation](../exhibit-production/README.md) provides
+the executable downstream example, exact expressions, layout structure,
+portable `.qgz`/`.qpt`, PDF and page manifest. The original review checklist
+below still applies when adapting the layout or reviewing real source data.
 
 1. **Input intake and provenance.** Record filename, delivery batch, owner/
    permitted use, dataset name and publisher, retrieval/effective date (or
@@ -78,15 +83,20 @@ tested, cross-repository pipeline or a complete permit exhibit exists.
 
 ## Acceptance before calling an exhibit production example runtime-proven
 
-- [ ] A QGIS-enabled test uses synthetic source GeoPackages and CSVs.
-- [ ] It proves per-parcel page counts, visible layers and source labels.
-- [ ] It verifies actual output files by reopening PDF/PNG, with
-      nonempty page/artifact checks; optional visual QA by a reviewer.
-- [ ] It rejects missing source registers, bad CRS and unidentified
+- [x] A QGIS-enabled test uses synthetic source GeoPackages and CSVs.
+- [x] It proves per-parcel page counts, visible layers and source labels.
+- [x] It verifies actual output files by reopening the PDF through Poppler
+      and rendering QGIS map/layout images; both example pages were visually reviewed locally.
+- [x] It rejects missing source registers, bad CRS and contradictory
       data gaps instead of silently producing reassuring maps.
 - [ ] A qualified human confirms any real jurisdiction-specific
       interpretation; no cookbook claims permit or survey authority.
 
-**Status:** This page is a **review checklist and Processing/Layout outline**.
-No new QGIS layout implementation, GUI export test, verified figure series,
-regulatory certification, or real client work was created by this page.
+**Status:** This page remains the review checklist. The linked parcel-atlas
+implementation was executed on Linux with QGIS 3.40.6 using the committed
+GeoPandas synthetic handoff. Automated tests check the two-page PDF,
+source/uncertainty labels, relocated project/template, visible gap hatching,
+input rejection, output preservation and cleanup. This is headless runtime
+evidence; it does not establish GUI usability on every desktop, source
+authority, regulatory certification, or real client work. Exact-head CI and
+representative-data review remain separate gates.
