@@ -214,11 +214,18 @@ class ParcelAtlasRuntime(unittest.TestCase):
         manifest["note"] = "É"
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
         original_open = Path.open
+        original_read_text = Path.read_text
         def legacy_open(path, mode="r", buffering=-1, encoding=None, errors=None, newline=None):
             if "b" not in mode and encoding is None:
                 encoding = "cp1252"
             return original_open(path, mode, buffering, encoding, errors, newline)
-        with mock.patch.object(Path, "open", legacy_open):
+        def legacy_read_text(path, encoding=None, errors=None):
+            # Intercept before pathlib resolves its locale-dependent default.
+            return original_read_text(path, encoding=encoding or "cp1252", errors=errors)
+        with (mock.patch.object(Path, "open", legacy_open),
+              mock.patch.object(Path, "read_text", legacy_read_text)):
+            self.assertEqual(json.loads(manifest_path.read_text())["note"],
+                             "É".encode("utf-8").decode("cp1252"))
             manifest, sources, rows = self.module.read_handoff(handoff)
         self.assertEqual(manifest["note"], "É")
         self.assertIn("synthetic-É-wetland_inventory", [s["dataset_id"] for s in sources])
@@ -278,6 +285,26 @@ class ParcelAtlasRuntime(unittest.TestCase):
         with self.assertRaises(FileExistsError):
             self.module.build_atlas(FIXTURE, self.output, "2026-11-14")
         self.assertEqual(before, self.module.sha256(self.output / "EnvConstraints_Atlas.pdf"))
+
+    def test_refuse_destination_inside_handoff_without_mutating_source(self):
+        handoff = self.new_handoff("input")
+        before = {p.name: self.module.sha256(p) for p in handoff.iterdir()}
+        for relative in (".", "atlas", "nested/atlas", "nested/../atlas"):
+            with self.subTest(destination=relative):
+                with self.assertRaisesRegex(ValueError, "outside the source handoff"):
+                    self.module.build_atlas(handoff, handoff / relative, "2026-11-14")
+                self.assertEqual(before, {p.name: self.module.sha256(p) for p in handoff.iterdir()})
+                self.assertFalse(list(handoff.parent.rglob(".parcel-atlas-*")))
+
+    def test_refuse_destination_symlink_alias_inside_handoff(self):
+        handoff = self.new_handoff("input")
+        alias = handoff.parent / "alias"
+        alias.symlink_to(handoff, target_is_directory=True)
+        before = {p.name: self.module.sha256(p) for p in handoff.iterdir()}
+        with self.assertRaisesRegex(ValueError, "outside the source handoff"):
+            self.module.build_atlas(handoff, alias / "nested" / "atlas", "2026-11-14")
+        self.assertEqual(before, {p.name: self.module.sha256(p) for p in handoff.iterdir()})
+        self.assertFalse(list(handoff.parent.rglob(".parcel-atlas-*")))
 
     def test_refuse_missing_register(self):
         handoff = self.new_handoff("input")

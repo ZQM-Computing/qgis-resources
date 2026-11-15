@@ -416,7 +416,9 @@ def make_layout(project, layers, sources, generation_date, findings_only):
 
 def build_atlas(handoff, destination, generation_date, findings_only=False):
     """Stage a portable project, XML layout, PDF and page manifest; refuse overwrite."""
-    handoff, destination = Path(handoff).resolve(), Path(destination).absolute()
+    handoff, destination = Path(handoff).resolve(), Path(destination).resolve()
+    if destination == handoff or handoff in destination.parents:
+        raise ValueError("Atlas destination must be outside the source handoff directory")
     if destination.exists():
         raise FileExistsError("Atlas destination already exists; choose a new revision directory")
     date.fromisoformat(generation_date)

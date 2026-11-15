@@ -28,8 +28,10 @@ QT_QPA_PLATFORM=offscreen /usr/bin/python3 exhibit-production/parcel_atlas.py \
   /tmp/rank1-atlas-review --date 2026-11-14
 ```
 
-The destination must be new. Use a new revision directory for a rerun; the
-script refuses overwrite. The explicit `--date` drives labels, filenames
+The destination must be new and outside the source handoff directory, including
+through symlink aliases. Overlapping paths are rejected before staging or
+creating destination directories. Use a new revision directory for a rerun;
+the script refuses overwrite. The explicit `--date` drives labels, filenames
 and the manifest together. The PDF's embedded creation timestamp still
 reflects export time; byte-identical PDF/project output is not promised.
 
