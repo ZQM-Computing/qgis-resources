@@ -62,6 +62,14 @@ def sha256(path):
     return digest.hexdigest()
 
 
+def check_handoff_inventory(directory):
+    """Reject non-flat inputs before copying or opening their contents."""
+    members = list(directory.iterdir())
+    if (any(p.is_symlink() or not p.is_file() for p in members)
+            or {p.name for p in members} != INPUT_NAMES | {"exhibit_manifest.json"}):
+        raise ValueError("Expected the complete flat GeoPandas exhibit handoff")
+
+
 def read_handoff(directory):
     """Verify the producer's flat inventory, metadata and complete parcel/type grid.
 
@@ -69,11 +77,8 @@ def read_handoff(directory):
     Unknown publication/accuracy values remain unknown; no publisher is invented.
     """
     directory = Path(directory)
-    members = list(directory.iterdir())
-    if (any(p.is_symlink() or not p.is_file() for p in members)
-            or {p.name for p in members} != INPUT_NAMES | {"exhibit_manifest.json"}):
-        raise ValueError("Expected the complete flat GeoPandas exhibit handoff")
-    manifest = json.loads((directory / "exhibit_manifest.json").read_text())
+    check_handoff_inventory(directory)
+    manifest = json.loads((directory / "exhibit_manifest.json").read_text(encoding="utf-8"))
     if manifest.get("method") != "rank1_synthetic_exhibit_handoff_v1" or manifest.get("data") != "synthetic":
         raise ValueError("Only the synthetic Rank 1 handoff v1 is supported")
     entries = manifest.get("file_inventory", [])
@@ -84,8 +89,8 @@ def read_handoff(directory):
         path = directory / entry["filename"]
         if entry.get("bytes") != path.stat().st_size or entry.get("sha256") != sha256(path):
             raise ValueError(f"Handoff checksum mismatch: {path.name}")
-    report = json.loads((directory / "parcel_screening.json").read_text())
-    sources = json.loads((directory / "source_register.json").read_text())
+    report = json.loads((directory / "parcel_screening.json").read_text(encoding="utf-8"))
+    sources = json.loads((directory / "source_register.json").read_text(encoding="utf-8"))
     if (report.get("provenance_status") != "validated"
             or sources != report.get("source_register") or not isinstance(sources, list)
             or len(sources) != len(TYPES)
@@ -380,7 +385,9 @@ def make_layout(project, layers, sources, generation_date, findings_only):
     scale.setLinkedMap(main)
     scale.applyDefaultSize()
     scale.setUnits(Qgis.DistanceUnit.Meters)
-    scale.setUnitsPerSegment(20)
+    scale.setSegmentSizeMode(Qgis.ScaleBarSegmentSizeMode.FitWidth)
+    scale.setMinimumBarWidth(40)
+    scale.setMaximumBarWidth(60)
     scale.setNumberOfSegments(2)
     scale.setNumberOfSegmentsLeft(0)
     scale.setUnitLabel("m")
@@ -413,17 +420,20 @@ def build_atlas(handoff, destination, generation_date, findings_only=False):
     if destination.exists():
         raise FileExistsError("Atlas destination already exists; choose a new revision directory")
     date.fromisoformat(generation_date)
-    manifest, sources, rows = read_handoff(handoff)
-    crs, layers = prepare_layers(handoff, manifest, rows)
+    check_handoff_inventory(handoff)
     destination.parent.mkdir(parents=True, exist_ok=True)
     project = QgsProject()
-    project.setCrs(crs)
     project.setFilePathStorage(Qgis.FilePathType.Relative)
     project.setTitle("Rank 1 - Synthetic environmental constraint parcel atlas")
     with tempfile.TemporaryDirectory(prefix=".parcel-atlas-", dir=destination.parent) as temporary:
         stage = Path(temporary)
-        shutil.copytree(handoff, stage / "source_handoff")
-        shutil.copyfile(handoff / "source_register.json", stage / "source_register.json")
+        # Validate and consume only this private snapshot, including provenance.
+        snapshot = stage / "source_handoff"
+        shutil.copytree(handoff, snapshot, symlinks=True)
+        manifest, sources, rows = read_handoff(snapshot)
+        crs, layers = prepare_layers(snapshot, manifest, rows)
+        project.setCrs(crs)
+        shutil.copyfile(snapshot / "source_register.json", stage / "source_register.json")
         layers = save_layers(layers, stage / "atlas_data.gpkg", project)
         layout = make_layout(project, layers, sources, generation_date, findings_only)
         atlas = layout.atlas()
@@ -487,7 +497,7 @@ def build_atlas(handoff, destination, generation_date, findings_only=False):
         run = {"method": "rank1_qgis_parcel_atlas_v1", "qgis_version": Qgis.QGIS_VERSION,
                "generation_date": generation_date, "crs": crs.authid(), "page_count": len(pages),
                "filter": EXPRESSIONS["findings_filter"] if findings_only else None,
-               "input_manifest_sha256": sha256(handoff / "exhibit_manifest.json"),
+               "input_manifest_sha256": sha256(snapshot / "exhibit_manifest.json"),
                "disclaimer": DISCLAIMER,
                "files": [{"filename": str(p.relative_to(stage)), "sha256": sha256(p), "bytes": p.stat().st_size}
                          for p in sorted(stage.rglob("*")) if p.is_file()]}

@@ -18,7 +18,7 @@ from unittest import mock
 
 try:
     from qgis.core import (
-        QgsApplication, QgsExpression, QgsLayoutExporter, QgsMapRendererParallelJob,
+        QgsApplication, QgsExpression, QgsGeometry, QgsLayoutExporter, QgsMapRendererParallelJob,
         QgsMapSettings, QgsPrintLayout, QgsProject, QgsReadWriteContext, QgsRectangle,
     )
     from qgis.PyQt.QtCore import QSize
@@ -137,8 +137,20 @@ class ParcelAtlasRuntime(unittest.TestCase):
             self.assertTrue(success)
             self.assertEqual(len(restored.itemById("main_map").layers()), 5)
             self.assertIsNotNone(restored.atlas().coverageLayer())
-            image = QgsLayoutExporter(layout).renderPageToImage(0, QSize(1000, 773))
-            self.assertFalse(image.isNull())
+            self.assertEqual(restored.itemById("scale_bar").linkedMap(), restored.itemById("main_map"))
+            self.assertEqual(restored.itemById("inset_map").overviews().asList()[0].linkedMap(),
+                             restored.itemById("main_map"))
+            restored.atlas().updateFeatures()
+            self.assertTrue(restored.atlas().beginRender())
+            try:
+                ids = []
+                while restored.atlas().next():
+                    ids.append(restored.reportContext().feature()["parcel_id"])
+                    image = QgsLayoutExporter(restored).renderPageToImage(0, QSize(1000, 773))
+                    self.assertFalse(image.isNull())
+                self.assertEqual(ids, ["DEMO-P1", "DEMO-P2"])
+            finally:
+                restored.atlas().endRender()
         finally:
             project.clear()
 
@@ -189,6 +201,77 @@ class ParcelAtlasRuntime(unittest.TestCase):
             self.assertEqual(filenames, ["EnvConstraints_0001_DEMO-P1_20261114", "EnvConstraints_0002_DEMO-P2_20261114"])
         finally:
             project.clear()
+
+    def test_utf8_handoff_under_non_utf8_default(self):
+        handoff = self.new_handoff("input")
+        for name in ("parcel_screening.json", "source_register.json", "parcel_constraints.csv"):
+            path = handoff / name
+            path.write_text(path.read_text(encoding="utf-8").replace("DEMO-P1", "DEMO-É")
+                            .replace("synthetic-wetland_inventory", "synthetic-É-wetland_inventory"), encoding="utf-8")
+        self.rehash(handoff)
+        manifest_path = handoff / "exhibit_manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["note"] = "É"
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+        original_open = Path.open
+        def legacy_open(path, mode="r", buffering=-1, encoding=None, errors=None, newline=None):
+            if "b" not in mode and encoding is None:
+                encoding = "cp1252"
+            return original_open(path, mode, buffering, encoding, errors, newline)
+        with mock.patch.object(Path, "open", legacy_open):
+            manifest, sources, rows = self.module.read_handoff(handoff)
+        self.assertEqual(manifest["note"], "É")
+        self.assertIn("synthetic-É-wetland_inventory", [s["dataset_id"] for s in sources])
+        self.assertIn(("DEMO-É", "wetland_inventory"), rows)
+
+    def test_scale_bar_fits_small_and_large_parcel_pages(self):
+        manifest, sources, rows = self.module.read_handoff(FIXTURE)
+        _, layers = self.module.prepare_layers(FIXTURE, manifest, rows)
+        coverage = layers["atlas_parcels"]
+        changes = {}
+        for feature, size in zip(coverage.getFeatures(), (10, 10000)):
+            changes[feature.id()] = QgsGeometry.fromRect(QgsRectangle(500000, 3200000,
+                                                                      500000 + size, 3200000 + size))
+        self.assertTrue(coverage.dataProvider().changeGeometryValues(changes))
+        coverage.updateExtents()
+        project = QgsProject()
+        project.setCrs(coverage.crs())
+        try:
+            layout = self.module.make_layout(project, layers, sources, "2026-11-14", False)
+            atlas = layout.atlas()
+            atlas.updateFeatures()
+            self.assertTrue(atlas.beginRender())
+            distances = []
+            try:
+                while atlas.next():
+                    self.assertFalse(QgsLayoutExporter(layout).renderPageToImage(0, QSize(1000, 773)).isNull())
+                    scale = layout.itemById("scale_bar")
+                    self.assertLess(scale.sceneBoundingRect().right(), 93)
+                    self.assertGreater(scale.sizeWithUnits().width(), 0)
+                    distances.append(scale.unitsPerSegment())
+            finally:
+                atlas.endRender()
+            self.assertEqual(len(distances), 2)
+            self.assertGreater(distances[1], distances[0] * 100)
+        finally:
+            project.clear()
+
+    def test_delivery_uses_validated_snapshot_when_original_changes(self):
+        handoff = self.new_handoff("input")
+        original = {p.name: self.module.sha256(p) for p in handoff.iterdir()}
+        prepare = self.module.prepare_layers
+        def mutate_original(*args):
+            (handoff / "source_register.json").write_text("[]")
+            (handoff / "exhibit_manifest.json").write_text("{}")
+            return prepare(*args)
+        output = handoff.parent / "output"
+        with mock.patch.object(self.module, "prepare_layers", side_effect=mutate_original):
+            self.module.build_atlas(handoff, output, "2026-11-14")
+        self.assertEqual(original, {p.name: self.module.sha256(p)
+                                    for p in (output / "source_handoff").iterdir()})
+        self.assertEqual(original["source_register.json"], self.module.sha256(output / "source_register.json"))
+        run = json.loads((output / "atlas_run.json").read_text())
+        self.assertEqual(run["input_manifest_sha256"], original["exhibit_manifest.json"])
 
     def test_refuse_existing_destination(self):
         before = self.module.sha256(self.output / "EnvConstraints_Atlas.pdf")
