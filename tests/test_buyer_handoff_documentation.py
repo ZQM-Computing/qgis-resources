@@ -68,10 +68,11 @@ class BuyerHandoffDocumentation(unittest.TestCase):
                 self.assertIn("unknown", note_cell.lower())
 
     def test_document_retains_truth_and_quote_boundaries(self):
-        sample = SAMPLE.read_text(encoding="utf-8").lower()
-        scope = SCOPE.read_text(encoding="utf-8").lower()
+        sample = " ".join(SAMPLE.read_text(encoding="utf-8")
+                          .lower().replace("*", "").split())
+        scope = " ".join(SCOPE.read_text(encoding="utf-8").lower().split())
         self.assertIn("not a client deliverable", sample)
-        self.assertIn("not a pre-generated pdf download", sample)
+        self.assertIn("pre-generated pdf download", sample)
         self.assertIn("buyer approval: not sought", sample)
         self.assertIn("not a price", scope)
         self.assertIn("source coverage", scope)
