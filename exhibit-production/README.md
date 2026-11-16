@@ -12,6 +12,21 @@ source dates, a filtered legend, a metre scale bar and a grid-north arrow.
 Coverage gaps are hatched **above** indicator fills, so one source's mapped
 features cannot hide another source's unknown area.
 
+## Buyer-facing scope and acceptance evidence
+
+For a non-technical consulting reviewer, start with the
+[synthetic Atlas handoff example](BUYER_HANDOFF_SAMPLE.md). It spells out the
+fictional figure request, expected parcel findings, the generated output
+inventory and an eight-point acceptance review. The
+[client figure-set scope template](../docs/ENVIRONMENTAL_GIS_BRIEF_TEMPLATE.md)
+records data rights, source coverage, map formats, reviewing professional,
+QA, change requests and the factors needed for a written quote.
+
+These are **templates and expected fixture outputs**, not a pre-rendered
+download, proven client engagement, set price or delivery-time promise. The
+following runtime commands and tests remain the source of implementation
+evidence.
+
 ## Quickstart
 
 Requires QGIS with Python bindings, DejaVu Sans fonts, and Poppler's
