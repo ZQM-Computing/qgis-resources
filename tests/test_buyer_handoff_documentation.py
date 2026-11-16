@@ -76,7 +76,7 @@ class BuyerHandoffDocumentation(unittest.TestCase):
         self.assertIn("buyer approval: not sought", sample)
         self.assertIn("not a price", scope)
         self.assertIn("source coverage", scope)
-        self.assertIn("revisions", scope)
+        self.assertIn("revision allowance", scope)
         self.assertIn("professional", scope)
 
 
