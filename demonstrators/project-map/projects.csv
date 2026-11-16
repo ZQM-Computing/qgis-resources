@@ -1,0 +1,7 @@
+id,name,category,status,lat,lon,description,contact_note
+P-01,Demo Riverwalk Trail — Concept,Trail,Concept,29.0253,-80.9201,"A fictional concept trail segment shown only to demonstrate map interaction. No real site is represented.","Demonstration contact only — no real client."
+P-02,Synthetic Wetland Boardwalk — Concept,Wetland,Concept,29.0187,-80.9145,"A fictional boardwalk concept over an illustrative wetland polygon. All geometry is invented for this demo.","Demonstration contact only — no real client."
+P-03,Imaginary Pocket Park — Concept,Park,Planning,29.0312,-80.9088,"A fictional pocket-park concept used to show a planning-status project on the map and in the list.","Demonstration contact only — no real client."
+P-04,Fictional Waterfront Overlook — Concept,Waterfront,Concept,29.0124,-80.9273,"A fictional waterfront overlook concept. Coordinates are illustrative points only, not a real site.","Demonstration contact only — no real client."
+P-05,Sample Greenway Connector — Concept,Trail,Planning,29.0221,-80.9019,"A fictional greenway connector concept linking two invented anchor points, to demonstrate a second Trail-category item.","Demonstration contact only — no real client."
+P-06,Mock Community Plaza — Concept,Park,Concept,29.0289,-80.9330,"A fictional community-plaza concept. No real place, client, or project is represented.","Demonstration contact only — no real client."

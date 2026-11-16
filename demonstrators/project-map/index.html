@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accessible Project Map — Synthetic Demonstration</title>
+<!--
+  Accessible interactive project map (CSV-managed) — SYNTHETIC DEMO.
+  Data source: projects.csv in this same folder, loaded with Papa Parse.
+  Works by opening this file directly: if the browser blocks fetch() from
+  file://, the page falls back to the embedded copy of the CSV below
+  (identical content, id="embedded-csv"). When served over HTTP the
+  live projects.csv is always used.
+  No backend, no keys, no tracking. Basemap: CartoDB light_all (no key).
+-->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root {
+    --ink: #1a1a1a;          /* body text on white */
+    --header-bg: #0b3d5c;    /* dark navy-teal header */
+    --header-text: #ffffff;
+    --accent: #0b4f6c;       /* buttons / links on white */
+    --accent-text: #ffffff;
+    --banner-bg: #fff3cd;
+    --banner-text: #4a3200;
+    --focus: #005fcc;        /* visible focus outline */
+    --panel-bg: #ffffff;
+    --muted-bg: #f2f5f7;
+    --border: #5a6b76;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    color: var(--ink); background: #ffffff; line-height: 1.5; font-size: 16px;
+  }
+  /* Visible focus everywhere: 3px solid outline, never colour alone. */
+  :focus { outline: 3px solid var(--focus); outline-offset: 2px; }
+  :focus:not(:focus-visible) { outline: none; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .skip-link {
+    position: absolute; left: 0.5rem; top: -4rem; z-index: 2000;
+    background: var(--header-bg); color: var(--header-text);
+    padding: 0.6rem 1rem; border-radius: 0 0 4px 4px;
+  }
+  .visually-hidden {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  .skip-link:focus { top: 0; }
+  .banner {
+    background: var(--banner-bg); color: var(--banner-text);
+    text-align: center; font-weight: 700; padding: 0.6rem 1rem; font-size: 1rem;
+    border-bottom: 2px solid #b89000;
+  }
+  header.site-header {
+    background: var(--header-bg); color: var(--header-text);
+    padding: 1rem 1.25rem;
+  }
+  header.site-header h1 { margin: 0 0 0.25rem; font-size: 1.6rem; line-height: 1.25; }
+  header.site-header p { margin: 0; font-size: 1rem; }
+  main { max-width: 1100px; margin: 0 auto; padding: 1rem 1.25rem 2rem; }
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; align-items: end;
+    background: var(--muted-bg); border: 1px solid var(--border);
+    padding: 0.9rem 1rem; border-radius: 6px; margin: 1rem 0;
+  }
+  .controls label { font-weight: 700; display: block; margin-bottom: 0.25rem; }
+  .controls select, .controls button {
+    font: inherit; color: var(--ink); background: #fff;
+    border: 2px solid var(--accent); border-radius: 4px; padding: 0.45rem 0.6rem;
+  }
+  .controls button { background: var(--accent); color: var(--accent-text); cursor: pointer; font-weight: 700; }
+  #map {
+    height: 420px; width: 100%; border: 2px solid var(--border); border-radius: 6px;
+    background: #e8eef1;
+  }
+  .map-hint { font-size: 0.95rem; margin: 0.5rem 0 1rem; }
+  /* Map markers are real <button> elements (see JS: divIcon html). */
+  .marker-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--accent); color: var(--accent-text);
+    border: 2px solid #ffffff; box-shadow: 0 0 0 2px var(--accent);
+    font: 700 14px/1 system-ui, sans-serif; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; padding: 0;
+  }
+  .marker-btn:hover { background: #083a50; }
+  .marker-btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+  .marker-btn[aria-pressed="true"] { background: #7a3b00; box-shadow: 0 0 0 2px #7a3b00; }
+  .layout { display: grid; grid-template-columns: 1fr; gap: 1.25rem; }
+  @media (min-width: 760px) { .layout { grid-template-columns: 1.2fr 1fr; } }
+  .panel {
+    border: 2px solid var(--border); border-radius: 6px; padding: 1rem 1.1rem;
+    background: var(--panel-bg);
+  }
+  .panel h2 { margin-top: 0; font-size: 1.25rem; }
+  .panel h3 { margin: 0 0 0.5rem; font-size: 1.15rem; }
+  .badge {
+    display: inline-block; font-weight: 700; font-size: 0.9rem;
+    padding: 0.15rem 0.55rem; border-radius: 999px; margin-right: 0.4rem;
+  }
+  .badge-concept { background: #e3f2e6; color: #1b4d2a; }
+  .badge-planning { background: #fff3cd; color: #4a3200; }
+  .badge-other { background: #e8eef1; color: #1a1a1a; }
+  .project-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
+  .project-list li {
+    border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem 0.9rem;
+    background: #fff;
+  }
+  .project-list button.project-open {
+    font: inherit; font-weight: 700; text-align: left; width: 100%;
+    background: none; border: none; padding: 0; cursor: pointer;
+    color: var(--accent); text-decoration: underline;
+  }
+  .project-list .meta { font-size: 0.95rem; margin: 0.3rem 0; }
+  .legend { font-size: 0.95rem; }
+  .legend ul { margin: 0.4rem 0 0; padding-left: 1.2rem; }
+  .status-line { font-weight: 700; }
+  footer { max-width: 1100px; margin: 0 auto; padding: 0 1.25rem 2rem; font-size: 0.95rem; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#project-list-heading">Skip to project list</a>
+
+<div class="banner" role="note">
+  Synthetic demonstration data &mdash; no real projects or places are represented.
+</div>
+
+<header class="site-header">
+  <h1>Accessible Project Map</h1>
+  <p>Synthetic demonstration by Alex Zelenski, individual GISP &mdash; New Smyrna Beach, FL.
+     Illustrative points only; nothing on this map is a real site, client, or project.</p>
+</header>
+
+<main>
+  <div class="controls" role="group" aria-label="Map controls">
+    <div>
+      <label for="category-filter">Filter by category</label>
+      <select id="category-filter" aria-describedby="filter-help">
+        <option value="">All categories</option>
+      </select>
+      <span id="filter-help" class="visually-hidden">Filtering updates both the map markers and the project list below.</span>
+    </div>
+    <button type="button" id="reset-view">Reset map view</button>
+    <p id="result-count" class="status-line" aria-live="polite"></p>
+  </div>
+
+  <h2 id="map-heading">Map</h2>
+  <p class="map-hint" id="map-hint">
+    Tab to reach each numbered marker button, then use Left / Right (or Up / Down)
+    arrow keys to move between projects in list order. Enter or Space opens the
+    project detail. The full project list below the map contains the same
+    information &mdash; the map is never the only way to get it.
+  </p>
+  <div id="map" role="region" aria-label="Interactive map of synthetic demonstration projects" aria-describedby="map-hint"></div>
+
+  <div class="layout">
+    <section class="panel" aria-labelledby="detail-heading">
+      <h2 id="detail-heading" tabindex="-1">Project detail</h2>
+      <div id="detail-body">
+        <p>Select a marker on the map or a project in the list to see its details here.</p>
+      </div>
+      <button type="button" id="detail-close" hidden>Close detail and return to the project</button>
+    </section>
+
+    <section class="panel legend" aria-labelledby="legend-heading">
+      <h2 id="legend-heading">Legend</h2>
+      <ul>
+        <li><strong>Numbered marker</strong> &mdash; one per synthetic project; the number matches its position in the project list.</li>
+        <li><span class="badge badge-concept">Concept</span> an early-stage fictional concept.</li>
+        <li><span class="badge badge-planning">Planning</span> a fictional project shown at planning stage.</li>
+        <li>Coordinates are illustrative points near New Smyrna Beach, FL (approx. 29.0&deg; N, 80.9&deg; W), not real sites.</li>
+      </ul>
+    </section>
+  </div>
+
+  <h2 id="project-list-heading" tabindex="-1">All projects (list alternative to the map)</h2>
+  <p>Every project on the map is listed here with the same details. Use Tab to reach
+     each project, arrow keys to move between them, and Enter or Space to open it.</p>
+  <ul class="project-list" id="project-list"></ul>
+  <p id="empty-state" hidden>No projects match the selected category. Choose another category.</p>
+</main>
+
+<footer>
+  <p>Synthetic demonstration data &mdash; no real projects or places are represented.
+     This demonstrator makes no claim of survey or engineering licensure and no claim
+     of ArcGIS Enterprise experience. Basemap &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>
+     contributors &copy; <a href="https://carto.com/attributions">CARTO</a>.
+     Map library: Leaflet; CSV parsing: Papa Parse (CDN).</p>
+</footer>
+
+<!-- Embedded fallback copy of projects.csv (identical content).
+     Used ONLY if fetch('projects.csv') is blocked, e.g. opening this file
+     directly via file:// in a browser that forbids local fetch. -->
+<script type="text/csv" id="embedded-csv">id,name,category,status,lat,lon,description,contact_note
+P-01,Demo Riverwalk Trail — Concept,Trail,Concept,29.0253,-80.9201,"A fictional concept trail segment shown only to demonstrate map interaction. No real site is represented.","Demonstration contact only — no real client."
+P-02,Synthetic Wetland Boardwalk — Concept,Wetland,Concept,29.0187,-80.9145,"A fictional boardwalk concept over an illustrative wetland polygon. All geometry is invented for this demo.","Demonstration contact only — no real client."
+P-03,Imaginary Pocket Park — Concept,Park,Planning,29.0312,-80.9088,"A fictional pocket-park concept used to show a planning-status project on the map and in the list.","Demonstration contact only — no real client."
+P-04,Fictional Waterfront Overlook — Concept,Waterfront,Concept,29.0124,-80.9273,"A fictional waterfront overlook concept. Coordinates are illustrative points only, not a real site.","Demonstration contact only — no real client."
+P-05,Sample Greenway Connector — Concept,Trail,Planning,29.0221,-80.9019,"A fictional greenway connector concept linking two invented anchor points, to demonstrate a second Trail-category item.","Demonstration contact only — no real client."
+P-06,Mock Community Plaza — Concept,Park,Concept,29.0289,-80.9330,"A fictional community-plaza concept. No real place, client, or project is represented.","Demonstration contact only — no real client."
+</script>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var map = L.map('map', { keyboard: true, scrollWheelZoom: true }).setView([29.022, -80.918], 13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+  }).addTo(map);
+
+  var allProjects = [];      // every row from projects.csv, in file order
+  var visibleProjects = [];  // rows passing the current category filter, in file order
+  var markers = {};          // id -> Leaflet marker
+  var markerLayer = L.layerGroup().addTo(map);
+  var selectedId = null;
+  var lastInvoker = null;    // element to return focus to when detail is closed
+
+  var listEl = document.getElementById('project-list');
+  var filterEl = document.getElementById('category-filter');
+  var countEl = document.getElementById('result-count');
+  var emptyEl = document.getElementById('empty-state');
+  var detailBody = document.getElementById('detail-body');
+  var detailHeading = document.getElementById('detail-heading');
+  var detailClose = document.getElementById('detail-close');
+
+  /* --- Data loading: live projects.csv first, embedded copy as file:// fallback --- */
+  function parseCsvText(text, sourceLabel) {
+    var parsed = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: false });
+    if (parsed.errors.length) {
+      showLoadError('Could not parse ' + sourceLabel + ': ' + parsed.errors[0].message);
+      return;
+    }
+    var rows = parsed.data.filter(function (r) { return r && r.id; });
+    allProjects = rows.map(function (r) {
+      return {
+        id: String(r.id).trim(),
+        name: String(r.name || '').trim(),
+        category: String(r.category || '').trim(),
+        status: String(r.status || '').trim(),
+        lat: parseFloat(r.lat),
+        lon: parseFloat(r.lon),
+        description: String(r.description || '').trim(),
+        contact_note: String(r.contact_note || '').trim()
+      };
+    });
+    buildFilterOptions();
+    render();
+  }
+
+  function showLoadError(message) {
+    detailBody.innerHTML = '<p><strong>Data could not be loaded.</strong> ' + message + '</p>';
+  }
+
+  function loadProjects() {
+    fetch('projects.csv')
+      .then(function (response) {
+        if (!response.ok) { throw new Error('HTTP ' + response.status); }
+        return response.text();
+      })
+      .then(function (text) { parseCsvText(text, 'projects.csv'); })
+      .catch(function () {
+        // file:// open: browsers commonly block fetch of a local file.
+        var embedded = document.getElementById('embedded-csv').textContent;
+        parseCsvText(embedded, 'the embedded copy of projects.csv');
+        var note = document.createElement('p');
+        note.textContent = 'Note: this copy loaded the embedded CSV because the browser blocked reading projects.csv directly from a file:// open. When served over HTTP the live projects.csv is used.';
+        detailBody.appendChild(note);
+      });
+  }
+
+  /* --- Filter --- */
+  function buildFilterOptions() {
+    var categories = [];
+    allProjects.forEach(function (p) {
+      if (categories.indexOf(p.category) === -1) { categories.push(p.category); }
+    });
+    categories.sort();
+    categories.forEach(function (c) {
+      var opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      filterEl.appendChild(opt);
+    });
+  }
+
+  function currentFilter() { return filterEl.value; }
+
+  /* --- Rendering: markers + list stay in the same file order --- */
+  function render() {
+    var wanted = currentFilter();
+    visibleProjects = allProjects.filter(function (p) {
+      return !wanted || p.category === wanted;
+    });
+
+    markerLayer.clearLayers();
+    markers = {};
+    visibleProjects.forEach(function (project, index) {
+      var number = index + 1;
+      var label = 'Project ' + number + ' of ' + visibleProjects.length + ': ' +
+        project.name + ', ' + project.category + ', status ' + project.status;
+      var icon = L.divIcon({
+        className: 'synthetic-marker',
+        html: '<button type="button" class="marker-btn" data-id="' + project.id +
+          '" aria-label="' + escapeAttr(label) + '. Press Enter to open details.">' +
+          number + '</button>',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+      var marker = L.marker([project.lat, project.lon], { icon: icon, keyboard: false, title: project.name });
+      marker.addTo(markerLayer);
+      markers[project.id] = marker;
+      // The marker's DOM node is created by Leaflet; wire the inner <button>.
+      var btn = marker.getElement() && marker.getElement().querySelector('.marker-btn');
+      if (btn) {
+        btn.addEventListener('click', function () { openProject(project.id, btn); });
+        btn.addEventListener('keydown', onProjectKeydown);
+      }
+    });
+
+    renderList();
+    countEl.textContent = visibleProjects.length + ' of ' + allProjects.length + ' projects shown.';
+    emptyEl.hidden = visibleProjects.length !== 0;
+    if (visibleProjects.length) {
+      var bounds = L.latLngBounds(visibleProjects.map(function (p) { return [p.lat, p.lon]; }));
+      map.fitBounds(bounds.pad(0.15));
+    }
+  }
+
+  function renderList() {
+    listEl.innerHTML = '';
+    visibleProjects.forEach(function (project, index) {
+      var li = document.createElement('li');
+      var number = index + 1;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'project-open';
+      btn.dataset.id = project.id;
+      btn.textContent = number + '. ' + project.name;
+      btn.setAttribute('aria-label', 'Project ' + number + ' of ' + visibleProjects.length +
+        ': ' + project.name + ', ' + project.category + ', status ' + project.status +
+        '. Press Enter to open details.');
+      btn.addEventListener('click', function () { openProject(project.id, btn); });
+      btn.addEventListener('keydown', onProjectKeydown);
+      var meta = document.createElement('p');
+      meta.className = 'meta';
+      meta.textContent = project.category + ' — ' + project.status;
+      var desc = document.createElement('p');
+      desc.className = 'meta';
+      desc.textContent = project.description;
+      li.appendChild(btn);
+      li.appendChild(meta);
+      li.appendChild(desc);
+      listEl.appendChild(li);
+    });
+  }
+
+  /* --- Keyboard: arrows move focus between projects in list order --- */
+  function onProjectKeydown(event) {
+    var key = event.key;
+    if (key !== 'ArrowRight' && key !== 'ArrowLeft' && key !== 'ArrowDown' && key !== 'ArrowUp') {
+      return; // Enter/Space are handled natively by <button> (fires click).
+    }
+    event.preventDefault();
+    event.stopPropagation(); // keep Leaflet's own map-pan arrow keys from also firing
+    var id = event.currentTarget.dataset.id;
+    var index = visibleProjects.findIndex(function (p) { return p.id === id; });
+    if (index === -1) { return; }
+    var forward = (key === 'ArrowRight' || key === 'ArrowDown');
+    var nextIndex = forward
+      ? (index + 1) % visibleProjects.length
+      : (index - 1 + visibleProjects.length) % visibleProjects.length;
+    focusProject(visibleProjects[nextIndex].id);
+  }
+
+  // Focus the marker button if it is in the DOM, else the list button.
+  function focusProject(id) {
+    var marker = markers[id];
+    var markerBtn = marker && marker.getElement() && marker.getElement().querySelector('.marker-btn');
+    if (markerBtn) { markerBtn.focus(); return; }
+    var listBtn = listEl.querySelector('button[data-id="' + id + '"]');
+    if (listBtn) { listBtn.focus(); }
+  }
+
+  /* --- Detail panel + focus management --- */
+  function openProject(id, invoker) {
+    var project = allProjects.find(function (p) { return p.id === id; });
+    if (!project) { return; }
+    selectedId = id;
+    lastInvoker = invoker || null;
+    Object.keys(markers).forEach(function (key) {
+      var btn = markers[key].getElement() && markers[key].getElement().querySelector('.marker-btn');
+      if (btn) { btn.setAttribute('aria-pressed', key === id ? 'true' : 'false'); }
+    });
+    var badgeClass = project.status === 'Concept' ? 'badge-concept'
+      : project.status === 'Planning' ? 'badge-planning' : 'badge-other';
+    detailBody.innerHTML =
+      '<h3>' + escapeHtml(project.name) + '</h3>' +
+      '<p><span class="badge ' + badgeClass + '">' + escapeHtml(project.status) + '</span>' +
+      '<strong>Category:</strong> ' + escapeHtml(project.category) + '</p>' +
+      '<p>' + escapeHtml(project.description) + '</p>' +
+      '<p><strong>Location (illustrative):</strong> ' + project.lat.toFixed(4) + '&deg; N, ' +
+      Math.abs(project.lon).toFixed(4) + '&deg; W</p>' +
+      '<p><strong>Contact:</strong> ' + escapeHtml(project.contact_note) + '</p>';
+    detailClose.hidden = false;
+    detailHeading.focus(); // move focus into the detail panel
+    map.panTo([project.lat, project.lon]);
+  }
+
+  function closeDetail() {
+    detailBody.innerHTML = '<p>Select a marker on the map or a project in the list to see its details here.</p>';
+    detailClose.hidden = true;
+    selectedId = null;
+    Object.keys(markers).forEach(function (key) {
+      var btn = markers[key].getElement() && markers[key].getElement().querySelector('.marker-btn');
+      if (btn) { btn.setAttribute('aria-pressed', 'false'); }
+    });
+    if (lastInvoker && document.contains(lastInvoker)) { lastInvoker.focus(); } // return focus
+  }
+
+  detailClose.addEventListener('click', closeDetail);
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && !detailClose.hidden) { closeDetail(); }
+  });
+
+  filterEl.addEventListener('change', function () {
+    selectedId = null;
+    detailBody.innerHTML = '<p>Select a marker on the map or a project in the list to see its details here.</p>';
+    detailClose.hidden = true;
+    render();
+  });
+
+  document.getElementById('reset-view').addEventListener('click', function () {
+    if (visibleProjects.length) {
+      var bounds = L.latLngBounds(visibleProjects.map(function (p) { return [p.lat, p.lon]; }));
+      map.fitBounds(bounds.pad(0.15));
+    } else {
+      map.setView([29.022, -80.918], 13);
+    }
+    var first = document.querySelector('.marker-btn');
+    if (first) { first.focus(); }
+  });
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+
+  loadProjects();
+})();
+</script>
+</body>
+</html>
