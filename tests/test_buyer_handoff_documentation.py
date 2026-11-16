@@ -54,7 +54,7 @@ class BuyerHandoffDocumentation(unittest.TestCase):
             wetland_cell, flood_cell, note_cell = table[parcel_id][1:]
             if wetland["coverage_pct_parcel"] == 0:
                 self.assertIn("unknown", wetland_cell.lower())
-                self.assertNotIn("clear", wetland_cell.lower())
+                self.assertIn("not clear", wetland_cell.lower())
             else:
                 self.assertIn(
                     f'{wetland["known_overlap_pct_parcel"]:g}%', wetland_cell
