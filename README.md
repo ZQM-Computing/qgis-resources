@@ -63,6 +63,19 @@ outputs. This is version-specific test evidence, not a certification for
 Windows, other QGIS versions, or production client datasets. See the
 [dataset QA guide](docs/DATASET_QA.md) for tested output and report-write safety.
 
+## Reviewable GIS figure-set handoff (synthetic)
+
+Environmental consultants and engineering teams can inspect the
+[buyer-readable two-parcel handoff example](exhibit-production/BUYER_HANDOFF_SAMPLE.md),
+then use the [figure-set brief and acceptance worksheet](docs/ENVIRONMENTAL_GIS_BRIEF_TEMPLATE.md)
+to agree inputs, maps, source rights, coverage gaps, output formats,
+review/revisions and quote drivers before committing to a project.
+
+The example is synthetic and does **not** claim real client delivery, a
+generated PDF downloadable from GitHub, a fixed rate, an accepted bid or
+professional/regulatory approval. The linked QGIS workflow gives the
+reproduction steps and tested output contract.
+
 ## Rank 1 environmental GIS exhibit QA (synthetic)
 
 [Exhibit production review notes](docs/RANK1_EXHIBIT_PRODUCTION.md) describe
