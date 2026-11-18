@@ -17,7 +17,7 @@ concurrency:
 jobs:
   qgis-runtime:
     name: Run plugin against installed QGIS
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, zqm-linux]
     timeout-minutes: 45
     steps:
       - name: Check out repository

@@ -53,7 +53,7 @@ permissions:
 jobs:
   synthetic-window:
     name: Offline Rasterio band/window validation
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, zqm-linux]
     timeout-minutes: 15
     steps:
       - name: Checkout
