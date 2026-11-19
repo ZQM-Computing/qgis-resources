@@ -28,14 +28,17 @@ jobs:
     runs-on: [self-hosted, Linux, X64, zqm-linux]
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - timeout-minutes: 2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Check internal links (strict)
+        timeout-minutes: 5
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2
         with:
           args: --offline --no-progress --verbose '**/*.md'
 
       - name: Check external links (advisory)
+        timeout-minutes: 20
         continue-on-error: true
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2
         with:
