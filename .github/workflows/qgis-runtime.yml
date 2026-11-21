@@ -23,9 +23,15 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install QGIS and Python bindings
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y qgis python3-qgis poppler-utils fonts-dejavu-core
+          set -euo pipefail
+          apt_command=(apt-get)
+          if [ "$(id -u)" -ne 0 ]; then
+            apt_command=(sudo -n apt-get)
+          fi
+          "${apt_command[@]}" update
+          "${apt_command[@]}" install --no-install-recommends -y qgis python3-qgis poppler-utils fonts-dejavu-core
       - name: Render and reopen the synthetic parcel atlas, portable project, and layout template
         env:
           QT_QPA_PLATFORM: offscreen
