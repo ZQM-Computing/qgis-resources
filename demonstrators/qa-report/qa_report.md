@@ -94,4 +94,3 @@ Counts account for every input row. A row can have more than one reject reason, 
 - UNUSABLE_GEOMETRY (unusable geometry): 1
 - WRONG_GEOMETRY_TYPE (wrong geometry type): 1
 - **Total reason instances: 7 across 6 rejected rows** — a row can carry more than one reason, so this total is not a row count.
-
