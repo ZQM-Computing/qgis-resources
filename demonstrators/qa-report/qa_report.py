@@ -831,7 +831,6 @@ def build_markdown(**kw):
                  f"{sum(kw['reason_counts'].values())} across "
                  f"{kw['batch_rejected']} rejected rows** — a row can carry "
                  "more than one reason, so this total is not a row count.")
-    lines.append("")
     return "\n".join(lines) + "\n"
 
 
