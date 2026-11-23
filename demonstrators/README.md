@@ -8,9 +8,8 @@ registers, or spends money; everything runs from local files.
 Built 2026-11-16 to support Upwork applications (direct-buyer rows
 371–379 in the outreach tracker). The four demonstrators share one
 fixture family so their numbers agree with each other and with the live
-site's synthetic samples at
-https://zqmlabs.com/computing/services/environmental-screening/ and
-https://zqmlabs.com/computing/services/gis-automation/.
+site's synthetic samples for [environmental screening](https://zqmlabs.com/computing/services/environmental-screening/) and
+[GIS automation](https://zqmlabs.com/computing/services/gis-automation/).
 
 ## Shared fixture
 
