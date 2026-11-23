@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build:
     name: Build documentation
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, zqm-linux]
     defaults:
       run:
         shell: bash
@@ -46,10 +46,11 @@ jobs:
           path: site
 
   deploy:
+    timeout-minutes: 30
     name: Deploy GitHub Pages (opt-in)
     if: github.event_name == 'workflow_dispatch' && vars.ENABLE_GITHUB_PAGES == 'true'
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, zqm-linux]
     permissions:
       pages: write
       id-token: write

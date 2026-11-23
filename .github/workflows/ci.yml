@@ -16,11 +16,21 @@ concurrency:
 jobs:
   validate:
     name: Validate documentation and resource content
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, zqm-linux]
     timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Python runtime libraries
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt_command=(apt-get)
+          if [ "$(id -u)" -ne 0 ]; then
+            apt_command=(sudo -n apt-get)
+          fi
+          "${apt_command[@]}" update
+          "${apt_command[@]}" install --no-install-recommends -y libsqlite3-0
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
