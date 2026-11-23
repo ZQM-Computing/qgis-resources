@@ -153,6 +153,10 @@ map.on('load', function () {
     paint: { 'line-color': '#a21caf', 'line-width': 2 } });
   map.addLayer({ id: 'imported-point', type: 'circle', source: 'imported',
     paint: { 'circle-color': '#d946ef', 'circle-radius': 5, 'circle-stroke-color': '#a21caf', 'circle-stroke-width': 1.5 } });
+  // Controls can change before MapLibre finishes loading; honor their actual state.
+  ['parcels', 'wetland', 'flood', 'imported'].forEach(function (id) {
+    setLayerVisibility(id, document.getElementById('toggle-' + id).checked);
+  });
 
   var popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true });
 
@@ -166,14 +170,22 @@ map.on('load', function () {
     } else if (f.layer.id === 'wetland-fill') {
       var wp = parcelById(f.properties.parcel_id);
       html = '<strong>Wetland indicator</strong><br>' + f.properties.name + '.<br>' +
-        (wp ? wp.parcel_id + ' wetland overlap: ' + wp.wetland_overlap_m2.toLocaleString('en-US') + ' m&sup2; (' + wp.wetland_overlap_pct + '% of parcel), coverage ' + fmtCoverage(wp.wetland_coverage_pct) + '.' : '');
+        (wp ? parcelPopupHtml(wp) : 'No matching parcel summary');
     } else if (f.layer.id === 'flood-fill') {
       var fp2 = parcelById(f.properties.parcel_id);
       html = '<strong>Flood hazard</strong><br>' + f.properties.name + '.<br>' +
-        (fp2 ? fp2.parcel_id + ' flood overlap: ' + fp2.flood_overlap_m2.toLocaleString('en-US') + ' m&sup2; (' + fp2.flood_overlap_pct + '% of parcel), coverage ' + fmtCoverage(fp2.flood_coverage_pct) + '.' : '');
+        (fp2 ? parcelPopupHtml(fp2) : 'No matching parcel summary');
     } else {
       var name = (f.properties && (f.properties.name || f.properties.title)) || 'Imported feature';
-      html = '<strong>' + name + '</strong><br>Imported from KML/KMZ (client-side only).';
+      // Imported KML names are untrusted content: never interpret as markup.
+      var importedContent = document.createElement('div');
+      var importedTitle = document.createElement('strong');
+      importedTitle.textContent = String(name);
+      importedContent.appendChild(importedTitle);
+      importedContent.appendChild(document.createElement('br'));
+      importedContent.appendChild(document.createTextNode('Imported from KML/KMZ (client-side only).'));
+      popup.setLngLat(e.lngLat).setDOMContent(importedContent).addTo(map);
+      return;
     }
     popup.setLngLat(e.lngLat).setHTML(html).addTo(map);
   });
