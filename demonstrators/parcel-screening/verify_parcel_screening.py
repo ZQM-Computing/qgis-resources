@@ -22,6 +22,12 @@ import geopandas as gpd
 OUT = Path(__file__).resolve().parent
 GPKG = OUT / "parcel_screening.gpkg"
 GEOJSON = OUT / "parcel_screening.geojson"
+# Independent fixture truth: check wetland source coverage for EVERY parcel,
+# not just the two reference examples; GeoJSON and GPKG may both be corrupted.
+WETLAND_COVERAGE = {
+    "DEMO-P1": 100.0, "DEMO-P2": 0.0, "DEMO-P3": 100.0,
+    "DEMO-P4": 50.0, "DEMO-P5": 0.0, "DEMO-P6": 100.0,
+}
 
 failures = []
 
@@ -61,6 +67,8 @@ def main():
               and abs(row.parcel_acres - area * 0.0002471053814671653) < 1e-9
               and abs(row.wetland_overlap_m2 - w_over) < 0.01
               and abs(row.wetland_overlap_pct - w_over / area * 100) < 0.01
+              and row.parcel_id in WETLAND_COVERAGE
+              and abs(row.wetland_coverage_pct - WETLAND_COVERAGE[row.parcel_id]) < 0.01
               and abs(row.flood_overlap_m2 - f_over) < 0.01
               and abs(row.flood_overlap_pct - f_over / area * 100) < 0.01
               and abs(row.flood_coverage_pct - f_cov / area * 100) < 0.01)
