@@ -264,7 +264,11 @@ P-06,Mock Community Plaza — Concept,Park,Concept,29.0289,-80.9330,"A fictional
       })
       .then(function (text) { parseCsvText(text, 'projects.csv'); })
       .catch(function () {
-        // file:// open: browsers commonly block fetch of a local file.
+        if (window.location.protocol !== 'file:') {
+          // Never mask an HTTP 404 or network failure with stale demonstration data.
+          showLoadError('Check the projects.csv file and the server response.');
+          return;
+        }
         var embedded = document.getElementById('embedded-csv').textContent;
         parseCsvText(embedded, 'the embedded copy of projects.csv');
         var note = document.createElement('p');
@@ -305,7 +309,7 @@ P-06,Mock Community Plaza — Concept,Park,Concept,29.0289,-80.9330,"A fictional
         project.name + ', ' + project.category + ', status ' + project.status;
       var icon = L.divIcon({
         className: 'synthetic-marker',
-        html: '<button type="button" class="marker-btn" data-id="' + project.id +
+        html: '<button type="button" class="marker-btn" data-id="' + escapeAttr(project.id) +
           '" aria-label="' + escapeAttr(label) + '. Press Enter to open details.">' +
           number + '</button>',
         iconSize: [32, 32],
@@ -374,15 +378,19 @@ P-06,Mock Community Plaza — Concept,Park,Concept,29.0289,-80.9330,"A fictional
     var nextIndex = forward
       ? (index + 1) % visibleProjects.length
       : (index - 1 + visibleProjects.length) % visibleProjects.length;
-    focusProject(visibleProjects[nextIndex].id);
+    var fromList = event.currentTarget.classList.contains('project-open');
+    focusProject(visibleProjects[nextIndex].id, fromList ? 'list' : 'marker');
   }
 
-  // Focus the marker button if it is in the DOM, else the list button.
-  function focusProject(id) {
+  // Stay on the originating accessible surface while arrow-navigating.
+  function focusProject(id, surface) {
+    var listBtn = Array.from(listEl.querySelectorAll('button[data-id]')).find(function (button) {
+      return button.dataset.id === id;
+    });
+    if (surface === 'list' && listBtn) { listBtn.focus(); return; }
     var marker = markers[id];
     var markerBtn = marker && marker.getElement() && marker.getElement().querySelector('.marker-btn');
     if (markerBtn) { markerBtn.focus(); return; }
-    var listBtn = listEl.querySelector('button[data-id="' + id + '"]');
     if (listBtn) { listBtn.focus(); }
   }
 
