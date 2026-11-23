@@ -10,10 +10,11 @@ Standard library only (sqlite3, struct, math, hashlib, json, sys,
 platform). No geopandas / fiona / shapely / ogr2ogr required.
 
 Reads, in order of preference:
-  1. ~/workspace/commercial/demonstrators/parcel-screening/parcel_screening.gpkg
+  1. ../parcel-screening/parcel_screening.gpkg, relative to this script
      (the GeoPackage built in parallel — validated when present)
   2. fixtures/parcel_screening.json (bundled fixture, used when the
-     GeoPackage does not exist yet)
+     GeoPackage does not exist yet; a present but invalid GeoPackage
+     is a FAIL even if the report falls back to the fixture)
 
 The source register is read from the GeoPackage's source_register
 table when the GeoPackage is used, and from the fixture JSON
@@ -40,9 +41,9 @@ Runs REAL checks computed by this script (never hardcoded outcomes):
     accepted / rejected by computing the checks above
 
 Writes qa_report.md and qa_report.html next to this script.
-Exits 0 on a successful run (a run that completes and writes the
-reports, even if some QA checks flag findings — findings are reported,
-not hidden by the exit code).
+Exits 0 if the generated report contains PASS/FLAG findings only.
+Exits 1 if a structural or data-integrity check fails, even when the
+report files are successfully generated.
 """
 
 import hashlib
@@ -305,7 +306,7 @@ def load_gpkg():
     layer is kept separate from flood_hazard: coverage is the known-
     coverage extent, not hazard, and must never be summed into the
     overlap. Raises on any structural problem so the caller can fall
-    back."""
+    back with an explicitly failed GeoPackage source-integrity check."""
     con = sqlite3.connect(f"file:{GPKG_PATH}?mode=ro", uri=True)
     try:
         cur = con.cursor()
