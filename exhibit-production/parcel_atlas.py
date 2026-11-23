@@ -23,7 +23,7 @@ import unicodedata
 import xml.etree.ElementTree as ET
 from urllib.parse import urlparse
 
-from qgis.PyQt.QtCore import QMetaType
+from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtGui import QColor, QFont, QPolygonF
 from qgis.PyQt.QtCore import QPointF
 from qgis.core import (
@@ -190,12 +190,12 @@ def prepare_layers(directory, manifest, rows):
     overlaps = geometry_by_key(load_polygon(gpkg, "known_overlaps", crs,
                                ("parcel_id", "constraint_type"), optional=True), ids)
     atlas = QgsVectorLayer(f"MultiPolygon?crs={crs.authid()}", "Parcel outlines", "memory")
-    fields = [QgsField("parcel_id", QMetaType.Type.QString)]
+    fields = [QgsField("parcel_id", QVariant.String)]
     for prefix in TYPES.values():
-        fields += [QgsField(prefix + "_status", QMetaType.Type.QString),
-                   QgsField(prefix + "_known_pct", QMetaType.Type.Double),
-                   QgsField(prefix + "_coverage_pct", QMetaType.Type.Double)]
-    fields += [QgsField("has_indicator", QMetaType.Type.Int), QgsField("has_data_gap", QMetaType.Type.Int)]
+        fields += [QgsField(prefix + "_status", QVariant.String),
+                   QgsField(prefix + "_known_pct", QVariant.Double),
+                   QgsField(prefix + "_coverage_pct", QVariant.Double)]
+    fields += [QgsField("has_indicator", QVariant.Int), QgsField("has_data_gap", QVariant.Int)]
     atlas.dataProvider().addAttributes(fields)
     atlas.updateFields()
     display = {"atlas_parcels": atlas}
