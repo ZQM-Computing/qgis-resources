@@ -55,10 +55,7 @@ import sys
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
-GPKG_PATH = (
-    Path.home()
-    / "workspace/commercial/demonstrators/parcel-screening/parcel_screening.gpkg"
-)
+GPKG_PATH = BASE_DIR.parent / "parcel-screening" / "parcel_screening.gpkg"
 FIXTURE_PATH = BASE_DIR / "fixtures" / "parcel_screening.json"
 
 TOLERANCE_M2 = 1.0
@@ -367,6 +364,8 @@ def load_gpkg():
                     "geom_type": gtype, "rings": rings,
                     "srs": srs, "stored": stored,
                 })
+        if not layers["parcels"]:
+            raise ValueError("parcels layer missing or empty in GeoPackage")
         register = None
         tables = {r[0] for r in cur.execute(
             "SELECT name FROM sqlite_master WHERE type='table'")}
@@ -496,6 +495,11 @@ def main():
         expected = {p["parcel_id"]: p for p in fixture_data["parcels"]}
         gpkg_note = "parcel_screening.gpkg not found — validated the bundled fixture instead"
 
+    # An invalid provided GeoPackage must not silently pass as fixture evidence.
+    if GPKG_PATH.exists():
+        checks.append(("GeoPackage source integrity",
+                       "PASS" if input_kind == "GeoPackage" else "FAIL",
+                       gpkg_note))
     input_hash = sha256_file(input_path)
     parcels = layers["parcels"]
     wetlands = layers["wetland"]
@@ -569,20 +573,24 @@ def main():
                 polygon_intersection_area(f["rings"], h["rings"])
                 for h in layer)
             stored = (f["stored"] or {}).get(f"{hazard}_overlap_m2")
-            if stored is None:
+            # Fixture targets must never conceal missing live GeoPackage attributes.
+            if stored is None and input_kind != "GeoPackage":
                 stored = exp.get(f"{hazard}_overlap_m2")
             coverage = (f["stored"] or {}).get(f"{hazard}_coverage_pct")
-            if coverage is None:
+            if coverage is None and input_kind != "GeoPackage":
                 coverage = exp.get(f"{hazard}_coverage_pct")
             parcel_area = polygon_area(f["rings"])
-            if stored is None:
-                # No stored value and (per the register) no coverage:
-                # the overlap is unknown, not zero.
+            if coverage is None or coverage <= 0:
+                # Without mapped coverage, an observed 0 does not prove absence.
                 status = "FLAG"
-                verdict = ("unknown — no stored overlap and "
-                           f"{hazard} coverage is {coverage}% "
-                           "(recomputed geometric intersection "
-                           f"{recomputed:,.0f} m2 is NOT a verified overlap)")
+                verdict = (f"unknown — {hazard} coverage is {coverage}%; "
+                           f"recomputed {recomputed:,.0f} m2 is NOT a "
+                           "verified overlap")
+            elif stored is None:
+                status = "FLAG"
+                verdict = (f"unverified — GeoPackage stored {hazard} overlap "
+                           f"is missing; recomputed {recomputed:,.0f} m2 "
+                           "must not be compared to a fixture target")
             elif abs(recomputed - stored) <= TOLERANCE_M2:
                 status = "PASS"
                 verdict = (f"recomputed {recomputed:,.0f} m2 matches stored "
@@ -625,9 +633,11 @@ def main():
                                           if parcel_area else 0.0),
                 "status": status, "verdict": verdict,
             })
-    overlap_ok = all(r["status"] != "FAIL" for r in overlap_rows)
+    overlap_status = ("FAIL" if any(r["status"] == "FAIL" for r in overlap_rows)
+                      else "FLAG" if any(r["status"] == "FLAG" for r in overlap_rows)
+                      else "PASS")
     checks.append(("Overlap accounting — recomputed vs stored (±1 m2)",
-                   "PASS" if overlap_ok else "FAIL",
+                   overlap_status,
                    "; ".join(
                        f"{r['parcel_id']} {r['hazard']}: "
                        f"{r['recomputed_m2']:,.0f} m2 recomputed vs "
@@ -638,7 +648,9 @@ def main():
     for src in source_register:
         accessed = src.get("accessed")
         effective = src.get("effective_date")
-        if effective is None:
+        if not isinstance(accessed, str) or not accessed.strip():
+            status, detail = ("FAIL", "accessed_utc missing or blank — source freshness unverified")
+        elif effective is None:
             status, detail = (
                 "FLAG",
                 f"accessed {accessed}; effective_date is null — "
@@ -718,7 +730,7 @@ def main():
               f"[{r['status']}]")
     print(f"Wrote {BASE_DIR / 'qa_report.md'}")
     print(f"Wrote {BASE_DIR / 'qa_report.html'}")
-    return 0
+    return 1 if any(status == "FAIL" for _, status, _ in checks) else 0
 
 
 def build_markdown(**kw):
