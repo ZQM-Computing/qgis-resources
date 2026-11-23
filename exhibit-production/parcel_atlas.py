@@ -32,6 +32,7 @@ from qgis.core import (
     QgsLayoutExporter, QgsLayoutItemLabel, QgsLayoutItemLegend, QgsLayoutItemMap,
     QgsLayoutItemMapOverview, QgsLayoutItemPolygon, QgsLayoutItemScaleBar,
     QgsLayoutPoint, QgsLayoutSize, QgsPalLayerSettings, QgsPrintLayout, QgsProject,
+    QgsScaleBarSettings,
     QgsReadWriteContext, QgsTextBufferSettings, QgsTextFormat, QgsVectorFileWriter,
     QgsVectorLayer, QgsVectorLayerSimpleLabeling, QgsWkbTypes,
 )
@@ -385,7 +386,11 @@ def make_layout(project, layers, sources, generation_date, findings_only):
     scale.setLinkedMap(main)
     scale.applyDefaultSize()
     scale.setUnits(Qgis.DistanceUnit.Meters)
-    scale.setSegmentSizeMode(Qgis.ScaleBarSegmentSizeMode.FitWidth)
+    # QGIS 3.40 moved the enum from QgsScaleBarSettings to Qgis.
+    fit_width_mode = (Qgis.ScaleBarSegmentSizeMode.FitWidth
+                      if hasattr(Qgis, "ScaleBarSegmentSizeMode")
+                      else QgsScaleBarSettings.SegmentSizeFitWidth)
+    scale.setSegmentSizeMode(fit_width_mode)
     scale.setMinimumBarWidth(40)
     scale.setMaximumBarWidth(60)
     scale.setNumberOfSegments(2)
