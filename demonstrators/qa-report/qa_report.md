@@ -2,6 +2,8 @@
 
 **SYNTHETIC DATA ONLY — no real property is represented.** No client records were used. No survey/engineering licensure or ArcGIS Enterprise experience is claimed.
 
+**Historical report snapshot:** The original GeoPackage run predates the QA hardening. Coverage-zero rows below have been conservatively relabeled FLAG after review; this edited snapshot is not evidence that the new generator was rerun. Regenerate with `python3 qa_report.py` against a newly built synthetic GeoPackage before client-facing use.
+
 ## Input
 
 - Input used: GeoPackage
@@ -18,7 +20,7 @@
 | CRS consistency — all layers EPSG:32617 | PASS | layers report EPSG [32617]; expected [32617]. layers read: flood_coverage, flood_hazard, parcels, wetland_indicator; source register read from the GeoPackage source_register table |
 | Geometry validity — ring closure, non-zero area, self-intersection spot-check | PASS | DEMO-P1: closed=True, area=10,000 m2, self-intersects=False; DEMO-P2: closed=True, area=10,000 m2, self-intersects=False; DEMO-P3: closed=True, area=10,000 m2, self-intersects=False; DEMO-P4: closed=True, area=10,000 m2, self-intersects=False; DEMO-P5: closed=True, area=10,000 m2, self-intersects=False; DEMO-P6: closed=True, area=10,000 m2, self-intersects=False |
 | Attribute checks — parcel_id null / duplicate | PASS | parcels=6, duplicate parcel_id=none, null parcel_id=none |
-| Overlap accounting — recomputed vs stored (±1 m2) | PASS | DEMO-P1 wetland: 5,000 m2 recomputed vs 5,000 m2 stored [PASS]; DEMO-P1 flood: 0 m2 recomputed vs 0 m2 stored [PASS]; DEMO-P2 wetland: 0 m2 recomputed vs 0 m2 stored [PASS]; DEMO-P2 flood: 2,500 m2 recomputed vs 2,500 m2 stored [PASS]; DEMO-P3 wetland: 5,000 m2 recomputed vs 5,000 m2 stored [PASS]; DEMO-P3 flood: 0 m2 recomputed vs 0 m2 stored [PASS]; DEMO-P4 wetland: 2,500 m2 recomputed vs 2,500 m2 stored [PASS]; DEMO-P4 flood: 2,500 m2 recomputed vs 2,500 m2 stored [PASS]; DEMO-P5 wetland: 0 m2 recomputed vs 0 m2 stored [PASS]; DEMO-P5 flood: 0 m2 recomputed vs 0 m2 stored [PASS]; DEMO-P6 wetland: 10,000 m2 recomputed vs 10,000 m2 stored [PASS]; DEMO-P6 flood: 2,500 m2 recomputed vs 2,500 m2 stored [PASS] |
+| Overlap accounting — recomputed vs stored (±1 m2) | FLAG | DEMO-P1 wetland: 5,000 m2 recomputed vs 5,000 m2 stored [PASS]; DEMO-P1 flood: 0 m2 recomputed vs 0 m2 stored [PASS]; DEMO-P2 wetland: 0 m2 recomputed vs 0 m2 stored [FLAG]; DEMO-P2 flood: 2,500 m2 recomputed vs 2,500 m2 stored [PASS]; DEMO-P3 wetland: 5,000 m2 recomputed vs 5,000 m2 stored [PASS]; DEMO-P3 flood: 0 m2 recomputed vs 0 m2 stored [FLAG]; DEMO-P4 wetland: 2,500 m2 recomputed vs 2,500 m2 stored [PASS]; DEMO-P4 flood: 2,500 m2 recomputed vs 2,500 m2 stored [PASS]; DEMO-P5 wetland: 0 m2 recomputed vs 0 m2 stored [FLAG]; DEMO-P5 flood: 0 m2 recomputed vs 0 m2 stored [PASS]; DEMO-P6 wetland: 10,000 m2 recomputed vs 10,000 m2 stored [PASS]; DEMO-P6 flood: 2,500 m2 recomputed vs 2,500 m2 stored [PASS] |
 | Source freshness — SYNTH-PARCELS-2026 | FLAG | accessed 2026-11-02T12:00:00Z; effective_date is null — unknown — freshness cannot be verified; accuracy/resolution also null (unknown) |
 | Source freshness — SYNTH-WETLAND-2026 | FLAG | accessed 2026-11-02T12:00:00Z; effective_date is null — unknown — freshness cannot be verified; accuracy/resolution also null (unknown) |
 | Source freshness — SYNTH-FLOOD-HAZARD-2026 | FLAG | accessed 2026-11-02T12:00:00Z; effective_date is null — unknown — freshness cannot be verified; accuracy/resolution also null (unknown) |
@@ -44,13 +46,13 @@ Overlap is recomputed by polygon clipping against the hazard geometry and compar
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | DEMO-P1 | wetland | 5,000 | 50 | 5,000 | 100.0 | PASS | recomputed 5,000 m2 matches stored 5,000 m2 (diff 0.00 m2, tolerance 1 m2) |
 | DEMO-P1 | flood | 0 | 0 | 0 | 100.0 | PASS | recomputed 0 m2 matches stored 0 m2 (diff 0.00 m2, tolerance 1 m2); coverage recomputed 100% from the flood_coverage layer — matches stored |
-| DEMO-P2 | wetland | 0 | 0 | 0 | 0.0 | PASS | recomputed 0 m2 matches stored 0 m2 (diff 0.00 m2, tolerance 1 m2); note: wetland coverage is only 0.0% of this parcel — the verified overlap covers the known area only |
+| DEMO-P2 | wetland | 0 | 0 | 0 | 0.0 | FLAG | unknown — wetland coverage is 0.0%; recomputed 0 m2 is NOT a verified overlap |
 | DEMO-P2 | flood | 2,500 | 25 | 2,500 | 50.0 | PASS | recomputed 2,500 m2 matches stored 2,500 m2 (diff 0.00 m2, tolerance 1 m2); coverage recomputed 50% from the flood_coverage layer — matches stored; note: flood coverage is only 50.0% of this parcel — the verified overlap covers the known area only |
 | DEMO-P3 | wetland | 5,000 | 50 | 5,000 | 100.0 | PASS | recomputed 5,000 m2 matches stored 5,000 m2 (diff 0.00 m2, tolerance 1 m2) |
-| DEMO-P3 | flood | 0 | 0 | 0 | 0.0 | PASS | recomputed 0 m2 matches stored 0 m2 (diff 0.00 m2, tolerance 1 m2); coverage recomputed 0% from the flood_coverage layer — matches stored; note: flood coverage is only 0.0% of this parcel — the verified overlap covers the known area only |
+| DEMO-P3 | flood | 0 | 0 | 0 | 0.0 | FLAG | unknown — flood coverage is 0.0%; recomputed 0 m2 is NOT a verified overlap |
 | DEMO-P4 | wetland | 2,500 | 25 | 2,500 | 50.0 | PASS | recomputed 2,500 m2 matches stored 2,500 m2 (diff 0.00 m2, tolerance 1 m2); note: wetland coverage is only 50.0% of this parcel — the verified overlap covers the known area only |
 | DEMO-P4 | flood | 2,500 | 25 | 2,500 | 100.0 | PASS | recomputed 2,500 m2 matches stored 2,500 m2 (diff 0.00 m2, tolerance 1 m2); coverage recomputed 100% from the flood_coverage layer — matches stored |
-| DEMO-P5 | wetland | 0 | 0 | 0 | 0.0 | PASS | recomputed 0 m2 matches stored 0 m2 (diff 0.00 m2, tolerance 1 m2); note: wetland coverage is only 0.0% of this parcel — the verified overlap covers the known area only |
+| DEMO-P5 | wetland | 0 | 0 | 0 | 0.0 | FLAG | unknown — wetland coverage is 0.0%; recomputed 0 m2 is NOT a verified overlap |
 | DEMO-P5 | flood | 0 | 0 | 0 | 50.0 | PASS | recomputed 0 m2 matches stored 0 m2 (diff 0.00 m2, tolerance 1 m2); coverage recomputed 50% from the flood_coverage layer — matches stored; note: flood coverage is only 50.0% of this parcel — the verified overlap covers the known area only |
 | DEMO-P6 | wetland | 10,000 | 100 | 10,000 | 100.0 | PASS | recomputed 10,000 m2 matches stored 10,000 m2 (diff 0.00 m2, tolerance 1 m2) |
 | DEMO-P6 | flood | 2,500 | 25 | 2,500 | 100.0 | PASS | recomputed 2,500 m2 matches stored 2,500 m2 (diff 0.00 m2, tolerance 1 m2); coverage recomputed 100% from the flood_coverage layer — matches stored |
