@@ -34,6 +34,10 @@
   :focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
   #map { width: 100%; height: 62vh; min-height: 380px; border-top: 1px solid #ccc; }
   #import-status { font-size: 14px; }
+  #parcel-summaries { padding: 12px 16px; }
+  #parcel-summaries h2 { font-size: 18px; margin: 0 0 8px; }
+  #parcel-summary-list { display: flex; gap: 8px; flex-wrap: wrap; list-style: none; padding: 0; }
+  #parcel-summary-output { padding: 8px; line-height: 1.6; }
   footer { padding: 10px 16px 16px; font-size: 13px; color: #444; }
   footer p { margin: 4px 0; }
   .legend-dot { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
@@ -67,7 +71,13 @@
   <span id="import-status" role="status" aria-live="polite"></span>
 </div>
 
-<div id="map" role="application" aria-label="Interactive map of two synthetic land parcels with wetland and flood overlays"></div>
+<div id="map" role="application" aria-label="Interactive map of six synthetic land parcels with wetland and flood overlays"></div>
+<section id="parcel-summaries" aria-labelledby="parcel-summaries-heading">
+  <h2 id="parcel-summaries-heading">Parcel screening summaries</h2>
+  <p>Keyboard alternative: select any parcel below to read its complete screening summary.</p>
+  <ul id="parcel-summary-list"></ul>
+  <div id="parcel-summary-output" role="status" aria-live="polite">Choose a parcel to read its area, wetland and flood coverage.</div>
+</section>
 
 <footer>
   <p><span class="legend-dot" style="background:#3b82f6"></span>Parcel
@@ -109,6 +119,28 @@ function parcelPopupHtml(p) {
     'Flood overlap: ' + p.flood_overlap_m2.toLocaleString('en-US') + ' m&sup2; (' + p.flood_overlap_pct + '% of parcel), coverage ' + fmtCoverage(p.flood_coverage_pct);
 }
 
+// Native buttons expose the same summary without a pointer or map-library keyboard gestures.
+parcels.features.forEach(function (feature) {
+  var properties = feature.properties;
+  var li = document.createElement('li');
+  var button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = properties.parcel_id;
+  button.addEventListener('click', function () {
+    document.getElementById('parcel-summary-output').textContent =
+      properties.parcel_id + ' — Area ' + properties.area_m2.toLocaleString('en-US') +
+      ' square metres (' + properties.area_acres.toFixed(3) + ' acres). ' +
+      'Wetland overlap ' + properties.wetland_overlap_m2.toLocaleString('en-US') +
+      ' square metres (' + properties.wetland_overlap_pct + '%), coverage ' +
+      fmtCoverage(properties.wetland_coverage_pct) + '. Flood overlap ' +
+      properties.flood_overlap_m2.toLocaleString('en-US') +
+      ' square metres (' + properties.flood_overlap_pct + '%), coverage ' +
+      fmtCoverage(properties.flood_coverage_pct) + '.';
+  });
+  li.appendChild(button);
+  document.getElementById('parcel-summary-list').appendChild(li);
+});
+
 var map = new maplibregl.Map({
   container: 'map',
   style: {
@@ -128,6 +160,7 @@ var map = new maplibregl.Map({
   attributionControl: true
 });
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
+var importGeneration = 0;
 
 map.on('load', function () {
   map.addSource('parcels', { type: 'geojson', data: parcels });
@@ -215,6 +248,8 @@ document.getElementById('fit-btn').addEventListener('click', function () {
 });
 
 document.getElementById('clear-import-btn').addEventListener('click', function () {
+  importGeneration++;
+  document.getElementById('kml-file').value = '';
   if (map.getSource('imported')) map.getSource('imported').setData({ type: 'FeatureCollection', features: [] });
   document.getElementById('import-status').textContent = 'Imported features cleared.';
 });
@@ -223,8 +258,10 @@ document.getElementById('kml-file').addEventListener('change', function (e) {
   var file = e.target.files && e.target.files[0];
   var status = document.getElementById('import-status');
   if (!file) return;
+  var generation = ++importGeneration;
   var isKmz = /\.kmz$/i.test(file.name);
   var done = function (kmlText) {
+    if (generation !== importGeneration) return; // Clear/new selection superseded this import.
     try {
       var doc = new DOMParser().parseFromString(kmlText, 'text/xml');
       if (doc.getElementsByTagName('parsererror').length) throw new Error('not valid XML');
@@ -235,15 +272,24 @@ document.getElementById('kml-file').addEventListener('change', function (e) {
       if (feats.length) {
         var b = new maplibregl.LngLatBounds();
         var extended = false;
-        feats.forEach(function (f) {
-          if (!f.geometry) return;
-          var coords = [];
-          if (f.geometry.type === 'Point') coords = [f.geometry.coordinates];
-          else if (f.geometry.type === 'LineString' || f.geometry.type === 'MultiPoint') coords = f.geometry.coordinates;
-          else if (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiLineString') coords = f.geometry.coordinates.flat();
-          else if (f.geometry.type === 'MultiPolygon') coords = f.geometry.coordinates.flat(2);
-          coords.forEach(function (c) { if (Array.isArray(c) && c.length >= 2) { b.extend(c); extended = true; } });
-        });
+        function extendCoords(coords) {
+          if (!Array.isArray(coords)) return;
+          if (coords.length >= 2 && Number.isFinite(coords[0]) && Number.isFinite(coords[1])) {
+            b.extend([coords[0], coords[1]]);
+            extended = true;
+          } else {
+            coords.forEach(extendCoords);
+          }
+        }
+        function extendGeometry(geom) {
+          if (!geom) return;
+          if (geom.type === 'GeometryCollection') {
+            (geom.geometries || []).forEach(extendGeometry);
+          } else {
+            extendCoords(geom.coordinates);
+          }
+        }
+        feats.forEach(function (f) { extendGeometry(f.geometry); });
         if (extended) map.fitBounds(b, { padding: 40 });
       }
     } catch (err) {
@@ -258,10 +304,12 @@ document.getElementById('kml-file').addEventListener('change', function (e) {
       if (!kmlName) throw new Error('no .kml file found inside the KMZ');
       return zip.file(kmlName).async('string');
     }).then(done).catch(function (err) {
+      if (generation !== importGeneration) return;
       status.textContent = 'Could not read ' + file.name + ': ' + err.message;
     });
   } else {
     file.text().then(done).catch(function (err) {
+      if (generation !== importGeneration) return;
       status.textContent = 'Could not read ' + file.name + ': ' + err.message;
     });
   }
