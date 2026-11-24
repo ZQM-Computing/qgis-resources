@@ -78,4 +78,4 @@ jobs:
           name: codeql-results-${{ github.run_id }}
           path: codeql-results
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 1
