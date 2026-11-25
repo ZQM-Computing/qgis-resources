@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Land-Parcel Web Map — Synthetic Demo</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #1a1a1a; }
+  .banner {
+    background: #b45309; color: #fff; text-align: center;
+    font-weight: 700; padding: 10px 12px; font-size: 15px;
+  }
+  .banner small { display: block; font-weight: 400; font-size: 13px; margin-top: 2px; }
+  header { padding: 12px 16px 4px; }
+  header h1 { font-size: 20px; margin: 0 0 4px; }
+  header p { margin: 0 0 8px; font-size: 14px; color: #444; }
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 16px; align-items: center;
+    padding: 8px 16px 12px; font-size: 14px;
+  }
+  .controls fieldset { border: 1px solid #bbb; border-radius: 6px; padding: 6px 10px; margin: 0; }
+  .controls legend { font-weight: 600; font-size: 13px; }
+  .controls label { margin-right: 12px; cursor: pointer; }
+  button {
+    font: inherit; padding: 6px 12px; border-radius: 6px;
+    border: 1px solid #555; background: #f4f4f4; cursor: pointer;
+  }
+  button:hover { background: #e4e4e4; }
+  :focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+  #map { width: 100%; height: 62vh; min-height: 380px; border-top: 1px solid #ccc; }
+  #import-status { font-size: 14px; }
+  #parcel-summaries { padding: 12px 16px; }
+  #parcel-summaries h2 { font-size: 18px; margin: 0 0 8px; }
+  #parcel-summary-list { display: flex; gap: 8px; flex-wrap: wrap; list-style: none; padding: 0; }
+  #parcel-summary-output { padding: 8px; line-height: 1.6; }
+  footer { padding: 10px 16px 16px; font-size: 13px; color: #444; }
+  footer p { margin: 4px 0; }
+  .legend-dot { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+</style>
+</head>
+<body>
+<div class="banner" role="note">
+  SYNTHETIC DEMONSTRATION DATA — NO REAL PROPERTY IS REPRESENTED
+  <small>All parcels, wetland and flood polygons on this page are invented fixtures. Nothing here corresponds to a real parcel, owner, or address.</small>
+</div>
+
+<header>
+  <h1>Land-Parcel Web Map — Synthetic Demo</h1>
+  <p>Click a parcel for its screening summary. Toggle the overlay layers, or import your own KML/KMZ to see it drawn on the same map.</p>
+</header>
+
+<div class="controls">
+  <fieldset>
+    <legend>Layers</legend>
+    <label><input type="checkbox" id="toggle-parcels" checked> Parcels</label>
+    <label><input type="checkbox" id="toggle-wetland" checked> Wetland indicator</label>
+    <label><input type="checkbox" id="toggle-flood" checked> Flood hazard</label>
+    <label><input type="checkbox" id="toggle-imported" checked> Imported KML/KMZ</label>
+  </fieldset>
+  <button type="button" id="fit-btn">Fit map to parcels</button>
+  <button type="button" id="clear-import-btn">Clear imported features</button>
+  <span>
+    <label for="kml-file"><strong>Import KML / KMZ:</strong></label>
+    <input type="file" id="kml-file" accept=".kml,.kmz">
+  </span>
+  <span id="import-status" role="status" aria-live="polite"></span>
+</div>
+
+<div id="map" role="application" aria-label="Interactive map of six synthetic land parcels with wetland and flood overlays"></div>
+<section id="parcel-summaries" aria-labelledby="parcel-summaries-heading">
+  <h2 id="parcel-summaries-heading">Parcel screening summaries</h2>
+  <p>Keyboard alternative: select any parcel below to read its complete screening summary.</p>
+  <ul id="parcel-summary-list"></ul>
+  <div id="parcel-summary-output" role="status" aria-live="polite">Choose a parcel to read its area, wetland and flood coverage.</div>
+</section>
+
+<footer>
+  <p><span class="legend-dot" style="background:#3b82f6"></span>Parcel
+     <span class="legend-dot" style="background:#22c55e"></span>Wetland indicator
+     <span class="legend-dot" style="background:#f97316"></span>Flood hazard
+     <span class="legend-dot" style="background:#d946ef"></span>Imported KML/KMZ features</p>
+  <p><strong>What this page is:</strong> a static front-end demonstration of the parcel-screening workflow — parcels, overlays, popups, and client-side KML import. There is no server and no database behind it. <strong>The production version of this workflow would be backed by PostGIS</strong> (spatial queries, screening, and reporting in the database); this page is not a live PostGIS application.</p>
+  <p><strong>KML/KMZ privacy:</strong> imported files are parsed entirely in your browser (KML with toGeoJSON, KMZ unzipped with JSZip). Nothing is uploaded to any server.</p>
+  <p><strong>Basemap:</strong> CartoDB Voyager raster tiles (free, no API key). Map library: MapLibre GL JS 4.7.1 via CDN. An internet connection is needed for the libraries and tiles; the parcel data itself is embedded in this file.</p>
+  <p>Prepared by Alex Zelenski, individual GISP, New Smyrna Beach, FL. No survey or engineering licensure is claimed, and no ArcGIS Enterprise experience is claimed.</p>
+</footer>
+
+<script>
+'use strict';
+/* Embedded synthetic fixture (EPSG:32617 converted to WGS84 lon/lat).
+   DEMO-P1: (500000,3200000)-(500100,3200100); DEMO-P2: (500100,3200000)-(500200,3200100).
+   Wetland = western half of DEMO-P1; flood = 50x50 m square at the NE corner of DEMO-P2.
+   Each parcel is 10,000 m2 (2.471053814671653 acres). */
+var PARCELS = {"type":"FeatureCollection","features":[{"type":"Feature","properties":{"layer":"parcel","parcel_id":"DEMO-P1","area_m2":10000,"area_acres":2.471053814671653,"wetland_overlap_m2":5000,"wetland_overlap_pct":50,"wetland_coverage_pct":100,"flood_overlap_m2":0,"flood_overlap_pct":0,"flood_coverage_pct":100},"geometry":{"type":"Polygon","coordinates":[[[-80.998974,28.9279217],[-80.998974,28.9288243],[-81.0,28.9288243],[-81.0,28.9279217],[-80.998974,28.9279217]]]}},{"type":"Feature","properties":{"layer":"parcel","parcel_id":"DEMO-P2","area_m2":10000,"area_acres":2.471053814671653,"wetland_overlap_m2":0,"wetland_overlap_pct":0,"wetland_coverage_pct":null,"flood_overlap_m2":2500,"flood_overlap_pct":25,"flood_coverage_pct":50},"geometry":{"type":"Polygon","coordinates":[[[-80.997948,28.9279217],[-80.997948,28.9288243],[-80.998974,28.9288243],[-80.998974,28.9279217],[-80.997948,28.9279217]]]}},{"type":"Feature","properties":{"layer":"parcel","parcel_id":"DEMO-P3","area_m2":10000,"area_acres":2.471053814671653,"wetland_overlap_m2":5000,"wetland_overlap_pct":50,"wetland_coverage_pct":100,"flood_overlap_m2":0,"flood_overlap_pct":0,"flood_coverage_pct":null},"geometry":{"type":"Polygon","coordinates":[[[-80.996922,28.9279217],[-80.996922,28.9288243],[-80.997948,28.9288243],[-80.997948,28.9279217],[-80.996922,28.9279217]]]}},{"type":"Feature","properties":{"layer":"parcel","parcel_id":"DEMO-P4","area_m2":10000,"area_acres":2.471053814671653,"wetland_overlap_m2":2500,"wetland_overlap_pct":25,"wetland_coverage_pct":50,"flood_overlap_m2":2500,"flood_overlap_pct":25,"flood_coverage_pct":100},"geometry":{"type":"Polygon","coordinates":[[[-80.9958961,28.9279216],[-80.995896,28.9288242],[-80.996922,28.9288243],[-80.996922,28.9279217],[-80.9958961,28.9279216]]]}},{"type":"Feature","properties":{"layer":"parcel","parcel_id":"DEMO-P5","area_m2":10000,"area_acres":2.471053814671653,"wetland_overlap_m2":0,"wetland_overlap_pct":0,"wetland_coverage_pct":null,"flood_overlap_m2":0,"flood_overlap_pct":0,"flood_coverage_pct":50},"geometry":{"type":"Polygon","coordinates":[[[-80.998974,28.9288243],[-80.998974,28.9297269],[-81.0,28.9297269],[-81.0,28.9288243],[-80.998974,28.9288243]]]}},{"type":"Feature","properties":{"layer":"parcel","parcel_id":"DEMO-P6","area_m2":10000,"area_acres":2.471053814671653,"wetland_overlap_m2":10000,"wetland_overlap_pct":100,"wetland_coverage_pct":100,"flood_overlap_m2":2500,"flood_overlap_pct":25,"flood_coverage_pct":100},"geometry":{"type":"Polygon","coordinates":[[[-80.997948,28.9288243],[-80.997948,28.9297269],[-80.998974,28.9297269],[-80.998974,28.9288243],[-80.997948,28.9288243]]]}},{"type":"Feature","properties":{"layer":"wetland","name":"Wetland indicator — western half of DEMO-P1","parcel_id":"DEMO-P1"},"geometry":{"type":"Polygon","coordinates":[[[-80.999487,28.9279217],[-80.999487,28.9288243],[-81.0,28.9288243],[-81.0,28.9279217],[-80.999487,28.9279217]]]}},{"type":"Feature","properties":{"layer":"wetland","name":"Wetland indicator — southern half of DEMO-P3","parcel_id":"DEMO-P3"},"geometry":{"type":"Polygon","coordinates":[[[-80.996922,28.9279217],[-80.996922,28.928373],[-80.997948,28.928373],[-80.997948,28.9279217],[-80.996922,28.9279217]]]}},{"type":"Feature","properties":{"layer":"wetland","name":"Wetland indicator — northern half of DEMO-P4","parcel_id":"DEMO-P4"},"geometry":{"type":"Polygon","coordinates":[[[-80.996409,28.9283729],[-80.996409,28.9288242],[-80.996922,28.9288243],[-80.996922,28.928373],[-80.996409,28.9283729]]]}},{"type":"Feature","properties":{"layer":"wetland","name":"Wetland indicator — whole parcel DEMO-P6","parcel_id":"DEMO-P6"},"geometry":{"type":"Polygon","coordinates":[[[-80.997948,28.9288243],[-80.997948,28.9297269],[-80.998974,28.9297269],[-80.998974,28.9288243],[-80.997948,28.9288243]]]}},{"type":"Feature","properties":{"layer":"flood","name":"Flood hazard — 50 x 50 m square, NE corner of DEMO-P2","parcel_id":"DEMO-P2"},"geometry":{"type":"Polygon","coordinates":[[[-80.998461,28.928373],[-80.998461,28.9288243],[-80.998974,28.9288243],[-80.998974,28.928373],[-80.998461,28.928373]]]}},{"type":"Feature","properties":{"layer":"flood","name":"Flood hazard — 100 x 25 m strip, southern edge of DEMO-P4","parcel_id":"DEMO-P4"},"geometry":{"type":"Polygon","coordinates":[[[-80.9958961,28.9279216],[-80.9958961,28.9281473],[-80.996922,28.9281473],[-80.996922,28.9279217],[-80.9958961,28.9279216]]]}},{"type":"Feature","properties":{"layer":"flood","name":"Flood hazard — 50 x 50 m square, SW corner of DEMO-P6","parcel_id":"DEMO-P6"},"geometry":{"type":"Polygon","coordinates":[[[-80.998461,28.9288243],[-80.998461,28.9292756],[-80.998974,28.9292756],[-80.998974,28.9288243],[-80.998461,28.9288243]]]}}]};
+
+var parcels = { type: 'FeatureCollection', features: PARCELS.features.filter(function (f) { return f.properties.layer === 'parcel'; }) };
+var wetland = { type: 'FeatureCollection', features: PARCELS.features.filter(function (f) { return f.properties.layer === 'wetland'; }) };
+var flood = { type: 'FeatureCollection', features: PARCELS.features.filter(function (f) { return f.properties.layer === 'flood'; }) };
+
+function fmtCoverage(v) { return (v === null || v === undefined) ? 'unknown' : v + '%'; }
+
+function parcelById(id) {
+  for (var i = 0; i < PARCELS.features.length; i++) {
+    var f = PARCELS.features[i];
+    if (f.properties.layer === 'parcel' && f.properties.parcel_id === id) return f.properties;
+  }
+  return null;
+}
+
+function parcelPopupHtml(p) {
+  return '<strong>' + p.parcel_id + '</strong><br>' +
+    'Area: ' + p.area_m2.toLocaleString('en-US') + ' m&sup2; (' + p.area_acres.toFixed(3) + ' acres)<br>' +
+    'Wetland overlap: ' + p.wetland_overlap_m2.toLocaleString('en-US') + ' m&sup2; (' + p.wetland_overlap_pct + '% of parcel), coverage ' + fmtCoverage(p.wetland_coverage_pct) + '<br>' +
+    'Flood overlap: ' + p.flood_overlap_m2.toLocaleString('en-US') + ' m&sup2; (' + p.flood_overlap_pct + '% of parcel), coverage ' + fmtCoverage(p.flood_coverage_pct);
+}
+
+// Native buttons expose the same summary without a pointer or map-library keyboard gestures.
+parcels.features.forEach(function (feature) {
+  var properties = feature.properties;
+  var li = document.createElement('li');
+  var button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = properties.parcel_id;
+  button.addEventListener('click', function () {
+    document.getElementById('parcel-summary-output').textContent =
+      properties.parcel_id + ' — Area ' + properties.area_m2.toLocaleString('en-US') +
+      ' square metres (' + properties.area_acres.toFixed(3) + ' acres). ' +
+      'Wetland overlap ' + properties.wetland_overlap_m2.toLocaleString('en-US') +
+      ' square metres (' + properties.wetland_overlap_pct + '%), coverage ' +
+      fmtCoverage(properties.wetland_coverage_pct) + '. Flood overlap ' +
+      properties.flood_overlap_m2.toLocaleString('en-US') +
+      ' square metres (' + properties.flood_overlap_pct + '%), coverage ' +
+      fmtCoverage(properties.flood_coverage_pct) + '.';
+  });
+  li.appendChild(button);
+  document.getElementById('parcel-summary-list').appendChild(li);
+});
+
+var map = new maplibregl.Map({
+  container: 'map',
+  style: {
+    version: 8,
+    sources: {
+      basemap: {
+        type: 'raster',
+        tiles: ['https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
+      }
+    },
+    layers: [{ id: 'basemap', type: 'raster', source: 'basemap' }]
+  },
+  center: [-80.997948, 28.9288243],
+  zoom: 16,
+  attributionControl: true
+});
+map.addControl(new maplibregl.NavigationControl(), 'top-right');
+var importGeneration = 0;
+
+map.on('load', function () {
+  map.addSource('parcels', { type: 'geojson', data: parcels });
+  map.addSource('wetland', { type: 'geojson', data: wetland });
+  map.addSource('flood', { type: 'geojson', data: flood });
+  map.addSource('imported', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+
+  map.addLayer({ id: 'parcels-fill', type: 'fill', source: 'parcels',
+    paint: { 'fill-color': '#3b82f6', 'fill-opacity': 0.25 } });
+  map.addLayer({ id: 'parcels-line', type: 'line', source: 'parcels',
+    paint: { 'line-color': '#1d4ed8', 'line-width': 2 } });
+  map.addLayer({ id: 'wetland-fill', type: 'fill', source: 'wetland',
+    paint: { 'fill-color': '#22c55e', 'fill-opacity': 0.45 } });
+  map.addLayer({ id: 'wetland-line', type: 'line', source: 'wetland',
+    paint: { 'line-color': '#15803d', 'line-width': 1.5 } });
+  map.addLayer({ id: 'flood-fill', type: 'fill', source: 'flood',
+    paint: { 'fill-color': '#f97316', 'fill-opacity': 0.55 } });
+  map.addLayer({ id: 'flood-line', type: 'line', source: 'flood',
+    paint: { 'line-color': '#c2410c', 'line-width': 1.5 } });
+  map.addLayer({ id: 'imported-fill', type: 'fill', source: 'imported',
+    paint: { 'fill-color': '#d946ef', 'fill-opacity': 0.25 } });
+  map.addLayer({ id: 'imported-line', type: 'line', source: 'imported',
+    paint: { 'line-color': '#a21caf', 'line-width': 2 } });
+  map.addLayer({ id: 'imported-point', type: 'circle', source: 'imported',
+    paint: { 'circle-color': '#d946ef', 'circle-radius': 5, 'circle-stroke-color': '#a21caf', 'circle-stroke-width': 1.5 } });
+  // Controls can change before MapLibre finishes loading; honor their actual state.
+  ['parcels', 'wetland', 'flood', 'imported'].forEach(function (id) {
+    setLayerVisibility(id, document.getElementById('toggle-' + id).checked);
+  });
+
+  var popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true });
+
+  map.on('click', function (e) {
+    var feats = map.queryRenderedFeatures(e.point, { layers: ['parcels-fill', 'wetland-fill', 'flood-fill', 'imported-fill', 'imported-point'] });
+    if (!feats.length) { popup.remove(); return; }
+    var f = feats[0];
+    var html;
+    if (f.properties && f.properties.parcel_id && f.layer.id === 'parcels-fill') {
+      html = parcelPopupHtml(f.properties);
+    } else if (f.layer.id === 'wetland-fill') {
+      var wp = parcelById(f.properties.parcel_id);
+      html = '<strong>Wetland indicator</strong><br>' + f.properties.name + '.<br>' +
+        (wp ? parcelPopupHtml(wp) : 'No matching parcel summary');
+    } else if (f.layer.id === 'flood-fill') {
+      var fp2 = parcelById(f.properties.parcel_id);
+      html = '<strong>Flood hazard</strong><br>' + f.properties.name + '.<br>' +
+        (fp2 ? parcelPopupHtml(fp2) : 'No matching parcel summary');
+    } else {
+      var name = (f.properties && (f.properties.name || f.properties.title)) || 'Imported feature';
+      // Imported KML names are untrusted content: never interpret as markup.
+      var importedContent = document.createElement('div');
+      var importedTitle = document.createElement('strong');
+      importedTitle.textContent = String(name);
+      importedContent.appendChild(importedTitle);
+      importedContent.appendChild(document.createElement('br'));
+      importedContent.appendChild(document.createTextNode('Imported from KML/KMZ (client-side only).'));
+      popup.setLngLat(e.lngLat).setDOMContent(importedContent).addTo(map);
+      return;
+    }
+    popup.setLngLat(e.lngLat).setHTML(html).addTo(map);
+  });
+
+  map.on('mousemove', function (e) {
+    var feats = map.queryRenderedFeatures(e.point, { layers: ['parcels-fill', 'wetland-fill', 'flood-fill', 'imported-fill', 'imported-point'] });
+    map.getCanvas().style.cursor = feats.length ? 'pointer' : '';
+  });
+});
+
+function setLayerVisibility(baseId, visible) {
+  var v = visible ? 'visible' : 'none';
+  if (!map.getLayer(baseId + '-fill')) return;
+  map.setLayoutProperty(baseId + '-fill', 'visibility', v);
+  map.setLayoutProperty(baseId + '-line', 'visibility', v);
+  if (baseId === 'imported') map.setLayoutProperty('imported-point', 'visibility', v);
+}
+
+document.getElementById('toggle-parcels').addEventListener('change', function (e) { setLayerVisibility('parcels', e.target.checked); });
+document.getElementById('toggle-wetland').addEventListener('change', function (e) { setLayerVisibility('wetland', e.target.checked); });
+document.getElementById('toggle-flood').addEventListener('change', function (e) { setLayerVisibility('flood', e.target.checked); });
+document.getElementById('toggle-imported').addEventListener('change', function (e) { setLayerVisibility('imported', e.target.checked); });
+
+document.getElementById('fit-btn').addEventListener('click', function () {
+  var b = new maplibregl.LngLatBounds([-81.0, 28.9279216], [-80.995896, 28.9297269]);
+  map.fitBounds(b, { padding: 40 });
+});
+
+document.getElementById('clear-import-btn').addEventListener('click', function () {
+  importGeneration++;
+  document.getElementById('kml-file').value = '';
+  if (map.getSource('imported')) map.getSource('imported').setData({ type: 'FeatureCollection', features: [] });
+  document.getElementById('import-status').textContent = 'Imported features cleared.';
+});
+
+document.getElementById('kml-file').addEventListener('change', function (e) {
+  var file = e.target.files && e.target.files[0];
+  var status = document.getElementById('import-status');
+  if (!file) return;
+  var generation = ++importGeneration;
+  var isKmz = /\.kmz$/i.test(file.name);
+  var done = function (kmlText) {
+    if (generation !== importGeneration) return; // Clear/new selection superseded this import.
+    try {
+      var doc = new DOMParser().parseFromString(kmlText, 'text/xml');
+      if (doc.getElementsByTagName('parsererror').length) throw new Error('not valid XML');
+      var gj = toGeoJSON.kml(doc);
+      var feats = (gj && gj.features) || [];
+      if (map.getSource('imported')) map.getSource('imported').setData(gj);
+      status.textContent = 'Imported ' + feats.length + ' feature(s) from ' + file.name + ' (parsed in your browser only — nothing was uploaded).';
+      if (feats.length) {
+        var b = new maplibregl.LngLatBounds();
+        var extended = false;
+        function extendCoords(coords) {
+          if (!Array.isArray(coords)) return;
+          if (coords.length >= 2 && Number.isFinite(coords[0]) && Number.isFinite(coords[1])) {
+            b.extend([coords[0], coords[1]]);
+            extended = true;
+          } else {
+            coords.forEach(extendCoords);
+          }
+        }
+        function extendGeometry(geom) {
+          if (!geom) return;
+          if (geom.type === 'GeometryCollection') {
+            (geom.geometries || []).forEach(extendGeometry);
+          } else {
+            extendCoords(geom.coordinates);
+          }
+        }
+        feats.forEach(function (f) { extendGeometry(f.geometry); });
+        if (extended) map.fitBounds(b, { padding: 40 });
+      }
+    } catch (err) {
+      status.textContent = 'Could not parse ' + file.name + ': ' + err.message;
+    }
+  };
+  if (isKmz) {
+    file.arrayBuffer().then(function (buf) {
+      return JSZip.loadAsync(buf);
+    }).then(function (zip) {
+      var kmlName = Object.keys(zip.files).find(function (n) { return /\.kml$/i.test(n); });
+      if (!kmlName) throw new Error('no .kml file found inside the KMZ');
+      return zip.file(kmlName).async('string');
+    }).then(done).catch(function (err) {
+      if (generation !== importGeneration) return;
+      status.textContent = 'Could not read ' + file.name + ': ' + err.message;
+    });
+  } else {
+    file.text().then(done).catch(function (err) {
+      if (generation !== importGeneration) return;
+      status.textContent = 'Could not read ' + file.name + ': ' + err.message;
+    });
+  }
+});
+</script>
+</body>
+</html>
